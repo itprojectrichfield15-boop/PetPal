@@ -213,8 +213,11 @@ export default function AuraCanvas({
       // header’s narrow pane, which is why the betta rendered as a small blob.
       const vFov = (45 * Math.PI) / 180
       const halfTan = Math.tan(vFov / 2)
-      const fitByHeight = 3.2 / halfTan
-      const fitByWidth = 3.4 / (camera.aspect * halfTan)
+      // The half-extents the subject must fit inside. Tightened from 3.2/3.4:
+      // these animals earn their space, and the markings in particular need
+      // size to read — three white bars on a small clownfish are three specks.
+      const fitByHeight = 2.85 / halfTan
+      const fitByWidth = 3.0 / (camera.aspect * halfTan)
       camera.position.z = Math.max(fitByHeight, fitByWidth)
     }
 
