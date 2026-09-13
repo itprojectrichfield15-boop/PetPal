@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react'
 import * as THREE from 'three'
 import { useClientValue } from '@/lib/use-client-value'
-import { sampleAnimal, MORPH_SEQUENCE, REST_YAW, type AnimalKey } from '@/lib/animal-shapes'
+import { sampleAnimal, MORPH_SEQUENCE, REST_YAW, type AnimalKey, type ShapeData } from '@/lib/animal-shapes'
 
 /**
  * The site's 3D layer: a fixed, full-viewport particle field behind every
@@ -224,13 +224,42 @@ export default function AnimalField() {
     camera.position.set(0, 0, 8.4)
 
     // ── Shapes ────────────────────────────────────────────────────────────
-    const shapes = SEQ.map((key, i) => sampleAnimal(key, PARTICLE_COUNT, 11 + i))
+    let pairIndex = -1
+    // Sampling projects every point onto a blended distance field, which costs
+    // roughly 150ms per animal. Building all five up front froze the page for
+    // most of a second on mount, so only the opening shape is built
+    // synchronously and the rest are queued onto idle time. Scrolling far
+    // enough to need the next animal takes far longer than filling the queue.
+    const shapes: (ShapeData | undefined)[] = new Array(SEQ.length)
+    shapes[0] = sampleAnimal(SEQ[0], PARTICLE_COUNT, 11)
+
+    const idle: (cb: () => void) => void =
+      typeof window.requestIdleCallback === 'function'
+        ? cb => window.requestIdleCallback(() => cb(), { timeout: 900 })
+        : cb => window.setTimeout(cb, 32)
+
+    let queued = 1
+    let disposed = false
+    function buildNext() {
+      if (disposed || queued >= SEQ.length) return
+      const i = queued++
+      shapes[i] = sampleAnimal(SEQ[i], PARTICLE_COUNT, 11 + i)
+      // A shape arriving after `setPair` already wanted it means the buffers
+      // are stale; force the next frame to re-upload them.
+      if (i === pairIndex + 1) pairIndex = -1
+      idle(buildNext)
+    }
+    idle(buildNext)
 
     const geometry = new THREE.BufferGeometry()
-    const aFrom = new Float32Array(shapes[0].positions)
-    const aTo = new Float32Array(shapes[Math.min(1, shapes.length - 1)].positions)
-    const aNormalFrom = new Float32Array(shapes[0].normals)
-    const aNormalTo = new Float32Array(shapes[Math.min(1, shapes.length - 1)].normals)
+    // Only shape 0 exists at this point; the rest arrive on idle time. Both
+    // buffers start as the opening shape, which simply means the morph holds
+    // still until its destination is ready.
+    const first = shapes[0]!
+    const aFrom = new Float32Array(first.positions)
+    const aTo = new Float32Array(first.positions)
+    const aNormalFrom = new Float32Array(first.normals)
+    const aNormalTo = new Float32Array(first.normals)
     const scatter = new Float32Array(PARTICLE_COUNT * 3)
     const seeds = new Float32Array(PARTICLE_COUNT)
 
@@ -288,12 +317,17 @@ export default function AnimalField() {
     scene.add(points)
 
     // ── Scroll-driven morph ───────────────────────────────────────────────
-    let pairIndex = -1
     function setPair(i: number) {
       if (i === pairIndex) return
-      pairIndex = i
+
       const a = shapes[Math.min(i, shapes.length - 1)]
-      const b = shapes[Math.min(i + 1, shapes.length - 1)]
+      if (!a) return
+      // The destination may still be queued. Fall back to holding the current
+      // shape rather than snapping to a half-built state; `buildNext` resets
+      // `pairIndex` so the next frame re-uploads once it lands.
+      const b = shapes[Math.min(i + 1, shapes.length - 1)] ?? a
+
+      pairIndex = i
       aFrom.set(a.positions); aNormalFrom.set(a.normals)
       aTo.set(b.positions); aNormalTo.set(b.normals)
       fromAttr.needsUpdate = true
@@ -405,6 +439,7 @@ export default function AnimalField() {
     else start()
 
     return () => {
+      disposed = true
       stop()
       ro.disconnect()
       window.removeEventListener('scroll', readScroll)

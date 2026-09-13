@@ -871,6 +871,70 @@ END FUNCTION
 **Why longest-alias-wins:** "chicken bone" (12 characters) outscores "chicken"
 (7), so the specific warning still wins when it genuinely applies.
 
+## The 3D animals (for your Implementation section)
+
+The landing page and every tool header render a particle cloud shaped like a
+real animal. This is worth writing up because it is the most technically
+involved part of the system, and it was rebuilt three times before it worked.
+
+### What it draws
+
+Five specific breeds, not generic animals — a generic dog is nobody’s dog:
+
+| Species | Breed | Modelled features |
+|---|---|---|
+| Dog | **Beagle** | Drop ears to the jawline, square muzzle, domed skull, barrel chest, tail carried high |
+| Cat | **Maine Coon** | Rectangular body, neck ruff, tufted ears, very long bushy tail |
+| Bird | **Cockatiel** | Swept-back crest, round head, slim body, long pointed tail |
+| Rabbit | **Holland Lop** | Compact cobby body, flat face, ears hanging beside the head |
+| Fish | **Betta splendens** | Deep body with an enormous flowing caudal, dorsal and anal fin |
+
+Two of these are named in the app’s own copy (Biscuit the beagle, Luna the
+Maine Coon), so the 3D matches the story the site tells.
+
+### How it is built
+
+Each animal is defined as a **signed distance field** — a function that, for any
+point in space, returns how far that point is from the surface. Roughly 30
+primitive volumes (ellipsoids for body masses, tapered cones for necks, limbs,
+tails and fins) each contribute a distance, and they are combined with a
+**smooth minimum** so they fuse into one organic body rather than looking like
+a pile of overlapping balls.
+
+Points are then placed on that surface in four steps:
+
+1. pick a primitive at random, weighted by its surface area,
+2. take a point on that primitive’s own surface as a starting guess,
+3. **project** it onto the fused surface with a few Newton steps — move along
+   the gradient by the distance value, repeat,
+4. the surface **normal** is the gradient at the final position, which is what
+   makes the lighting correct.
+
+### Why it was rebuilt three times (good material for a reflection section)
+
+| Version | Approach | Why it failed |
+|---|---|---|
+| 1 | Points scattered in a flat slab | Read as cardboard; nothing to light |
+| 2 | 2D silhouette inflated by a distance transform | Round, but only correct from one camera angle, and no left/right limbs |
+| 3 | Union of 3D primitives, overlaps hard-culled | Correct from all angles, but visible seams at every joint |
+| 4 | Signed distance field with smooth blending | One fused organic surface, exact normals |
+
+### Performance decisions worth citing
+
+- Sampling one animal costs about **150 ms**. Building all five on mount froze
+  the page for most of a second, so only the opening animal is built
+  synchronously and the rest are queued onto **idle time**.
+- Distant primitives are skipped when evaluating the field, using a bounding
+  sphere test — with 30 parts, only a handful matter at any given point.
+- The gradient uses **four-tap tetrahedral** sampling rather than six-tap
+  central differences, which is a third cheaper for the same quality.
+- Only two shapes sit on the GPU at once; the morph is a lerp between them.
+- Points are emitted in a consistent spatial order across all five species, so
+  index *i* lands in a comparable place on every body. Without that ordering
+  the morph looks like an explosion rather than a transformation.
+
+---
+
 ## Interface design
 
 ### Menu structure
