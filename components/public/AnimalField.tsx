@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react'
 import * as THREE from 'three'
 import { useClientValue } from '@/lib/use-client-value'
-import { sampleAnimal, MORPH_SEQUENCE, REST_YAW, type AnimalKey, type ShapeData } from '@/lib/animal-shapes'
+import { sampleAnimal, MORPH_SEQUENCE, REST_YAW, REST_SCALE, type AnimalKey, type ShapeData } from '@/lib/animal-shapes'
 
 /**
  * The site's 3D layer: a fixed, full-viewport particle field behind every
@@ -13,8 +13,8 @@ import { sampleAnimal, MORPH_SEQUENCE, REST_YAW, type AnimalKey, type ShapeData 
  * hero should say so before any copy does.
  *
  * ── What makes it read as solid rather than as a haze ───────────────────────
- * Each point carries a real surface NORMAL, computed in lib/animal-shapes from
- * the gradient of an inflated silhouette. That normal is lit here with a key
+ * Each point carries a real surface NORMAL — the gradient of the blended
+ * distance field it was sampled from. That normal is lit here with a key
  * light, a cool fill, a rim and a specular term, so the dog's chest catches
  * light and its far flank falls away. A particle cloud without normals has no
  * form to light and always looks flat — which is exactly how the first version
@@ -35,7 +35,7 @@ import { sampleAnimal, MORPH_SEQUENCE, REST_YAW, type AnimalKey, type ShapeData 
  * on unmount.
  */
 
-const PARTICLE_COUNT = 16000
+const PARTICLE_COUNT = 22000
 const SEQ: AnimalKey[] = MORPH_SEQUENCE
 
 const VERTEX = /* glsl */ `
@@ -113,8 +113,8 @@ const VERTEX = /* glsl */ `
     // ── Orientation ────────────────────────────────────────────────────────
     float ay = uSpin + uMouse.x * 0.34;
     float ax = uMouse.y * 0.20;
-    mat3 ry = mat3(cos(ay), 0.0, sin(ay), 0.0, 1.0, 0.0, -sin(ay), 0.0, cos(ay));
-    mat3 rx = mat3(1.0, 0.0, 0.0, 0.0, cos(ax), -sin(ax), 0.0, sin(ax), cos(ax));
+    mat3 ry = mat3(cos(ay), 0.0, -sin(ay), 0.0, 1.0, 0.0, sin(ay), 0.0, cos(ay));
+    mat3 rx = mat3(1.0, 0.0, 0.0, 0.0, cos(ax), sin(ax), 0.0, -sin(ax), cos(ax));
     pos = rx * ry * pos;
     vNormal = normalize(rx * ry * normal);
 
@@ -396,8 +396,17 @@ export default function AnimalField() {
       const restB = REST_YAW[SEQ[Math.min(idx + 1, SEQ.length - 1)]]
       const rest = restA + (restB - restA) * uniforms.uMix.value
       uniforms.uSpin.value = rest + Math.sin(elapsed * 0.22) * 0.16 + scrollEased * 0.35
-      points.position.x = 2.3 - scrollEased * 4.6
-      points.position.y = Math.sin(scrollEased * Math.PI * 2) * 0.5
+      // Framing: sit the subject clear of the headline on the right, whole and
+      // uncropped. A complete readable animal beats a larger cropped one — at
+      // 1.10 scale the beagle’s head collided with the first line of copy.
+      points.position.x = 2.55 - scrollEased * 4.7
+      points.position.y = -0.10 + Math.sin(scrollEased * Math.PI * 2) * 0.45
+      // Blend the per-species display scale through the morph too.
+      const scaleA = REST_SCALE[SEQ[Math.min(idx, SEQ.length - 1)]]
+      const scaleB = REST_SCALE[SEQ[Math.min(idx + 1, SEQ.length - 1)]]
+      const speciesScale = scaleA + (scaleB - scaleA) * uniforms.uMix.value
+      const s = (0.88 - scrollEased * 0.16) * speciesScale
+      points.scale.setScalar(s)
 
       renderer.render(scene, camera)
     }

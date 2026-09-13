@@ -24,7 +24,7 @@
  *                    stocky build, tail carried high
  *   Maine Coon       rectangular body, neck ruff, ear tufts, huge bushy tail
  *   Cockatiel        swept-back crest, round head, slim body, long pointed tail
- *   Holland Lop      compact round body, flat face, ears hanging BESIDE the head
+ *   Dutch Rabbit     upright sitting pose, heavy haunches, tall upright ears
  *   Betta splendens  deep body with enormous flowing caudal, dorsal and anal fins
  *
  * Two of these are already named in the app's own copy — Biscuit the beagle and
@@ -54,6 +54,16 @@ interface Ellipsoid {
   rot?: number
   /** Blend radius override — smaller keeps an edge crisp (fins, ear tips). */
   k?: number
+  /**
+   * Sampling weight multiplier.
+   *
+   * Points are distributed by surface AREA, which starves thin flat features:
+   * a betta’s caudal fin is a sheet 0.03 units thick, so by area it deserves
+   * almost no particles — and the fish rendered as a body with no fins. Ears,
+   * crests and fins boost this so the features that actually identify the
+   * animal get the density they need to read.
+   */
+  w?: number
 }
 
 interface Cone {
@@ -63,12 +73,13 @@ interface Cone {
   ra: number
   rb: number
   k?: number
+  w?: number
 }
 
 type Part = Ellipsoid | Cone
 
-const E = (c: Vec3, r: Vec3, rot = 0, k?: number): Ellipsoid => ({ kind: 'e', c, r, rot, k })
-const C = (a: Vec3, ra: number, b: Vec3, rb: number, k?: number): Cone => ({ kind: 'c', a, b, ra, rb, k })
+const E = (c: Vec3, r: Vec3, rot = 0, k?: number, w?: number): Ellipsoid => ({ kind: 'e', c, r, rot, k, w })
+const C = (a: Vec3, ra: number, b: Vec3, rb: number, k?: number, w?: number): Cone => ({ kind: 'c', a, b, ra, rb, k, w })
 
 /** Mirror across Z so limbs, ears and fins come in pairs. */
 function pair(p: Part): Part[] {
@@ -108,8 +119,8 @@ const BUILDERS: Record<Exclude<AnimalKey, 'orb'>, () => Part[]> = {
     E([-1.66, 0.94, 0], [0.13, 0.12, 0.13], 0, 0.05),          // nose leather
 
     // the beagle signature: long drop ears hanging to the jawline
-    ...pair(E([-0.74, 0.92, 0.34], [0.20, 0.44, 0.10], 8, 0.07)),
-    ...pair(E([-0.80, 0.52, 0.30], [0.17, 0.24, 0.08], 4, 0.07)), // rounded ear tip
+    ...pair(E([-0.74, 0.92, 0.34], [0.20, 0.44, 0.10], 8, 0.07, 2.6)),
+    ...pair(E([-0.80, 0.52, 0.30], [0.17, 0.24, 0.08], 4, 0.07, 2.6)), // rounded ear tip
 
     // short sturdy legs, upper and lower so the elbow and hock read
     ...pair(C([-0.02, -0.34, 0.34], 0.21, [-0.12, -1.02, 0.36], 0.15)),
@@ -143,8 +154,8 @@ const BUILDERS: Record<Exclude<AnimalKey, 'orb'>, () => Part[]> = {
     E([-1.28, 1.06, 0], [0.08, 0.07, 0.08], 0, 0.04),          // nose
 
     // tall wide-set ears with lynx tufts
-    ...pair(C([-0.62, 1.56, 0.26], 0.20, [-0.72, 2.10, 0.34], 0.05, 0.08)),
-    ...pair(C([-0.72, 2.10, 0.34], 0.05, [-0.80, 2.34, 0.38], 0.015, 0.03)), // tuft
+    ...pair(C([-0.62, 1.56, 0.26], 0.20, [-0.72, 2.10, 0.34], 0.05, 0.08, 1.8)),
+    ...pair(C([-0.72, 2.10, 0.34], 0.05, [-0.80, 2.34, 0.38], 0.015, 0.03, 4.0)), // tuft
 
     ...pair(C([-0.02, -0.46, 0.26], 0.16, [-0.10, -1.54, 0.28], 0.12)),
     ...pair(E([-0.20, -1.64, 0.28], [0.22, 0.11, 0.17], 0, 0.08)),
@@ -164,11 +175,11 @@ const BUILDERS: Record<Exclude<AnimalKey, 'orb'>, () => Part[]> = {
   bird: () => [
     E([0.18, -0.06, 0], [0.62, 0.66, 0.52], -10),              // slim body
     E([0.58, 0.16, 0], [0.46, 0.46, 0.42]),                    // shoulders
-    ...pair(E([0.34, -0.04, 0.44], [0.58, 0.40, 0.10], -14, 0.08)), // folded wings
+    ...pair(E([0.34, -0.04, 0.44], [0.58, 0.40, 0.10], -14, 0.08, 1.8)), // folded wings
 
     // long tapering pointed tail
     C([0.92, -0.02, 0], 0.24, [1.72, -0.34, 0], 0.14),
-    C([1.72, -0.34, 0], 0.14, [2.30, -0.62, 0], 0.05, 0.06),
+    C([1.72, -0.34, 0], 0.14, [2.30, -0.62, 0], 0.05, 0.06, 2.2),
 
     C([-0.28, 0.48, 0], 0.20, [0.04, 0.18, 0], 0.30),          // slim neck
     E([-0.56, 0.86, 0], [0.38, 0.38, 0.36]),                   // round head
@@ -177,69 +188,89 @@ const BUILDERS: Record<Exclude<AnimalKey, 'orb'>, () => Part[]> = {
     E([-1.00, 0.70, 0], [0.08, 0.09, 0.07], 20, 0.04),
 
     // THE CREST — three swept plumes of decreasing size
-    C([-0.58, 1.18, 0], 0.11, [-0.34, 1.86, 0], 0.035, 0.05),
-    C([-0.46, 1.16, 0.07], 0.09, [-0.14, 1.72, 0.10], 0.03, 0.05),
-    C([-0.46, 1.16, -0.07], 0.09, [-0.14, 1.72, -0.10], 0.03, 0.05),
+    C([-0.58, 1.18, 0], 0.11, [-0.34, 1.86, 0], 0.035, 0.05, 3.4),
+    C([-0.46, 1.16, 0.07], 0.09, [-0.14, 1.72, 0.10], 0.03, 0.05, 3.4),
+    C([-0.46, 1.16, -0.07], 0.09, [-0.14, 1.72, -0.10], 0.03, 0.05, 3.4),
 
     ...pair(C([0.14, -0.62, 0.16], 0.07, [0.10, -1.28, 0.18], 0.05, 0.05)),
     ...pair(E([0.04, -1.36, 0.18], [0.18, 0.05, 0.12], 0, 0.05)),
   ],
 
   /**
-   * HOLLAND LOP, sitting. The lop ear is the defining feature — it hangs
-   * BESIDE the head rather than standing up, which instantly separates this
-   * from every other rabbit. Compact cobby body, flat brachycephalic face.
+   * DUTCH RABBIT, sitting up on its haunches.
+   *
+   * Changed breed from a Holland Lop deliberately. Lop ears hang flat against
+   * the skull, so in a particle cloud they merge into the head and the animal
+   * reads as an anonymous blob. Tall upright ears ARE the rabbit signifier —
+   * they are the one feature that makes the silhouette unmistakable, so the
+   * breed was chosen to show them.
+   *
+   * Pose matters as much as proportion here: sitting upright with a small
+   * chest above a heavy rear is what separates a rabbit from a guinea pig.
    */
   rabbit: () => [
-    E([0.34, -0.28, 0], [0.66, 0.64, 0.56]),                   // compact chest
-    E([0.94, -0.42, 0], [0.74, 0.72, 0.62]),                   // round cobby body
-    ...pair(E([0.92, -0.86, 0.38], [0.50, 0.44, 0.28])),       // haunches
-    E([1.60, -0.44, 0], [0.24, 0.24, 0.22], 0, 0.12),          // small cotton tail
+    // Upright posture: small chest stacked above a big round rear.
+    E([0.14, 0.14, 0], [0.48, 0.56, 0.42]),                    // chest, held high
+    E([0.74, -0.44, 0], [0.78, 0.72, 0.60]),                   // heavy round rear
+    ...pair(E([0.66, -0.88, 0.42], [0.56, 0.44, 0.28])),       // powerful haunches
+    E([1.46, -0.46, 0], [0.22, 0.22, 0.20], 0, 0.10),          // cotton tail
 
-    C([-0.06, 0.34, 0], 0.30, [0.26, -0.04, 0], 0.42),         // very short neck
-    E([-0.44, 0.80, 0], [0.46, 0.44, 0.44]),                   // large round head
-    E([-0.76, 0.68, 0], [0.26, 0.24, 0.26]),                   // flat short face
-    E([-0.92, 0.66, 0], [0.11, 0.11, 0.13], 0, 0.05),          // nose
+    C([-0.14, 0.52, 0], 0.24, [0.12, 0.24, 0], 0.34),          // short neck
+    E([-0.46, 0.96, 0], [0.42, 0.40, 0.38]),                   // head
+    E([-0.78, 0.84, 0], [0.25, 0.23, 0.25]),                   // muzzle
+    E([-0.94, 0.82, 0], [0.10, 0.09, 0.11], 0, 0.05),          // nose
 
-    // LOP EARS — wide, hanging down the sides of the head, not upright
-    ...pair(E([-0.42, 0.52, 0.44], [0.17, 0.44, 0.09], -6, 0.07)),
-    ...pair(E([-0.40, 0.10, 0.46], [0.15, 0.22, 0.08], -4, 0.07)),   // rounded tip
+    // THE EARS — tall, upright, slightly splayed, and flattened front-to-back
+    // like a real ear rather than modelled as tubes.
+    ...pair(E([-0.34, 1.72, 0.20], [0.15, 0.58, 0.07], -7, 0.07, 3.2)),
+    ...pair(E([-0.26, 2.24, 0.26], [0.11, 0.22, 0.06], -10, 0.05, 3.2)),  // rounded tip
 
-    ...pair(C([0.02, -0.62, 0.26], 0.15, [-0.04, -1.36, 0.28], 0.12)),
-    ...pair(E([-0.14, -1.44, 0.28], [0.19, 0.11, 0.15], 0, 0.08)),
-    ...pair(E([0.78, -1.40, 0.40], [0.38, 0.13, 0.22], 0, 0.08)),    // long hind feet
+    // Front legs tucked short and close under the chest.
+    ...pair(C([0.02, -0.28, 0.22], 0.13, [-0.04, -1.24, 0.24], 0.10)),
+    ...pair(E([-0.16, -1.32, 0.24], [0.17, 0.10, 0.13], 0, 0.07)),
+    ...pair(E([0.54, -1.34, 0.42], [0.40, 0.13, 0.22], 0, 0.08)),    // long hind feet
   ],
 
   /**
-   * BETTA SPLENDENS, swimming. A halfmoon betta is almost entirely fin — the
-   * caudal spreads to a huge fan, the dorsal is a tall sail and the anal fin
-   * sweeps the whole underside. Fins use a tight blend radius so their edges
-   * stay sharp instead of melting into the body.
+   * BETTA SPLENDENS (halfmoon), swimming.
+   *
+   * The critical fix here is LATERAL COMPRESSION. The previous body was almost
+   * as thick as it was tall, so from any angle it read as a blob with flaps.
+   * A real fish is a blade: deep top-to-bottom, thin side-to-side. The body is
+   * now a third of its previous depth in Z and the fins are near-flat sheets,
+   * which is what makes the silhouette read as a fish at all.
+   *
+   * A halfmoon betta is mostly fin — the caudal spreads to a full semicircle
+   * wider than the body is long. Fins carry a tight blend radius so their
+   * edges stay crisp instead of melting into the body.
    */
   fish: () => [
-    E([-0.20, 0, 0], [0.86, 0.66, 0.44]),                      // deep body
-    E([-0.94, 0.06, 0], [0.44, 0.46, 0.36]),                   // head
-    E([-1.26, 0.02, 0], [0.22, 0.28, 0.24]),                   // snout / mouth
-    ...pair(E([-0.96, -0.04, 0.28], [0.20, 0.26, 0.06], 0, 0.05)), // gill plate
-    E([0.48, -0.02, 0], [0.34, 0.36, 0.26]),                   // caudal peduncle
+    // Body — deep and narrow, tapering to a pointed snout.
+    E([-0.18, 0, 0], [0.80, 0.64, 0.21]),                      // deep flank
+    E([-0.88, 0.06, 0], [0.44, 0.46, 0.18]),                   // head
+    E([-1.24, -0.02, 0], [0.20, 0.24, 0.13]),                  // pointed snout
+    E([-1.42, -0.04, 0], [0.09, 0.11, 0.08], 0, 0.04),         // mouth
+    E([0.46, 0, 0], [0.30, 0.30, 0.13]),                       // caudal peduncle
 
-    // huge halfmoon caudal fan, built from overlapping thin lobes
-    E([1.10, 0.52, 0], [0.60, 0.48, 0.045], -34, 0.05),
-    E([1.22, 0.00, 0], [0.70, 0.36, 0.045], 0, 0.05),
-    E([1.10, -0.52, 0], [0.60, 0.48, 0.045], 34, 0.05),
+    ...pair(E([-0.60, -0.06, 0.17], [0.20, 0.30, 0.05], 0, 0.05, 1.6)),  // gill plate
+    ...pair(E([-0.96, 0.20, 0.15], [0.11, 0.11, 0.05], 0, 0.04)),   // eye
 
-    // tall dorsal sail
-    E([-0.10, 0.86, 0], [0.62, 0.52, 0.04], -8, 0.05),
-    E([0.36, 0.74, 0], [0.36, 0.38, 0.04], -18, 0.05),
+    // HALFMOON CAUDAL — four thin lobes fanning to a near-semicircle.
+    E([1.16, 0.62, 0], [0.56, 0.40, 0.030], -40, 0.05, 6.0),
+    E([1.38, 0.20, 0], [0.74, 0.30, 0.030], -12, 0.05, 6.0),
+    E([1.38, -0.20, 0], [0.74, 0.30, 0.030], 12, 0.05, 6.0),
+    E([1.16, -0.62, 0], [0.56, 0.40, 0.030], 40, 0.05, 6.0),
 
-    // long flowing anal fin along the underside
-    E([-0.16, -0.80, 0], [0.72, 0.42, 0.04], 6, 0.05),
-    E([0.42, -0.78, 0], [0.40, 0.36, 0.04], 16, 0.05),
+    // Tall dorsal sail sweeping back.
+    E([0.02, 0.92, 0], [0.60, 0.48, 0.028], -8, 0.05, 5.5),
+    E([0.46, 0.78, 0], [0.36, 0.36, 0.028], -20, 0.05, 5.5),
 
-    // trailing ventral filaments
-    ...pair(C([-0.78, -0.48, 0.10], 0.07, [-0.72, -1.22, 0.14], 0.025, 0.04)),
-    E([-1.04, 0.16, 0.30], [0.11, 0.11, 0.05], 0, 0.04),       // eye
-    E([-1.04, 0.16, -0.30], [0.11, 0.11, 0.05], 0, 0.04),
+    // Long anal fin running most of the underside.
+    E([-0.06, -0.88, 0], [0.76, 0.42, 0.028], 5, 0.05, 5.5),
+    E([0.48, -0.80, 0], [0.38, 0.34, 0.028], 16, 0.05, 5.5),
+
+    // Trailing ventral filaments, a betta signature.
+    ...pair(C([-0.76, -0.46, 0.07], 0.07, [-0.66, -1.34, 0.11], 0.02, 0.04, 2.5)),
   ],
 }
 
@@ -375,14 +406,15 @@ function mulberry32(seed: number) {
 }
 
 function areaOf(p: Part): number {
+  const w = p.w ?? 1
   if (p.kind === 'e') {
     const [a, b, c] = p.r
     const k = 1.6075
-    return 4 * Math.PI * Math.pow((Math.pow(a * b, k) + Math.pow(a * c, k) + Math.pow(b * c, k)) / 3, 1 / k)
+    return w * 4 * Math.PI * Math.pow((Math.pow(a * b, k) + Math.pow(a * c, k) + Math.pow(b * c, k)) / 3, 1 / k)
   }
   const len = Math.hypot(p.b[0] - p.a[0], p.b[1] - p.a[1], p.b[2] - p.a[2])
   const rm = (p.ra + p.rb) / 2
-  return 2 * Math.PI * rm * len + 4 * Math.PI * rm * rm
+  return w * (2 * Math.PI * rm * len + 4 * Math.PI * rm * rm)
 }
 
 /** A starting point on one part's own surface — a good initial guess. */
@@ -517,7 +549,7 @@ export const ANIMAL_LABELS: Record<AnimalKey, string> = {
   dog: 'Beagle',
   cat: 'Maine Coon',
   bird: 'Cockatiel',
-  rabbit: 'Holland Lop',
+  rabbit: 'Dutch Rabbit',
   fish: 'Betta',
   orb: 'Every pet',
 }
@@ -530,11 +562,27 @@ export const ANIMAL_LABELS: Record<AnimalKey, string> = {
  * three-quarter on the beagle to see both drop ears, nearly side-on for the
  * betta so the fins spread across the frame.
  */
+/**
+ * Display scale per species, so each fills its frame similarly.
+ *
+ * The betta is wide and short while the rabbit is tall and narrow; a single
+ * scale left the fish reading as a small blob in a page header. These even out
+ * the apparent size rather than the literal bounding box.
+ */
+export const REST_SCALE: Record<AnimalKey, number> = {
+  dog: 1.0,
+  cat: 0.95,
+  bird: 1.05,
+  rabbit: 1.0,
+  fish: 1.18,
+  orb: 1.0,
+}
+
 export const REST_YAW: Record<AnimalKey, number> = {
   dog: 0.58,
   cat: 0.52,
   bird: 0.62,
   rabbit: 0.60,
-  fish: 0.18,
+  fish: 0.10,
   orb: 0,
 }

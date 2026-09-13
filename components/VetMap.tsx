@@ -11,22 +11,29 @@ export type { Vet }
 /**
  * Basemap sources, in order of preference.
  *
- * Neither needs an API key or account — that matters because a map that
- * silently fails with "no API key" is worse than no map. CARTO's dark theme
- * suits the app; plain OpenStreetMap is the fallback if CARTO is blocked,
- * rate-limited or unreachable.
+ * CARTO used to be the primary source and it broke in a way worth recording:
+ * their basemaps now require a registered API key, and rather than returning an
+ * error they serve tiles that literally read "API KEY REQUIRED" across the map.
+ * Those images load successfully, so Leaflet never fires `tileerror` and the
+ * fallback chain below never triggered — the map silently displayed a
+ * watermark instead of a map. A failure that looks like a success is the worst
+ * kind, and it is why the fallback is no longer trusted as the only safeguard.
+ *
+ * Standard OpenStreetMap tiles need no key and no account. They are light
+ * themed, so they are inverted to match the dark interface — the filter is a
+ * Tailwind class on the TileLayer below, not a stylesheet rule, so it is
+ * generated from source and only affects the tile images.
  */
 const TILE_SOURCES = [
   {
-    id: 'carto-dark',
-    url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-    subdomains: 'abcd',
-    attribution:
-      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+    id: 'osm',
+    url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+    subdomains: 'abc',
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
   },
   {
-    id: 'osm',
-    url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    id: 'osm-de',
+    url: 'https://tile.openstreetmap.de/{z}/{x}/{y}.png',
     subdomains: 'abc',
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
   },
@@ -92,6 +99,10 @@ export default function VetMap({ center, vets }: { center: [number, number]; vet
           attribution={source.attribution}
           url={source.url}
           subdomains={source.subdomains as unknown as string[]}
+          // Darkens the light OSM tiles to match the interface. Applied to the
+          // tile layer itself rather than through a stylesheet rule, so the
+          // class is generated from source and markers keep their real colours.
+          className="[filter:invert(1)_hue-rotate(180deg)_brightness(0.82)_contrast(0.9)_saturate(0.55)]"
           eventHandlers={{
             // A failed tile means the provider is unreachable or blocked. Drop
             // to the next source rather than leaving an empty grey pane.

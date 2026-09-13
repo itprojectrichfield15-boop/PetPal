@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react'
 import * as THREE from 'three'
 import { useClientValue } from '@/lib/use-client-value'
-import { sampleAnimal, REST_YAW, type AnimalKey } from '@/lib/animal-shapes'
+import { sampleAnimal, REST_YAW, REST_SCALE, type AnimalKey } from '@/lib/animal-shapes'
 
 /**
  * A small, lit particle form for a feature-page header.
@@ -48,8 +48,8 @@ const VERTEX = /* glsl */ `
     // Held at the species’ best angle, swaying gently rather than spinning.
     float ay = uRestYaw + sin(uTime * 0.22) * 0.20 + uMouse.x * 0.26;
     float ax = uMouse.y * 0.16;
-    mat3 ry = mat3(cos(ay), 0.0, sin(ay), 0.0, 1.0, 0.0, -sin(ay), 0.0, cos(ay));
-    mat3 rx = mat3(1.0, 0.0, 0.0, 0.0, cos(ax), -sin(ax), 0.0, sin(ax), cos(ax));
+    mat3 ry = mat3(cos(ay), 0.0, -sin(ay), 0.0, 1.0, 0.0, sin(ay), 0.0, cos(ay));
+    mat3 rx = mat3(1.0, 0.0, 0.0, 0.0, cos(ax), sin(ax), 0.0, -sin(ax), cos(ax));
     pos = rx * ry * pos;
     vNormal = normalize(rx * ry * aNormalIn);
 
@@ -180,6 +180,7 @@ export default function AuraCanvas({
     })
 
     const points = new THREE.Points(geometry, material)
+    points.scale.setScalar(REST_SCALE[species] ?? 1)
     scene.add(points)
 
     const mouseTarget = new THREE.Vector2()
@@ -195,7 +196,14 @@ export default function AuraCanvas({
       renderer.setSize(w, h, false)
       camera.aspect = w / h
       camera.updateProjectionMatrix()
-      camera.position.z = w < 640 ? 10.5 : 7.6
+      // Frame by fitting the subject, not by an arbitrary width threshold.
+      // The old `w < 640 ? 10.5 : 7.6` pushed the camera far back for the
+      // header’s narrow pane, which is why the betta rendered as a small blob.
+      const vFov = (45 * Math.PI) / 180
+      const halfTan = Math.tan(vFov / 2)
+      const fitByHeight = 3.2 / halfTan
+      const fitByWidth = 3.4 / (camera.aspect * halfTan)
+      camera.position.z = Math.max(fitByHeight, fitByWidth)
     }
 
     function frame() {
