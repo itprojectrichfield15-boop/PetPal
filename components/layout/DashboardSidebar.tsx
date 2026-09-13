@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  LayoutDashboard, PawPrint, Plus, MapPin,
+  LayoutDashboard, PawPrint, Plus, MapPin, Stethoscope,
   Heart, Settings, LogOut, Menu, X, ChevronRight,
   Apple, ShieldCheck, MessageSquare, ClipboardCheck, BookOpen, Shield
 } from 'lucide-react'
@@ -21,6 +21,7 @@ const NAV_ITEMS = [
   { href: '/wellness', icon: Heart, label: 'Wellness Check' },
   { href: '/care-plan', icon: ClipboardCheck, label: 'Care Plan' },
   { href: '/vet-finder', icon: MapPin, label: 'Find a Vet' },
+  { href: '/ask', icon: Stethoscope, label: 'Ask a Vet' },
   { href: '/wall', icon: MessageSquare, label: 'Community' },
   { href: '/resources', icon: BookOpen, label: 'Care Guides' },
 ]

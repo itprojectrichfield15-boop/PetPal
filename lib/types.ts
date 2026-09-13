@@ -28,14 +28,62 @@ export interface Pet {
   created_at: string
 }
 
+/** The two kinds of account, plus the administrator. */
+export type UserRole = 'user' | 'vet' | 'admin'
+
 /** A row of the `profiles` table. */
+
 export interface UserProfile {
   id: string
   email: string | null
   display_name: string | null
   avatar_url: string | null
-  role: 'user' | 'admin'
+  role: UserRole
   created_at: string
+}
+
+/**
+ * A veterinary professional — PetPal's second user type.
+ *
+ * `verified` is set by an administrator after checking the registration number
+ * against the professional register. Only verified vets can post answers, and
+ * that is enforced by a row-level security policy rather than by the UI, so a
+ * crafted request cannot publish clinical advice under a vet badge.
+ */
+export interface VetProfile {
+  id: string
+  full_name: string
+  practice_name: string | null
+  city: string | null
+  country: string | null
+  registration_no: string | null
+  specialities: string | null
+  bio: string | null
+  verified: boolean
+  created_at: string
+}
+
+/** A question posted by an owner on Ask a Vet. */
+export interface Question {
+  id: string
+  asker_id: string | null
+  title: string
+  body: string
+  species: PetSpecies
+  resolved: boolean
+  answer_count: number
+  created_at: string
+}
+
+/** A verified vet's reply to a question. */
+export interface Answer {
+  id: string
+  question_id: string
+  vet_id: string | null
+  body: string
+  created_at: string
+  /** Joined in for display. */
+  vet?: Pick<VetProfile, 'full_name' | 'practice_name' | 'verified' | 'specialities'> | null
 }
 
 /** Mood tag on a community post. */

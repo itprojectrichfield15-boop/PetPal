@@ -50,20 +50,63 @@ and small pets.
 | Health information is scattered and unreliable | 21 care guides written in one consistent voice |
 | New owners don't know where to start | A four-week care plan, with separate puppy and kitten tracks |
 | Owners feel alone | An anonymous community wall |
+| Owners can't get a professional opinion on a non-urgent worry without paying for a consultation | **Ask a Vet** — post a question, a verified vet answers, and the whole archive is public |
 
 ## Who uses it (your actors)
 
 | Actor | What they can do |
 |---|---|
-| **Visitor** (not signed in) | Browse the landing page, use the Nutrition Planner, Food Safety Checker, Find a Vet, Wellness Check, Care Plan, Care Guides, and read the community wall |
-| **Pet Owner** (signed in) | Everything a visitor can do, plus create and manage pet profiles, see a personal dashboard, save settings, and post to the wall |
-| **Administrator** | Everything an owner can do, plus the admin console |
+| **Visitor** (not signed in) | Browse the landing page, use the Nutrition Planner, Food Safety Checker, Find a Vet, Wellness Check, Care Plan, Care Guides, read the community wall and read Ask a Vet |
+| **Pet Owner** (signed in) | Everything a visitor can do, plus create and manage pet profiles, see a personal dashboard, save settings, post to the wall, and **ask a question on Ask a Vet** |
+| **Veterinary Professional** (signed in) | Everything an owner can do, plus — **once verified by an administrator** — answering questions on Ask a Vet under a verified badge |
+| **Administrator** | Everything an owner can do, plus the admin console and verifying veterinary professionals |
 | **Supabase** (external system) | Stores accounts and data, enforces access rules |
 | **OpenStreetMap** (external system) | Supplies real veterinary practice locations |
 
 > **Note for your report.** The tools are deliberately usable without an account.
 > This is a design decision worth defending: in an emergency, nobody stops to
 > register before checking whether chocolate is poisonous.
+
+## The two user types
+
+PetPal is a **two-sided** system. Both sides sign up through the same form and
+choose their account type.
+
+| | Pet Owner | Veterinary Professional |
+|---|---|---|
+| Chooses at sign-up | "Pet owner" | "Veterinary pro" |
+| Extra details captured | — | Full name, practice, registration number |
+| `profiles.role` | `user` | `vet` |
+| Extra table | — | `vet_profiles` |
+| Trusted immediately? | n/a | **No.** Created `verified = false` |
+| Can use every owner tool | Yes | Yes |
+| Can ask a question | Yes | Yes |
+| Can **answer** a question | No | Only once verified |
+
+**Why verification is manual, and why it matters for your report.** A
+self-declared "vet" badge on clinical advice is dangerous — someone could tell
+an owner that a toxic food is safe and carry a professional badge while doing
+it. So a new professional account is created unverified; an administrator checks
+the registration number against the professional register before setting
+`verified = true`.
+
+Crucially, that rule is enforced by a **row-level security policy in the
+database**, not by hiding a button in the interface:
+
+```sql
+create policy "verified vets answer" on answers for insert
+  with check (
+    auth.uid() = vet_id
+    and exists (
+      select 1 from vet_profiles v
+      where v.id = auth.uid() and v.verified = true
+    )
+  );
+```
+
+If it were enforced only in the front end, anyone could post an answer carrying
+a vet badge by calling the API directly. This is a good example to cite in your
+Security section.
 
 ---
 
@@ -298,6 +341,17 @@ from. **"Local only" means it does not touch the database.**
 - **Data:** reads and writes `confessions`; hearts go through the
   `increment_hearts` database function.
 
+### Ask a Vet — `/ask`
+- **Shows:** a question board. Each question expands to show its answers, with a
+  verified-vet badge, the vet's name and practice.
+- **User can:** read without an account; ask a question when signed in; answer
+  only as a **verified** veterinary professional.
+- **Data:** reads and writes `questions` and `answers`, joining `vet_profiles`
+  for the answering vet's name.
+- **Safety:** a prominent notice states this is not an emergency service and
+  links to the vet finder, because a Q&A board must never become the thing
+  someone waits on during a crisis.
+
 ### Settings — `/settings`
 - **Shows:** profile, notifications, privacy, appearance, account tabs.
 - **Data:** display name → Supabase; preferences → browser storage.
@@ -361,26 +415,78 @@ One row per animal.
 > There is deliberately **no** `user_id`. The wall is anonymous by design —
 > nothing links a post to an account.
 
+## Table: `vet_profiles`
+
+The professional detail for a `vet` account. Separate from `profiles` so an
+owner's row stays lean.
+
+| Column | Type | Rules | Meaning |
+|---|---|---|---|
+| `id` | uuid | Primary key, references `auth.users` | Same id as the login |
+| `full_name` | text | **Required** | Name shown beside answers |
+| `practice_name` | text | Optional | Clinic or practice |
+| `city` / `country` | text | Optional | Where they practise |
+| `registration_no` | text | Optional | Checked during verification |
+| `specialities` | text | Optional | e.g. exotics, surgery |
+| `bio` | text | Optional | Short professional bio |
+| `verified` | boolean | Default **false** | Only true after an admin checks the register |
+| `created_at` | timestamptz | Defaults to now | When registered |
+
+## Table: `questions`
+
+| Column | Type | Rules | Meaning |
+|---|---|---|---|
+| `id` | uuid | Primary key, auto-generated | Unique id |
+| `asker_id` | uuid | References `auth.users`, set null on delete | Who asked |
+| `title` | text | **Required**, 10–140 characters | One-line summary |
+| `body` | text | **Required**, 20–1200 characters | The detail |
+| `species` | text | One of the eight species | What kind of pet |
+| `resolved` | boolean | Default false | Author marks it done |
+| `answer_count` | int | Default 0, cannot go negative | Kept in step by a trigger |
+| `created_at` | timestamptz | Defaults to now | When asked |
+
+## Table: `answers`
+
+| Column | Type | Rules | Meaning |
+|---|---|---|---|
+| `id` | uuid | Primary key, auto-generated | Unique id |
+| `question_id` | uuid | References `questions`, cascade delete | Which question |
+| `vet_id` | uuid | References `auth.users`, set null on delete | Which vet |
+| `body` | text | **Required**, 20–2000 characters | The answer |
+| `created_at` | timestamptz | Defaults to now | When answered |
+
+> **Trigger worth mentioning in your Design phase.** `answer_count` on a
+> question is maintained by a database trigger (`bump_answer_count`) on insert
+> and delete, rather than being recalculated by the app. The count can therefore
+> never drift out of step with the rows it counts.
+
 ## Relationships (your ER diagram)
 
 ```
    auth.users  (managed by Supabase)
         │ 1
-        ├──────────────── 1 ──────  profiles
-        │                           (same id — a one-to-one extension)
-        │ 1
+        ├───────── 1 ─────  profiles        (one-to-one extension, same id)
         │
-        │ owns
+        ├───────── 0..1 ──  vet_profiles    (only for a 'vet' account)
         │
-        ▼ many
-      pets
+        ├───────── 0..* ──  pets            (an owner owns many pets)
+        │
+        ├───────── 0..* ──  questions       (asker_id)
+        │
+        └───────── 0..* ──  answers         (vet_id)
+
+   questions  ── 1 ────── 0..* ──  answers  (a question has many answers)
 
    confessions  ── standalone, no relationship (anonymous by design)
 ```
 
 **In words, for your report:**
 - One user **has one** profile (one-to-one).
+- A user **may have** one vet profile — only if they registered as a
+  professional (one-to-zero-or-one).
 - One user **owns many** pets (one-to-many).
+- One user **asks many** questions; one vet **writes many** answers.
+- One question **has many** answers (one-to-many).
 - `confessions` has no relationship to any other table.
 
 **Cardinality notation:** `users (1) ──── (0..*) pets`
@@ -420,6 +526,9 @@ pets.
 | `profiles` | Read/update only where `auth.uid() = id` |
 | `pets` | Read/insert/update/delete only where `auth.uid() = owner_id` |
 | `confessions` | Anyone may read and insert (it is a public anonymous wall) |
+| `vet_profiles` | Anyone may read (details appear beside answers); only the vet may insert or update their own |
+| `questions` | Anyone may read; only a signed-in user may insert, and only as themselves |
+| `answers` | Anyone may read; **only a verified vet may insert**, checked against `vet_profiles.verified` |
 
 Hearts use a `SECURITY DEFINER` function instead of an update policy. Two
 reasons, both worth stating: an update policy would also let anyone rewrite the
@@ -467,13 +576,18 @@ Draw these as numbered circles.
 | 6.0 | Assess Wellness | 8 answers | score + advice | none |
 | 7.0 | Track Care Plan | ticked steps | progress % | browser storage |
 | 8.0 | Community Wall | post text, mood | published post | D3 confessions |
-| 9.0 | Administer | moderation actions | updated content | D1, D3 |
+| 9.0 | Administer | moderation actions, vet verification | updated content, verified vets | D1, D3, D4 |
+| 10.0 | Ask a Vet | question text, species | published question | D5 questions |
+| 11.0 | Answer a Question | answer text (verified vets only) | published answer | D5, D6 answers |
 
 **Data stores:**
 - **D1** — profiles
 - **D2** — pets
 - **D3** — confessions
-- **D4** — browser local storage (care plan progress, settings, hearts given)
+- **D4** — vet_profiles
+- **D5** — questions
+- **D6** — answers
+- **D7** — browser local storage (care plan progress, settings, hearts given)
 
 ## Level 2 example — Process 3.0, Calculate Feeding Plan
 
@@ -555,6 +669,14 @@ Numbered so you can reference them in test cases.
 | FR-20 | The system shall allow a signed-in user to update their display name and interface preferences. |
 | FR-21 | The system shall restrict the administration console to users with the administrator role. |
 | FR-22 | The system shall provide a diagnostics page reporting the status of each external dependency. |
+| FR-23 | The system shall allow a visitor to register either as a pet owner or as a veterinary professional. |
+| FR-24 | The system shall capture a veterinary professional's full name, practice and registration number at sign-up. |
+| FR-25 | The system shall create every veterinary professional account in an unverified state. |
+| FR-26 | The system shall allow any signed-in user to post a question, specifying the species concerned. |
+| FR-27 | The system shall permit only verified veterinary professionals to post answers. |
+| FR-28 | The system shall display the answering professional's name, practice and verified status beside each answer. |
+| FR-29 | The system shall make all questions and answers readable without an account. |
+| FR-30 | The system shall state that Ask a Vet is not an emergency service and link to the vet finder. |
 
 ## Non-functional requirements
 
@@ -574,6 +696,8 @@ Numbered so you can reference them in test cases.
 | NFR-12 | Integrity | The system shall never display fabricated clinical, safety or directory information. |
 | NFR-13 | Maintainability | The feeding calculation shall exist in exactly one module used by every screen. |
 | NFR-14 | Portability | The system shall run in current versions of Chrome, Firefox, Safari and Edge. |
+| NFR-15 | Security | The restriction on who may answer a question shall be enforced by a database policy, not by the user interface. |
+| NFR-16 | Integrity | A professional credential shall never be self-asserted; verification shall require an administrator to check the registration number. |
 
 > **NFR-12 is worth highlighting in your report.** An earlier version of this
 > system displayed invented veterinary practices with invented ratings and a
@@ -594,6 +718,10 @@ Numbered so you can reference them in test cases.
 | UC-07 | Assess wellness | Any | None | Answer 8 questions | Score displayed |
 | UC-08 | Post to wall | Any | None | Type post → choose mood → post | Post published |
 | UC-09 | Moderate | Admin | Admin role | Open console → act | Content updated |
+| UC-10 | Register as a vet | Visitor | None | Choose "Veterinary pro" → enter name, practice, registration → submit | Unverified vet account exists |
+| UC-11 | Verify a vet | Admin | Admin role, vet account exists | Check registration against the register → set verified | Vet may answer |
+| UC-12 | Ask a question | Pet Owner | Signed in | Enter title, detail, species → post | Question visible to all |
+| UC-13 | Answer a question | Verified Vet | Verified account | Open question → write answer → post | Answer published with a verified badge |
 
 ---
 
@@ -962,6 +1090,12 @@ Fill in the last two columns when you run them.
 | ST-22 | Reduced motion | Enable in the OS, reload | Animation stops, content still readable | | |
 | ST-23 | No WebGL | Disable it | Page still renders with a gradient instead | | |
 | ST-24 | Setup page | Open /setup | Every check reports pass or a named fix | | |
+| ST-25 | Register as vet | Choose "Veterinary pro", fill details | Account created, marked unverified | | |
+| ST-26 | Vet without registration no. | Leave it blank | Rejected with a message | | |
+| ST-27 | Unverified vet answers | Sign in unverified, try to answer | No answer box; direct insert refused by the database | | |
+| ST-28 | Verified vet answers | Verify in SQL, sign in, answer | Answer published with a verified badge | | |
+| ST-29 | Anonymous asks | Signed out, open /ask | Can read; asked to sign in to post | | |
+| ST-30 | Answer count | Post an answer | Question's answer count rises by exactly one | | |
 
 ## Testing strategy (for the write-up)
 
@@ -1031,6 +1165,13 @@ Markers reward candour, and every one of these is defensible.
 7. **The community table is still named `confessions`** internally, inherited
    from the project this was forked from. Renaming it would require a data
    migration.
+8. **Vet verification is a manual SQL update.** There is no admin screen for it
+   yet — an administrator runs
+   `update vet_profiles set verified = true where id = '…';`. The security
+   model is correct; only the tooling is missing.
+9. **Vets have no dedicated dashboard.** A verified vet answers from the same
+   `/ask` board an owner reads, rather than from a queue of unanswered
+   questions sorted by urgency.
 
 ## Future scope
 
@@ -1039,4 +1180,7 @@ Markers reward candour, and every one of these is defensible.
 - Weight history recorded over time rather than illustrated
 - Wiring the admin console to live data
 - Exporting a pet's record as a PDF to take to the vet
+- An admin screen for verifying vets, replacing the manual SQL update
+- A vet-side dashboard: unanswered questions, filters by species and speciality
+- Letting an owner mark the answer that helped, and follow up on a thread
 - Multi-language support

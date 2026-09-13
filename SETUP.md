@@ -80,7 +80,7 @@ git push -u origin main
 
 ## Step 3 — Create the tables
 
-The database is empty. This step creates the three tables the app needs.
+The database is empty. This step creates the six tables the app needs.
 
 1. In your Supabase project, click **SQL Editor** in the left sidebar.
 2. Click **New query**.
@@ -90,8 +90,8 @@ The database is empty. This step creates the three tables the app needs.
 
 You should see **Success. No rows returned**. That is correct — it means it worked.
 
-To check: click **Table Editor** in the sidebar. You should now see three tables:
-`profiles`, `pets`, `confessions`.
+To check: click **Table Editor** in the sidebar. You should now see six tables:
+`profiles`, `pets`, `confessions`, `vet_profiles`, `questions` and `answers`.
 
 > You can run this file again later without breaking anything. It repairs a
 > half-finished setup rather than erroring.
@@ -236,6 +236,45 @@ update profiles set role = 'admin' where email = 'you@example.com';
 ```
 
 4. Sign out and back in.
+
+---
+
+## Verifying a veterinary professional
+
+PetPal has two kinds of account. Anyone can register as a **veterinary
+professional**, but nobody is trusted automatically — a new professional account
+is created with `verified = false` and cannot post answers until an
+administrator confirms them.
+
+**Why it works this way:** a self-declared "vet" badge on clinical advice is
+dangerous. Someone could tell an owner that a toxic food is safe while wearing a
+professional badge. The restriction is enforced by a database policy, so hiding
+the button in the interface is not what stops it.
+
+To verify someone:
+
+1. Ask them for their registration number and check it against the professional
+   register yourself.
+2. Supabase → **SQL Editor** → New query.
+3. Find them:
+
+```sql
+select id, full_name, practice_name, registration_no, verified
+from vet_profiles
+order by created_at desc;
+```
+
+4. Verify the right person, using their id from that list:
+
+```sql
+update vet_profiles set verified = true where id = 'paste-their-id-here';
+```
+
+They can answer questions on **Ask a Vet** from their next page load.
+
+> There is no admin screen for this yet — it is a deliberate known limitation,
+> listed in PROJECT-GUIDE.md. The security model is correct; only the tooling is
+> missing.
 
 ---
 

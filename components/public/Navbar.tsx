@@ -11,8 +11,9 @@ import Logo from '@/components/public/Logo'
 const NAV = [
   { label: 'Nutrition', href: '/nutrition' },
   { label: 'Food Safety', href: '/food-safety' },
-  { label: 'Find a Vet', href: '/vet-finder' },
+  { label: 'Vets', href: '/vet-finder' },
   { label: 'Wellness', href: '/wellness' },
+  { label: 'Ask a Vet', href: '/ask' },
   { label: 'Community', href: '/wall' },
   { label: 'Guides', href: '/resources' },
 ]
@@ -58,7 +59,7 @@ export default function Navbar() {
                 key={item.href}
                 href={item.href}
                 onClick={() => { try { localStorage.setItem('pp_chrome', 'site') } catch {} }}
-                className="relative px-3.5 py-1.5 text-[13px] font-medium text-zinc-400 hover:text-white transition-colors duration-200 rounded-full group"
+                className="relative px-3 py-1.5 text-[13px] font-medium text-zinc-400 whitespace-nowrap hover:text-white transition-colors duration-200 rounded-full group"
               >
                 <span className="relative z-10">{item.label}</span>
                 <span className="absolute inset-0 rounded-full bg-white/[0.06] opacity-0 group-hover:opacity-100 transition-opacity duration-200" />

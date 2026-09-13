@@ -3,17 +3,33 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
-import { Mail, Lock, Eye, EyeOff, ArrowRight, PawPrint, User } from 'lucide-react'
+import { Mail, Lock, Eye, EyeOff, ArrowRight, PawPrint, User, Stethoscope, Building2, BadgeCheck } from 'lucide-react'
 import Logo from '@/components/public/Logo'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { toast } from 'sonner'
 import { describeSupabaseError } from '@/lib/supabase/errors'
 
+/**
+ * PetPal has two kinds of account:
+ *
+ *   owner — uses the tools, tracks pets, asks questions
+ *   vet   — everything an owner can do, plus answering questions on Ask a Vet
+ *
+ * A vet account is NOT trusted on sign-up. It is created unverified, and an
+ * administrator checks the registration number against the professional
+ * register before answers can be posted. The database enforces that, not this
+ * form, because a self-declared "vet" badge on clinical advice is dangerous.
+ */
+type AccountKind = 'owner' | 'vet'
+
 export default function SignupPage() {
+  const [kind, setKind] = useState<AccountKind>('owner')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [displayName, setDisplayName] = useState('')
+  const [practice, setPractice] = useState('')
+  const [registration, setRegistration] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [done, setDone] = useState(false)
@@ -23,15 +39,26 @@ export default function SignupPage() {
     e.preventDefault()
     if (!email || !password) { toast.error('Email and password required'); return }
     if (password.length < 8) { toast.error('Password must be at least 8 characters'); return }
+    if (kind === 'vet' && !displayName.trim()) {
+      toast.error('Professional accounts need your full name')
+      return
+    }
+    if (kind === 'vet' && !registration.trim()) {
+      toast.error('Enter your registration number so we can verify you')
+      return
+    }
     setLoading(true)
     try {
       const { createClient } = await import('@/lib/supabase/client')
       const supabase = createClient()
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          data: { display_name: displayName || 'Pet Parent' },
+          data: {
+            display_name: displayName.trim() || (kind === 'vet' ? 'Veterinary professional' : 'Pet Parent'),
+            role: kind === 'vet' ? 'vet' : 'user',
+          },
         },
       })
       if (error) {
@@ -40,6 +67,25 @@ export default function SignupPage() {
         setConfigProblem(f.isConfig)
         return
       }
+
+      // Create the professional record. It starts unverified — this only
+      // registers the claim; an administrator confirms it.
+      if (kind === 'vet' && data.user) {
+        const { error: vetError } = await supabase.from('vet_profiles').insert({
+          id: data.user.id,
+          full_name: displayName.trim(),
+          practice_name: practice.trim() || null,
+          registration_no: registration.trim(),
+          verified: false,
+        })
+        if (vetError) {
+          // The account exists either way; say so rather than implying failure.
+          toast.error('Account created, but your professional details didn’t save', {
+            description: 'Add them from Settings once you’re signed in.',
+          })
+        }
+      }
+
       setDone(true)
     } catch (err) {
       // "Failed to fetch" lands here: the request never reached Supabase.
@@ -106,11 +152,42 @@ export default function SignupPage() {
 
         <div className="p-8 glass-card rounded-2xl">
           <h1 className="text-3xl font-black mb-2" style={{ fontFamily: 'var(--font-display)' }}>CREATE ACCOUNT</h1>
-          <p className="text-[#A79CBF] mb-8 text-sm">Join 120,000+ pet parents who care smarter.</p>
+          <p className="text-[#A79CBF] mb-6 text-sm">
+            {kind === 'owner'
+              ? 'Join 120,000+ pet parents who care smarter.'
+              : 'Answer owners’ questions and reach the people who need you.'}
+          </p>
+
+          {/* Account type */}
+          <div className="grid grid-cols-2 gap-2 mb-6" role="radiogroup" aria-label="Account type">
+            {([
+              ['owner', 'Pet owner', PawPrint, 'Track pets and use every tool'],
+              ['vet', 'Veterinary pro', Stethoscope, 'Answer questions as a verified vet'],
+            ] as const).map(([k, label, Icon, hint]) => (
+              <button
+                key={k}
+                type="button"
+                role="radio"
+                aria-checked={kind === k}
+                onClick={() => setKind(k)}
+                className={`text-left p-3.5 rounded-xl border transition-all ${
+                  kind === k
+                    ? 'bg-[#FFAE6D]/12 border-[#FFAE6D]/40'
+                    : 'bg-white/[0.02] border-white/10 hover:border-white/25'
+                }`}
+              >
+                <Icon className={`w-4 h-4 mb-2 ${kind === k ? 'text-[#FFAE6D]' : 'text-zinc-500'}`} aria-hidden="true" />
+                <div className={`text-[13px] font-semibold ${kind === k ? 'text-[#FFAE6D]' : 'text-zinc-300'}`}>{label}</div>
+                <div className="text-[10.5px] text-zinc-500 leading-snug mt-0.5">{hint}</div>
+              </button>
+            ))}
+          </div>
 
           <form onSubmit={handleSignup} className="space-y-4">
             <div className="space-y-2">
-              <label className="text-xs font-semibold text-[#A79CBF] uppercase tracking-wider">Your Name</label>
+              <label className="text-xs font-semibold text-[#A79CBF] uppercase tracking-wider">
+                {kind === 'vet' ? 'Full name' : 'Your Name'}
+              </label>
               <div className="relative">
                 <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#A79CBF]" />
                 <Input
@@ -121,6 +198,40 @@ export default function SignupPage() {
                 />
               </div>
             </div>
+
+            {kind === 'vet' && (
+              <>
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-[#A79CBF] uppercase tracking-wider">Practice (optional)</label>
+                  <div className="relative">
+                    <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#A79CBF]" />
+                    <Input
+                      value={practice}
+                      onChange={e => setPractice(e.target.value)}
+                      placeholder="e.g. Greenside Animal Hospital"
+                      className="pl-10 bg-[#0D0A14] border-white/10 focus:border-[#FFAE6D]/50"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-[#A79CBF] uppercase tracking-wider">Registration number</label>
+                  <div className="relative">
+                    <BadgeCheck className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#A79CBF]" />
+                    <Input
+                      value={registration}
+                      onChange={e => setRegistration(e.target.value)}
+                      placeholder="Your professional register number"
+                      className="pl-10 bg-[#0D0A14] border-white/10 focus:border-[#FFAE6D]/50"
+                    />
+                  </div>
+                  <p className="text-[10.5px] text-zinc-500 leading-relaxed">
+                    Checked by an administrator before you can answer questions. You can sign in and use every
+                    owner-facing tool straight away.
+                  </p>
+                </div>
+              </>
+            )}
 
             <div className="space-y-2">
               <label className="text-xs font-semibold text-[#A79CBF] uppercase tracking-wider">Email</label>

@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react'
 import * as THREE from 'three'
 import { useClientValue } from '@/lib/use-client-value'
-import { sampleAnimal, MORPH_SEQUENCE, type AnimalKey } from '@/lib/animal-shapes'
+import { sampleAnimal, MORPH_SEQUENCE, REST_YAW, type AnimalKey } from '@/lib/animal-shapes'
 
 /**
  * The site's 3D layer: a fixed, full-viewport particle field behind every
@@ -355,7 +355,13 @@ export default function AnimalField() {
       setPair(idx)
       uniforms.uMix.value = pos - idx
 
-      uniforms.uSpin.value = 0.3 + scrollEased * 2.0 + Math.sin(elapsed * 0.25) * 0.05
+      // Hold each species at its own flattering three-quarter angle and sway
+      // gently around it, rather than spinning through angles where the
+      // anatomy reads badly. Blends between the two shapes mid-morph.
+      const restA = REST_YAW[SEQ[Math.min(idx, SEQ.length - 1)]]
+      const restB = REST_YAW[SEQ[Math.min(idx + 1, SEQ.length - 1)]]
+      const rest = restA + (restB - restA) * uniforms.uMix.value
+      uniforms.uSpin.value = rest + Math.sin(elapsed * 0.22) * 0.16 + scrollEased * 0.35
       points.position.x = 2.3 - scrollEased * 4.6
       points.position.y = Math.sin(scrollEased * Math.PI * 2) * 0.5
 

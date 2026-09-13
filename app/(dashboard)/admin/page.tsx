@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { toast } from 'sonner'
+import PageHeader from '@/components/layout/PageHeader'
 import { formatRelative } from '@/lib/utils'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts'
 
@@ -127,15 +128,23 @@ export default function AdminPage() {
 
   return (
     <div className="relative min-h-screen">
-      <div className="absolute inset-0 bg-mesh-soft pointer-events-none" />
-      <div className="relative max-w-7xl mx-auto px-6 py-12">
-        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
-          <div className="flex items-center gap-3 mb-2">
-            <h1 className="text-4xl font-semibold" style={{ fontFamily: 'var(--font-display)' }}>Admin Console</h1>
-            <Badge className="bg-[#FFAE6D]/15 text-[#FFAE6D] border-[#FFAE6D]/30 font-mono"><Shield className="w-3 h-3 mr-1.5" /> ADMIN</Badge>
-          </div>
-          <p className="text-zinc-400 text-sm">Signed in as <span className="font-mono text-zinc-300">{userEmail}</span></p>
-        </motion.div>
+      <PageHeader
+        eyebrow="Administration"
+        icon={Shield}
+        title="Admin"
+        accent="console"
+        sub={`Signed in as ${userEmail}. Moderate the community, verify veterinary professionals, and review platform activity.`}
+      />
+      <div className="relative max-w-7xl mx-auto px-6 lg:px-8 py-10">
+        {/* The figures and lists below are demonstration data, not live records.
+            Stated plainly so nobody mistakes this screen for a working console. */}
+        <div className="rounded-xl p-3.5 mb-8 flex items-start gap-2.5 text-xs border border-[#FFD98E]/30 bg-[#FFD98E]/[0.07]">
+          <Shield className="w-4 h-4 text-[#FFD98E] shrink-0 mt-px" aria-hidden="true" />
+          <span className="text-zinc-200 leading-relaxed">
+            <span className="font-semibold">Demonstration data.</span> The figures, owners and vet records on this
+            screen are sample content. Community posts are live; the rest is not yet wired to the database.
+          </span>
+        </div>
 
         <div className="flex gap-1 mb-8 overflow-x-auto no-scrollbar">
           {TABS.map(t => (

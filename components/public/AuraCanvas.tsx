@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react'
 import * as THREE from 'three'
 import { useClientValue } from '@/lib/use-client-value'
-import { sampleAnimal, type AnimalKey } from '@/lib/animal-shapes'
+import { sampleAnimal, REST_YAW, type AnimalKey } from '@/lib/animal-shapes'
 
 /**
  * A small, lit particle form for a feature-page header.
@@ -25,6 +25,7 @@ const VERTEX = /* glsl */ `
   uniform float uSize;
   uniform float uPixelRatio;
   uniform vec2  uMouse;
+  uniform float uRestYaw;
 
   attribute vec3  aShape;
   attribute vec3  aNormalIn;
@@ -44,7 +45,8 @@ const VERTEX = /* glsl */ `
     float t = uTime * 0.6 + aSeed * 6.2831853;
     pos += vec3(sin(t), cos(t * 0.9), sin(t * 1.2)) * (0.01 + limb * 0.025) * e;
 
-    float ay = uTime * 0.18 + uMouse.x * 0.3;
+    // Held at the species’ best angle, swaying gently rather than spinning.
+    float ay = uRestYaw + sin(uTime * 0.22) * 0.20 + uMouse.x * 0.26;
     float ax = uMouse.y * 0.16;
     mat3 ry = mat3(cos(ay), 0.0, sin(ay), 0.0, 1.0, 0.0, -sin(ay), 0.0, cos(ay));
     mat3 rx = mat3(1.0, 0.0, 0.0, 0.0, cos(ax), -sin(ax), 0.0, sin(ax), cos(ax));
@@ -161,6 +163,7 @@ export default function AuraCanvas({
       uSize: { value: 2.7 },
       uPixelRatio: { value: dpr },
       uMouse: { value: new THREE.Vector2() },
+      uRestYaw: { value: REST_YAW[species] ?? 0.5 },
       uOpacity: { value: reduceMotion ? 0.85 : 0 },
       uColorA: { value: new THREE.Color('#FF8A4C') },
       uColorB: { value: new THREE.Color('#B9B4FF') },

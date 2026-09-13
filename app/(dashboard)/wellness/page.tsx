@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 import { Heart, ArrowRight, ArrowLeft, RotateCcw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import PageHeader from '@/components/layout/PageHeader'
 
 const QUESTIONS = [
   { q: 'How is your pet’s energy lately?', opts: [['Bright & playful', 3], ['Normal', 2], ['A bit flat', 1], ['Lethargic', 0]] },
@@ -40,9 +41,15 @@ export default function WellnessPage() {
 
   if (done) {
     return (
-      <div className="relative min-h-screen flex items-center justify-center px-6 py-12">
-        <div className="absolute inset-0 bg-mesh-soft" />
-        <motion.div initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} className="relative z-10 w-full max-w-xl">
+      <div className="relative min-h-screen">
+        <PageHeader
+          eyebrow="Wellness check"
+          icon={Heart}
+          title="Your pet's"
+          accent="score."
+          sub="Based on the eight answers you gave."
+        />
+        <motion.div initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} className="relative z-10 w-full max-w-xl mx-auto px-6 py-12">
           <div className="glass-card rounded-3xl p-8 text-center">
             <h1 className="text-3xl font-semibold mb-1" style={{ fontFamily: 'var(--font-display)' }}>Wellness Score</h1>
             <p className="text-zinc-400 text-sm mb-8">Based on your {QUESTIONS.length} answers</p>
@@ -65,9 +72,15 @@ export default function WellnessPage() {
   }
 
   return (
-    <div className="relative min-h-screen flex items-center justify-center px-6 py-12">
-      <div className="absolute inset-0 bg-mesh-soft" />
-      <div className="relative z-10 w-full max-w-2xl">
+    <div className="relative min-h-screen">
+      <PageHeader
+        eyebrow="Wellness check"
+        icon={Heart}
+        title="Eight questions,"
+        accent="one honest score."
+        sub="A guided check of energy, appetite, body condition, coat, routine and mood — with what to do about the result."
+      />
+      <div className="relative z-10 w-full max-w-2xl mx-auto px-6 py-12">
         <div className="mb-8">
           <div className="flex items-center justify-between text-sm text-zinc-400 mb-2">
             <span className="flex items-center gap-2"><Heart className="w-4 h-4 text-[#FFAE6D]" /> Pet Wellness Check</span>

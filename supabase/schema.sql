@@ -11,8 +11,8 @@
 --  This replaces the six older migration files. Those were inherited from the
 --  unrelated project PetPal was forked from and created five tables the app
 --  never queries (companies, toxicity_reports, burnout_assessments, resources,
---  report_upvotes). Everything PetPal actually uses is below: three tables and
---  one function.
+--  report_upvotes). Everything PetPal actually uses is below: six tables,
+--  two functions and two triggers.
 -- ════════════════════════════════════════════════════════════════════════════
 
 
@@ -27,7 +27,8 @@ create table if not exists profiles (
   email        text,
   display_name text,
   avatar_url   text,
-  role         text default 'user' check (role in ('user', 'admin')),
+  -- 'vet' is the second user type; see section 4.
+  role         text default 'user' check (role in ('user', 'vet', 'admin')),
   created_at   timestamptz default now()
 );
 
@@ -164,7 +165,128 @@ grant execute on function increment_hearts(uuid) to anon, authenticated;
 
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- 4. STARTER CONTENT
+-- 4. VETERINARY PROFESSIONALS  ·  second user type
+--    PetPal has two kinds of account. A pet owner uses the tools; a verified
+--    veterinary professional can additionally answer questions on Ask a Vet.
+--    The distinction lives in profiles.role, and the extra professional detail
+--    lives here so an owner's row stays lean.
+-- ─────────────────────────────────────────────────────────────────────────────
+create table if not exists vet_profiles (
+  id             uuid primary key references auth.users(id) on delete cascade,
+  full_name      text not null,
+  practice_name  text,
+  city           text,
+  country        text default 'South Africa',
+  -- Registration body number. Verification is manual: an administrator checks
+  -- the number against the register before setting verified = true. Nothing is
+  -- auto-trusted, because a fake 'vet' answer is worse than no answer.
+  registration_no text,
+  specialities   text,
+  bio            text,
+  verified       boolean not null default false,
+  created_at     timestamptz default now()
+);
+
+alter table vet_profiles enable row level security;
+
+-- Anyone may read a vet's public professional details (they appear beside
+-- their answers); only the vet may create or edit their own.
+drop policy if exists "read vet profiles" on vet_profiles;
+create policy "read vet profiles" on vet_profiles for select using (true);
+
+drop policy if exists "vet inserts own profile" on vet_profiles;
+create policy "vet inserts own profile" on vet_profiles for insert with check (auth.uid() = id);
+
+drop policy if exists "vet updates own profile" on vet_profiles;
+create policy "vet updates own profile" on vet_profiles for update using (auth.uid() = id);
+
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 5. ASK A VET  ·  the two-sided feature
+--    Owners post a question; verified vets answer it. Questions are public so
+--    the archive is useful to everyone, which is the whole point — most owners
+--    have a question someone has already asked.
+-- ─────────────────────────────────────────────────────────────────────────────
+create table if not exists questions (
+  id          uuid primary key default gen_random_uuid(),
+  asker_id    uuid references auth.users(id) on delete set null,
+  title       text not null check (char_length(title) between 10 and 140),
+  body        text not null check (char_length(body) between 20 and 1200),
+  species     text not null default 'dog'
+              check (species in ('dog','cat','bird','rabbit','fish','reptile','small','other')),
+  -- Set true by the author when the question is no longer urgent.
+  resolved    boolean not null default false,
+  answer_count int not null default 0 check (answer_count >= 0),
+  created_at  timestamptz default now()
+);
+
+create index if not exists questions_created_idx on questions (created_at desc);
+
+alter table questions enable row level security;
+
+drop policy if exists "read questions" on questions;
+create policy "read questions" on questions for select using (true);
+
+drop policy if exists "signed in asks" on questions;
+create policy "signed in asks" on questions for insert
+  with check (auth.uid() is not null and auth.uid() = asker_id);
+
+drop policy if exists "author updates question" on questions;
+create policy "author updates question" on questions for update using (auth.uid() = asker_id);
+
+
+create table if not exists answers (
+  id          uuid primary key default gen_random_uuid(),
+  question_id uuid not null references questions(id) on delete cascade,
+  vet_id      uuid references auth.users(id) on delete set null,
+  body        text not null check (char_length(body) between 20 and 2000),
+  created_at  timestamptz default now()
+);
+
+create index if not exists answers_question_idx on answers (question_id, created_at);
+
+alter table answers enable row level security;
+
+drop policy if exists "read answers" on answers;
+create policy "read answers" on answers for select using (true);
+
+-- Only a VERIFIED vet may answer. This is enforced in the database, not the
+-- app, so a crafted request cannot post clinical advice under a vet badge.
+drop policy if exists "verified vets answer" on answers;
+create policy "verified vets answer" on answers for insert
+  with check (
+    auth.uid() = vet_id
+    and exists (
+      select 1 from vet_profiles v
+      where v.id = auth.uid() and v.verified = true
+    )
+  );
+
+drop policy if exists "vet edits own answer" on answers;
+create policy "vet edits own answer" on answers for update using (auth.uid() = vet_id);
+
+
+-- Keep questions.answer_count in step without a round trip from the client.
+create or replace function bump_answer_count()
+returns trigger language plpgsql security definer set search_path = public as $
+begin
+  if tg_op = 'INSERT' then
+    update questions set answer_count = answer_count + 1 where id = new.question_id;
+  elsif tg_op = 'DELETE' then
+    update questions set answer_count = greatest(0, answer_count - 1) where id = old.question_id;
+  end if;
+  return null;
+end;
+$;
+
+drop trigger if exists answers_count_trigger on answers;
+create trigger answers_count_trigger
+  after insert or delete on answers
+  for each row execute procedure bump_answer_count();
+
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 6. STARTER CONTENT
 --    A few posts so the community wall is not empty on a fresh install.
 --    Delete this block if you would rather start with nothing.
 -- ─────────────────────────────────────────────────────────────────────────────
@@ -179,7 +301,7 @@ where not exists (select 1 from confessions);
 
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- 5. OPTIONAL — make yourself an admin
+-- 7. OPTIONAL — make yourself an admin
 --    The admin console at /admin checks for role = 'admin'. Sign up through the
 --    app first, then uncomment the line below, put your email in, and run it.
 -- ─────────────────────────────────────────────────────────────────────────────

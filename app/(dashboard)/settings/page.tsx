@@ -15,6 +15,7 @@ import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 import { writeJSON, readRaw, writeRaw, KEYS } from '@/lib/storage'
 import { useClientValue } from '@/lib/use-client-value'
+import PageHeader from '@/components/layout/PageHeader'
 
 const TABS = [
   { key: 'profile', label: 'Profile', icon: User },
@@ -143,16 +144,14 @@ export default function SettingsPage() {
 
   return (
     <div className="relative min-h-screen">
-      <div className="absolute inset-0 bg-mesh-soft pointer-events-none" />
-      <div className="relative p-6 lg:p-8 max-w-5xl mx-auto">
-        {/* Header */}
-        <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
-          <div className="flex items-center gap-2 mb-1">
-            <h1 className="text-4xl font-black tracking-tight" style={{ fontFamily: 'var(--font-display)' }}>Settings</h1>
-            <Badge className="bg-[#8E8BF5]/10 text-[#8E8BF5] border-[#8E8BF5]/30 font-mono text-[10px]">LIVE</Badge>
-          </div>
-          <p className="text-zinc-400 text-sm">Manage your account, privacy, and preferences.</p>
-        </motion.div>
+      <PageHeader
+        eyebrow="Your account"
+        icon={Palette}
+        title="Settings"
+        sub="Profile, notifications, privacy and appearance. Preferences are stored on this device; your display name syncs to your account."
+        species="rabbit"
+      />
+      <div className="relative px-6 lg:px-8 py-10 max-w-5xl mx-auto">
 
         <div className="grid lg:grid-cols-[220px_1fr] gap-6">
           {/* Tab nav */}
