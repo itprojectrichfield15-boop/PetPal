@@ -5,26 +5,28 @@ import { useRef, useState, useEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import {
-  ArrowUpRight, ArrowRight, ChevronLeft, ChevronRight, PawPrint, Apple,
-  ShieldCheck, Heart, Stethoscope, MapPin, MessageSquare, BookOpen,
-  ClipboardCheck, Sparkles, CheckCircle2, Star, Quote, Plus,
-  Bone, Cat, Dog, Activity, Bell, Calendar, Syringe, Scale
+  ArrowUpRight, ChevronLeft, ChevronRight, PawPrint, Apple,
+  ShieldCheck, Heart, Stethoscope, MapPin, MessageSquare,
+  ClipboardCheck, CheckCircle2, Quote, Plus,
+  Cat, Dog, Activity, Bell, Syringe, Scale
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import Navbar from '@/components/public/Navbar'
 import Logo from '@/components/public/Logo'
 import IntroExperience from '@/components/public/IntroExperience'
-import HeroPawPal from '@/components/public/HeroPawPal'
+import Hero from '@/components/public/Hero'
 import {
   AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid
 } from 'recharts'
+import { computePlan, SPECIES_CFG, type LifeStage } from '@/lib/nutrition'
+import { usePrefersReducedMotion } from '@/lib/use-client-value'
 
 // ─────────── Data ───────────
 const STATS = [
   { value: 38, suffix: 'M+', label: 'households own a pet', sub: 'And counting', icon: Dog },
   { value: 56, suffix: '%', label: 'of pets are overweight', sub: 'Mostly from wrong portions', icon: Scale },
-  { value: 70, suffix: '%', label: 'of owners miss vaccine dates', sub: 'PawPal reminds you', icon: Syringe },
+  { value: 70, suffix: '%', label: 'of owners miss vaccine dates', sub: 'PetPal reminds you', icon: Syringe },
   { value: 24, suffix: '/7', label: 'food-safety & symptom help', sub: 'Whenever you need it', icon: ShieldCheck },
 ]
 
@@ -40,14 +42,14 @@ const FEATURES_BENTO = [
 
 const TESTIMONIALS = [
   { name: 'Amara Okonkwo', role: 'Mum to Biscuit (Beagle)', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&h=200&fit=crop', quote: 'The portion planner alone fixed Biscuit’s weight in two months. I had been overfeeding him for a year without realising.', metricLabel: 'Weight to healthy', metric: '−18%' },
-  { name: 'Thabo Mokoena', role: 'Dad to Luna (Maine Coon)', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&h=200&fit=crop', quote: 'Luna ate something off the counter at 11pm. The food checker told me it was toxic and the vet finder had an emergency clinic open. PawPal saved her life.', metricLabel: 'Emergency vet found', metric: '4 min' },
-  { name: 'Lerato Dube', role: 'Mum to Max & Milo (Huskies)', avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=200&h=200&fit=crop', quote: 'Two dogs, endless vaccine dates, two diets. PawPal keeps all of it straight. I finally feel like a good pet parent.', metricLabel: 'Reminders kept', metric: '100%' },
+  { name: 'Thabo Mokoena', role: 'Dad to Luna (Maine Coon)', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&h=200&fit=crop', quote: 'Luna ate something off the counter at 11pm. The food checker told me it was toxic and the vet finder had an emergency clinic open. PetPal saved her life.', metricLabel: 'Emergency vet found', metric: '4 min' },
+  { name: 'Lerato Dube', role: 'Mum to Max & Milo (Huskies)', avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=200&h=200&fit=crop', quote: 'Two dogs, endless vaccine dates, two diets. PetPal keeps all of it straight. I finally feel like a good pet parent.', metricLabel: 'Reminders kept', metric: '100%' },
 ]
 
 const FAQS = [
-  { q: 'Is PawPal free?', a: 'Yes — creating pet profiles, the nutrition planner, food-safety checker, wellness check and vet finder are all free for pet owners. Forever.' },
+  { q: 'Is PetPal free?', a: 'Yes — creating pet profiles, the nutrition planner, food-safety checker, wellness check and vet finder are all free for pet owners. Forever.' },
   { q: 'How accurate is the nutrition planner?', a: 'It uses veterinary RER/MER energy formulas (Resting and Maintenance Energy Requirements) based on your pet’s weight, species, life stage and activity level. It is guidance, not a substitute for your vet’s advice.' },
-  { q: 'How does the food-safety checker work?', a: 'We maintain a curated database of foods, plants and household items that are toxic or unsafe for dogs and cats, with severity levels and what to do. If something is dangerous, we tell you immediately and point you to the nearest vet.' },
+  { q: 'How does the food-safety checker work?', a: 'We maintain a curated database of foods, plants and household items that are unsafe for pets — with the clinical reason, which animals it affects most, and exactly what to do. If we haven’t verified an item we say so rather than guessing, because a wrong “safe” is worse than no answer.' },
   { q: 'How does Find a Vet know where I am?', a: 'With your permission, your browser shares your approximate location so we can show vets near you on the map. We never store your location.' },
   { q: 'Can I track more than one pet?', a: 'Absolutely. Add as many pets as you like — each with their own profile, diet, weight history, vaccine schedule and reminders.' },
 ]
@@ -92,18 +94,31 @@ function Counter({ to, suffix = '', prefix = '' }: { to: number; suffix?: string
   const [val, setVal] = useState(0)
   const ref = useRef<HTMLSpanElement>(null)
   const inView = useInView(ref, { once: true, amount: 0.5 })
+  const reduceMotion = usePrefersReducedMotion()
+
+  // Anyone who has asked for less motion just sees the final number.
+  const shown = reduceMotion ? to : val
+
   useEffect(() => {
-    if (!inView) return
-    let start = 0
-    const step = to / (1800 / 16)
-    const timer = setInterval(() => {
-      start += step
-      if (start >= to) { setVal(to); clearInterval(timer) }
-      else setVal(Math.floor(start))
-    }, 16)
-    return () => clearInterval(timer)
-  }, [inView, to])
-  return <span ref={ref}>{prefix}{val.toLocaleString()}{suffix}</span>
+    if (!inView || reduceMotion) return
+
+    let raf = 0
+    const DURATION = 1600
+    const startedAt = performance.now()
+
+    function tick(now: number) {
+      const t = Math.min(1, (now - startedAt) / DURATION)
+      // easeOutCubic — fast start, gentle settle.
+      const eased = 1 - Math.pow(1 - t, 3)
+      setVal(Math.round(to * eased))
+      if (t < 1) raf = requestAnimationFrame(tick)
+    }
+
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [inView, to, reduceMotion])
+
+  return <span ref={ref}>{prefix}{shown.toLocaleString()}{suffix}</span>
 }
 
 // ─────────── Nutrition Planner (inline live demo) ───────────
@@ -111,16 +126,14 @@ function NutritionDemo() {
   const [species, setSpecies] = useState<'dog' | 'cat'>('dog')
   const [weight, setWeight] = useState(12)
   const [activity, setActivity] = useState(1.6)
-  const [lifeStage, setLifeStage] = useState<'puppy' | 'adult' | 'senior'>('adult')
+  const [lifeStage, setLifeStage] = useState<LifeStage>('adult')
 
-  // Veterinary energy formula: RER = 70 * (kg^0.75); MER = RER * factor
-  const rer = 70 * Math.pow(weight, 0.75)
-  const stageFactor = lifeStage === 'puppy' ? 2.0 : lifeStage === 'senior' ? 1.1 : 1.0
-  const speciesFactor = species === 'cat' ? 0.9 : 1.0
-  const mer = Math.round(rer * activity * stageFactor * speciesFactor)
-  const grams = Math.round(mer / 3.5) // ~3.5 kcal/g dry food
-  const cups = (grams / 110).toFixed(1) // ~110g per cup
-  const meals = lifeStage === 'puppy' ? 3 : 2
+  // Shared with the full planner (lib/nutrition.ts). These two screens used to
+  // carry separate copies of the maths and quoted different calorie targets for
+  // the same pet.
+  const plan = computePlan({ species, weightKg: weight, activity, lifeStage })
+  const { mer, dryGrams: grams, cups, meals } = plan
+  const maxKg = SPECIES_CFG[species].maxKg
 
   return (
     <div className="grid sm:grid-cols-2 gap-5">
@@ -129,7 +142,7 @@ function NutritionDemo() {
           <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider block mb-2">Species</label>
           <div className="grid grid-cols-2 gap-2">
             {([['dog', 'Dog', Dog], ['cat', 'Cat', Cat]] as const).map(([k, label, Icon]) => (
-              <button key={k} onClick={() => setSpecies(k)} aria-pressed={species === k}
+              <button key={k} onClick={() => { setSpecies(k); setWeight(w => Math.min(w, SPECIES_CFG[k].maxKg)) }} aria-pressed={species === k}
                 className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border text-sm transition-all ${species === k ? 'bg-[#FF7A6B]/15 border-[#FF7A6B]/40 text-[#FF7A6B]' : 'bg-white/[0.03] border-white/8 text-zinc-400 hover:border-white/20'}`}>
                 <Icon className="w-4 h-4" /> {label}
               </button>
@@ -141,15 +154,15 @@ function NutritionDemo() {
             <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Weight</label>
             <span className="font-mono text-sm text-[#FF7A6B] font-semibold">{weight} kg</span>
           </div>
-          <input type="range" min={1} max={60} value={weight} onChange={e => setWeight(+e.target.value)} className="w-full accent-[#FF7A6B]" aria-label="Weight" />
+          <input type="range" min={1} max={maxKg} value={Math.min(weight, maxKg)} onChange={e => setWeight(+e.target.value)} className="w-full accent-[#FF7A6B]" aria-label="Weight" />
         </div>
         <div>
           <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider block mb-2">Life stage</label>
           <div className="grid grid-cols-3 gap-2">
-            {(['puppy', 'adult', 'senior'] as const).map(s => (
+            {(['young', 'adult', 'senior'] as const).map(s => (
               <button key={s} onClick={() => setLifeStage(s)} aria-pressed={lifeStage === s}
                 className={`px-2 py-2 rounded-xl border text-xs capitalize transition-all ${lifeStage === s ? 'bg-[#FF7A6B]/15 border-[#FF7A6B]/40 text-[#FF7A6B]' : 'bg-white/[0.03] border-white/8 text-zinc-400 hover:border-white/20'}`}>
-                {s === 'puppy' ? (species === 'cat' ? 'Kitten' : 'Puppy') : s}
+                {s === 'young' ? SPECIES_CFG[species].youngLabel : s}
               </button>
             ))}
           </div>
@@ -257,7 +270,7 @@ function ImmersiveReveal() {
           <div className="absolute inset-0 bg-gradient-to-t from-[#0C0A0A] via-[#0C0A0A]/30 to-[#0C0A0A]/20" />
           <div className="absolute inset-0 bg-gradient-to-r from-[#0C0A0A]/60 to-transparent" />
           <motion.div style={{ y: textY, opacity: textO }} className="absolute inset-0 flex flex-col justify-end p-8 md:p-16">
-            <p className="text-xs uppercase tracking-[0.3em] text-[#FF7A6B] mb-5">Why we built PawPal</p>
+            <p className="text-xs uppercase tracking-[0.3em] text-[#FF7A6B] mb-5">Why we built PetPal</p>
             <h2 className="text-4xl md:text-7xl font-semibold leading-[1.0] max-w-3xl mb-5" style={{ fontFamily: 'var(--font-display)' }}>
               They give you their <span style={{ fontFamily: 'var(--font-serif)' }} className="italic text-[#FF7A6B]">whole</span> world.
             </h2>
@@ -271,7 +284,7 @@ function ImmersiveReveal() {
   )
 }
 
-// ═══════════ 3D Coverflow Slider — "Four ways PawPal has your back" ═══════════
+// ═══════════ 3D Coverflow Slider — five ways PetPal has your back ═══════════
 const SHOWCASE = [
   { tag: 'Nutrition', title: 'Feed them exactly right', desc: 'Precise calories, grams and meals — calculated like a vet would.', img: 'https://images.unsplash.com/photo-1601758228041-f3b2795255f1?w=900&h=1100&fit=crop', href: '/nutrition' },
   { tag: 'Safety', title: 'Know what’s safe', desc: 'Check any food or plant against our toxicity database in a tap.', img: 'https://images.unsplash.com/photo-1425082661705-1834bfd09dca?w=900&h=1100&fit=crop', href: '/food-safety' },
@@ -310,7 +323,7 @@ function Slider3D() {
         <motion.div initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-14">
           <Badge className="mb-5 bg-[#FF7A6B]/10 text-[#FF7A6B] border-[#FF7A6B]/30 font-mono"><PawPrint className="w-3 h-3 mr-1.5" /> HOW IT HELPS</Badge>
           <h2 className="text-4xl md:text-6xl font-semibold leading-[1.05]" style={{ fontFamily: 'var(--font-display)' }}>
-            <span className="text-gradient-soft">Five ways PawPal</span> <span className="text-gradient-aurora">has your back.</span>
+            <span className="text-gradient-soft">Five ways PetPal</span> <span className="text-gradient-aurora">has your back.</span>
           </h2>
         </motion.div>
 
@@ -462,7 +475,7 @@ export default function LandingPage() {
       <Navbar />
 
       {/* ─── HERO ─── */}
-      <HeroPawPal />
+      <Hero />
 
       {/* ─── STATS ─── */}
       <section className="relative py-24 border-y border-white/5">
@@ -556,7 +569,7 @@ export default function LandingPage() {
             </h2>
             <p className="text-zinc-400 text-lg mb-8 leading-relaxed">
               Over half of pets are overweight — almost always from guesswork at the food bowl.
-              PawPal calculates your pet&rsquo;s precise daily calories, food weight, and meal schedule
+              PetPal calculates your pet&rsquo;s precise daily calories, food weight, and meal schedule
               using the same energy formulas vets use.
             </p>
             <ul className="space-y-3 mb-10">
@@ -567,7 +580,7 @@ export default function LandingPage() {
               ))}
             </ul>
             <Link href="/nutrition">
-              <Button size="lg" className="btn-glass-emerald gap-2 rounded-2xl px-7">Open the full planner <ArrowUpRight className="w-4 h-4" /></Button>
+              <Button size="lg" className="btn-glass-primary gap-2 rounded-2xl px-7">Open the full planner <ArrowUpRight className="w-4 h-4" /></Button>
             </Link>
           </motion.div>
 
@@ -677,13 +690,13 @@ export default function LandingPage() {
           <div className="pt-10">
             <h2 className="text-5xl md:text-6xl font-semibold mb-6 leading-[1.05]" style={{ fontFamily: 'var(--font-display)' }}>
               <span className="text-gradient-soft">They give you everything.</span><br />
-              <span className="text-gradient-aurora">Give them PawPal.</span>
+              <span className="text-gradient-aurora">Give them PetPal.</span>
             </h2>
             <p className="text-zinc-400 text-lg max-w-md mx-auto mb-8 leading-relaxed">
               Set up your pet&rsquo;s profile in under a minute. Free forever, for every pet you love.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-              <Link href="/auth/signup"><Button size="lg" className="btn-glass-emerald gap-2 rounded-2xl px-7">Add Your Pet <ArrowUpRight className="w-4 h-4" /></Button></Link>
+              <Link href="/auth/signup"><Button size="lg" className="btn-glass-primary gap-2 rounded-2xl px-7">Add Your Pet <ArrowUpRight className="w-4 h-4" /></Button></Link>
               <Link href="/wellness"><Button size="lg" className="btn-glass text-white gap-2 rounded-2xl px-7">Try the Wellness Check</Button></Link>
             </div>
           </div>
@@ -697,7 +710,7 @@ export default function LandingPage() {
             <div className="md:col-span-2">
               <Link href="/" className="flex items-center gap-2.5 mb-4">
                 <Logo size={36} />
-                <span className="text-lg font-bold" style={{ fontFamily: 'var(--font-display)' }}>Paw<span className="text-[#FF7A6B]">Pal</span></span>
+                <span className="text-lg font-bold" style={{ fontFamily: 'var(--font-display)' }}>Pet<span className="text-[#FF7A6B]">Pal</span></span>
               </Link>
               <p className="text-zinc-400 text-sm leading-relaxed max-w-sm">
                 The all-in-one companion for pet owners — nutrition, health, safety and care, beautifully in one place.
@@ -721,7 +734,7 @@ export default function LandingPage() {
             </div>
           </div>
           <div className="pt-8 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-zinc-500">
-            <p>&copy; 2026 PawPal · Made for the ones who never let you down.</p>
+            <p>&copy; 2026 PetPal · Made for the ones who never let you down.</p>
             <div className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-[#FF7A6B] animate-pulse" /> All systems operational</div>
           </div>
         </div>

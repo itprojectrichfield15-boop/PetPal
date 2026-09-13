@@ -1,58 +1,25 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useDeferredValue } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ShieldCheck, ShieldAlert, ShieldX, Search, Phone, Sparkles, Dog, Cat } from 'lucide-react'
+import Link from 'next/link'
+import { ShieldCheck, ShieldAlert, ShieldX, Search, MapPin, Sparkles, Stethoscope, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import { lookupFood, QUICK_CHECKS, LEVEL_META, type SafetyLevel } from '@/lib/food-safety'
 
-type Level = 'safe' | 'caution' | 'toxic'
-interface FoodItem { names: string[]; level: Level; note: string }
-
-const DB: FoodItem[] = [
-  { names: ['chocolate', 'cocoa', 'cacao'], level: 'toxic', note: 'Contains theobromine — toxic to dogs and cats. Can cause seizures and heart failure. Call a vet immediately.' },
-  { names: ['grape', 'grapes', 'raisin', 'raisins', 'sultana'], level: 'toxic', note: 'Can cause sudden kidney failure in dogs even in small amounts. Treat as an emergency.' },
-  { names: ['onion', 'onions', 'garlic', 'leek', 'chive', 'shallot'], level: 'toxic', note: 'Allium family — damages red blood cells causing anaemia. Cats are especially sensitive.' },
-  { names: ['xylitol', 'sugar free gum', 'sweetener'], level: 'toxic', note: 'Even tiny amounts cause a dangerous insulin spike and liver failure in dogs. Emergency.' },
-  { names: ['macadamia', 'macadamia nuts'], level: 'toxic', note: 'Causes weakness, tremors and hyperthermia in dogs.' },
-  { names: ['alcohol', 'beer', 'wine', 'spirits'], level: 'toxic', note: 'Highly toxic — even small amounts affect the nervous system. Never give to pets.' },
-  { names: ['caffeine', 'coffee', 'tea', 'energy drink'], level: 'toxic', note: 'Stimulant toxic to pets — causes restlessness, racing heart, tremors.' },
-  { names: ['lily', 'lilies'], level: 'toxic', note: 'Extremely toxic to cats — even pollen can cause fatal kidney failure. Keep away entirely.' },
-  { names: ['avocado'], level: 'toxic', note: 'Contains persin; the pit is also a choking/obstruction hazard.' },
-  { names: ['cooked bone', 'cooked bones', 'chicken bone'], level: 'toxic', note: 'Cooked bones splinter and can puncture the gut. Never feed cooked bones.' },
-  { names: ['dairy', 'milk', 'cheese', 'ice cream'], level: 'caution', note: 'Most adult pets are lactose intolerant — small amounts may cause upset stomach.' },
-  { names: ['bread', 'dough', 'raw dough'], level: 'caution', note: 'Raw yeast dough can expand and ferment in the stomach — dangerous. Baked bread in tiny amounts is usually fine.' },
-  { names: ['salt', 'salty', 'chips', 'crisps'], level: 'caution', note: 'Too much salt causes dehydration and sodium poisoning. Avoid salty human snacks.' },
-  { names: ['ham', 'bacon', 'fatty', 'fat trimmings'], level: 'caution', note: 'High fat can trigger pancreatitis. Offer only rarely and in tiny amounts.' },
-  { names: ['tomato', 'tomatoes'], level: 'caution', note: 'Ripe flesh is okay in moderation; green parts and stems are mildly toxic.' },
-  { names: ['chicken', 'cooked chicken', 'turkey'], level: 'safe', note: 'Plain, cooked, boneless and unseasoned chicken is a great lean protein.' },
-  { names: ['carrot', 'carrots'], level: 'safe', note: 'Crunchy, low-calorie, good for teeth. Safe raw or cooked.' },
-  { names: ['apple', 'apples'], level: 'safe', note: 'Safe in slices (remove seeds and core). A sweet, fibre-rich treat.' },
-  { names: ['pumpkin'], level: 'safe', note: 'Plain cooked pumpkin aids digestion and is rich in fibre.' },
-  { names: ['rice', 'white rice'], level: 'safe', note: 'Plain cooked rice is gentle on upset stomachs.' },
-  { names: ['blueberry', 'blueberries'], level: 'safe', note: 'Antioxidant-rich and a perfect bite-sized treat.' },
-  { names: ['banana', 'bananas'], level: 'safe', note: 'Safe in moderation — high in sugar so keep portions small.' },
-  { names: ['peanut butter'], level: 'safe', note: 'Safe if it is XYLITOL-FREE. Always check the label first.' },
-]
-
-const STYLE: Record<Level, { color: string; icon: any; label: string }> = {
-  safe: { color: '#FF7A6B', icon: ShieldCheck, label: 'SAFE' },
-  caution: { color: '#FFB84D', icon: ShieldAlert, label: 'IN MODERATION' },
-  toxic: { color: '#FF5A5F', icon: ShieldX, label: 'DO NOT FEED' },
+const ICONS: Record<SafetyLevel, typeof ShieldCheck> = {
+  safe: ShieldCheck,
+  caution: ShieldAlert,
+  toxic: ShieldX,
 }
-
-const QUICK = ['Chocolate', 'Grapes', 'Chicken', 'Onion', 'Peanut butter', 'Xylitol', 'Carrot', 'Lily']
 
 export default function FoodSafetyPage() {
   const [query, setQuery] = useState('')
-
-  const result = useMemo(() => {
-    const q = query.trim().toLowerCase()
-    if (!q) return null
-    const hit = DB.find(item => item.names.some(n => q.includes(n) || n.includes(q)))
-    return hit ?? 'unknown'
-  }, [query])
+  // Keeps typing responsive on long queries without debouncing away keystrokes.
+  const deferred = useDeferredValue(query)
+  const result = useMemo(() => lookupFood(deferred), [deferred])
 
   return (
     <div className="relative min-h-screen">
@@ -65,70 +32,165 @@ export default function FoodSafetyPage() {
           <h1 className="text-4xl lg:text-5xl font-semibold tracking-tight mb-2" style={{ fontFamily: 'var(--font-display)' }}>
             Food Safety <span className="text-[#FF7A6B]">Checker</span>
           </h1>
-          <p className="text-zinc-400 max-w-xl">Can your pet eat that? Type any food, plant or household item to check instantly.</p>
+          <p className="text-zinc-400 max-w-xl">
+            Can your pet eat that? Type any food, plant or household item to check instantly.
+          </p>
         </motion.div>
 
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="glass-card rounded-2xl p-5 mb-5">
           <div className="relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-500" />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-500 pointer-events-none" />
             <Input
-              value={query} onChange={e => setQuery(e.target.value)}
-              placeholder="e.g. chocolate, grapes, chicken…" autoFocus
-              className="pl-12 h-14 text-lg bg-[#100D0E] border-white/8 focus:border-[#FF7A6B]/40 rounded-xl"
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              placeholder="e.g. chocolate, grapes, chicken…"
+              autoFocus
+              enterKeyHint="search"
+              aria-label="Food, plant or household item to check"
+              className="pl-12 pr-11 h-14 text-lg bg-[#100D0E] border-white/8 focus:border-[#FF7A6B]/40 rounded-xl"
             />
+            {query && (
+              <button
+                onClick={() => setQuery('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full flex items-center justify-center text-zinc-500 hover:text-white hover:bg-white/10 transition-colors"
+                aria-label="Clear search"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
           </div>
           <div className="flex flex-wrap gap-2 mt-4">
-            {QUICK.map(q => (
-              <button key={q} onClick={() => setQuery(q)} className="px-3 py-1.5 rounded-full text-xs border border-white/10 text-zinc-400 hover:text-white hover:border-white/25 transition-all">
+            {QUICK_CHECKS.map(q => (
+              <button
+                key={q}
+                onClick={() => setQuery(q)}
+                className="px-3 py-1.5 rounded-full text-xs border border-white/10 text-zinc-400 hover:text-white hover:border-white/25 transition-all"
+              >
                 {q}
               </button>
             ))}
           </div>
         </motion.div>
 
-        <AnimatePresence mode="wait">
-          {result && result !== 'unknown' && (
-            <motion.div key={query} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-              className="glass-card rounded-2xl p-6" style={{ borderColor: `${STYLE[result.level].color}45` }}>
-              <div className="flex items-center gap-4 mb-4">
-                <div className="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0" style={{ background: `${STYLE[result.level].color}1A`, border: `1px solid ${STYLE[result.level].color}40` }}>
-                  {(() => { const I = STYLE[result.level].icon; return <I className="w-7 h-7" style={{ color: STYLE[result.level].color }} /> })()}
+        <AnimatePresence initial={false}>
+          {result.status === 'found' && (() => {
+            const meta = LEVEL_META[result.entry.level]
+            const Icon = ICONS[result.entry.level]
+            return (
+              <motion.div
+                key="found"
+                initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                className="glass-card rounded-2xl p-6"
+                style={{ borderColor: `${meta.color}45` }}
+                role="status"
+                aria-live="polite"
+              >
+                <div className="flex items-center gap-4 mb-4">
+                  <div
+                    className="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0"
+                    style={{ background: `${meta.color}1A`, border: `1px solid ${meta.color}40` }}
+                  >
+                    <Icon className="w-7 h-7" style={{ color: meta.color }} />
+                  </div>
+                  <div className="min-w-0">
+                    <Badge
+                      className="font-mono mb-1"
+                      style={{ background: `${meta.color}1A`, color: meta.color, borderColor: `${meta.color}40` }}
+                    >
+                      {meta.label}
+                    </Badge>
+                    <div className="text-xl font-semibold capitalize truncate" style={{ fontFamily: 'var(--font-display)' }}>
+                      {result.entry.names[0]}
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <Badge className="font-mono mb-1" style={{ background: `${STYLE[result.level].color}1A`, color: STYLE[result.level].color, borderColor: `${STYLE[result.level].color}40` }}>
-                    {STYLE[result.level].label}
-                  </Badge>
-                  <div className="text-xl font-semibold capitalize" style={{ fontFamily: 'var(--font-display)' }}>{query.trim()}</div>
-                </div>
-              </div>
-              <p className="text-sm text-zinc-300 leading-relaxed">{result.note}</p>
-              <div className="flex items-center gap-3 mt-3 text-xs text-zinc-500">
-                <Dog className="w-3.5 h-3.5" /> Dogs <Cat className="w-3.5 h-3.5 ml-1" /> Cats
-              </div>
-              {result.level === 'toxic' && (
-                <div className="mt-5 p-4 rounded-xl bg-[#FF5A5F]/8 border border-[#FF5A5F]/25 flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2 text-sm text-[#FF5A5F]"><Phone className="w-4 h-4" /> Suspected poisoning?</div>
-                  <span className="font-mono text-sm text-white">Vet emergency: 0800 PET HELP</span>
+
+                <p className="text-sm text-zinc-300 leading-relaxed">{result.entry.note}</p>
+
+                {result.entry.action && (
+                  <div className="mt-4 p-3.5 rounded-xl bg-white/[0.03] border border-white/8">
+                    <div className="text-[10px] font-semibold uppercase tracking-widest text-zinc-500 mb-1">What to do</div>
+                    <p className="text-sm text-zinc-200 leading-relaxed">{result.entry.action}</p>
+                  </div>
+                )}
+
+                {result.entry.appliesTo && (
+                  <div className="mt-3 text-xs text-zinc-500">
+                    Most relevant to: <span className="text-zinc-300">{result.entry.appliesTo}</span>
+                  </div>
+                )}
+
+                {result.entry.level === 'toxic' && (
+                  <div className="mt-5 p-4 rounded-xl bg-[#FF5A5F]/8 border border-[#FF5A5F]/25">
+                    <div className="flex items-center gap-2 text-sm font-semibold text-[#FF5A5F] mb-1.5">
+                      <Stethoscope className="w-4 h-4 shrink-0" /> Suspected poisoning is an emergency
+                    </div>
+                    <p className="text-xs text-zinc-300 leading-relaxed mb-3">
+                      Phone your own vet, or your nearest 24-hour clinic, straight away. Take the packaging with you
+                      and don&rsquo;t wait for symptoms — treatment works best early.
+                    </p>
+                    <Link href="/vet-finder">
+                      <Button className="btn-glass-primary h-9 rounded-lg text-xs gap-1.5">
+                        <MapPin className="w-3.5 h-3.5" /> Find the nearest vet
+                      </Button>
+                    </Link>
+                  </div>
+                )}
+              </motion.div>
+            )
+          })()}
+
+          {result.status === 'unknown' && (
+            <motion.div
+              key="unknown"
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="glass-card rounded-2xl p-8 text-center"
+              role="status"
+              aria-live="polite"
+            >
+              <ShieldAlert className="w-10 h-10 mx-auto mb-3 text-[#FFB84D] opacity-70" />
+              <p className="text-sm text-zinc-300">
+                <span className="text-white">&ldquo;{result.query}&rdquo;</span> isn&rsquo;t in our database yet.
+              </p>
+              <p className="text-xs text-zinc-500 mt-2 max-w-sm mx-auto leading-relaxed">
+                We only show a verdict for items we have checked, because a wrong &ldquo;safe&rdquo; is worse than no
+                answer. When in doubt, don&rsquo;t feed it — and ask your vet.
+              </p>
+              {result.suggestions.length > 0 && (
+                <div className="mt-5">
+                  <div className="text-[10px] uppercase tracking-widest text-zinc-500 mb-2.5">Did you mean</div>
+                  <div className="flex flex-wrap gap-2 justify-center">
+                    {result.suggestions.map(s => (
+                      <button
+                        key={s}
+                        onClick={() => setQuery(s)}
+                        className="px-3 py-1.5 rounded-full text-xs border border-white/10 text-zinc-300 hover:text-white hover:border-[#FF7A6B]/40 transition-all capitalize"
+                      >
+                        {s}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
             </motion.div>
           )}
-          {result === 'unknown' && (
-            <motion.div key="unknown" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="glass-card rounded-2xl p-8 text-center text-zinc-400">
-              <ShieldAlert className="w-10 h-10 mx-auto mb-3 text-[#FFB84D] opacity-60" />
-              <p className="text-sm">We don&rsquo;t have <span className="text-white capitalize">&ldquo;{query.trim()}&rdquo;</span> in our database yet.</p>
-              <p className="text-xs text-zinc-500 mt-1">When in doubt, don&rsquo;t feed it — and ask your vet.</p>
-            </motion.div>
-          )}
-          {!result && (
-            <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-              className="glass-card rounded-2xl p-10 text-center text-zinc-500 min-h-[180px] flex flex-col items-center justify-center">
+
+          {result.status === 'empty' && (
+            <motion.div
+              key="empty"
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+              className="glass-card rounded-2xl p-10 text-center text-zinc-500 min-h-[180px] flex flex-col items-center justify-center"
+            >
               <ShieldCheck className="w-10 h-10 mb-3 opacity-30" />
               <p className="text-sm">Type a food above to check if it&rsquo;s safe for your pet.</p>
             </motion.div>
           )}
         </AnimatePresence>
+
+        <p className="text-[11px] text-zinc-600 leading-relaxed mt-5 text-center max-w-lg mx-auto">
+          Guidance only, and not a substitute for veterinary advice. Toxicity depends on the amount eaten and on your
+          pet&rsquo;s size, species and health — always call your vet if you are worried.
+        </p>
       </div>
     </div>
   )

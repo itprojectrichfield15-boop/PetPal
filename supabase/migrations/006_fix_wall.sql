@@ -1,5 +1,5 @@
 -- ════════════════════════════════════════════════════════════════
---  PawPal — REPAIR the Community Wall
+--  PetPal — REPAIR the Community Wall
 --  Run this ONCE if you already ran the old 004 migration (which seeded
 --  workplace text and a mood constraint that blocks pet posts).
 -- ════════════════════════════════════════════════════════════════

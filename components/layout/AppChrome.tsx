@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import { usePathname } from 'next/navigation'
+import { useClientValue } from '@/lib/use-client-value'
+import { readRaw, KEYS } from '@/lib/storage'
 import DashboardSidebar from '@/components/layout/DashboardSidebar'
 import Navbar from '@/components/public/Navbar'
 
@@ -19,16 +21,16 @@ export default function AppChrome({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const isAccount = ACCOUNT.some(r => pathname === r || pathname.startsWith(r + '/'))
   const [signedIn, setSignedIn] = useState(false)
-  const [mode, setMode] = useState<'app' | 'site'>(isAccount ? 'app' : 'site')
+
+  // Read the remembered chrome during render so a signed-in user doesn't see
+  // the marketing navbar flash before the sidebar takes over.
+  const remembered = useClientValue(() => readRaw(KEYS.chrome), null)
+  const mode: 'app' | 'site' = isAccount ? 'app' : remembered === 'app' ? 'app' : 'site'
 
   useEffect(() => {
     let active = true
-    // Resolve remembered chrome mode
     if (isAccount) {
-      try { localStorage.setItem('pp_chrome', 'app') } catch {}
-      setMode('app')
-    } else {
-      try { setMode(localStorage.getItem('pp_chrome') === 'app' ? 'app' : 'site') } catch { setMode('site') }
+      try { localStorage.setItem(KEYS.chrome, 'app') } catch {}
     }
     // Resolve auth (sidebar only ever shows when signed in)
     ;(async () => {

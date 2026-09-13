@@ -2,10 +2,10 @@
 
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { BookOpen, Apple, GraduationCap, Heart, Scissors, Syringe, Bug, Brain, ArrowUpRight, X, Clock } from 'lucide-react'
+import { BookOpen, Apple, GraduationCap, Heart, Scissors, Syringe, Bug, Brain, ArrowUpRight, X, Clock, type LucideIcon } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 
-interface Guide { title: string; desc: string; icon: any; tag: string; read: string; body: string[] }
+interface Guide { title: string; desc: string; icon: LucideIcon; tag: string; read: string; body: string[] }
 
 const GUIDES: Guide[] = [
   {
@@ -14,7 +14,7 @@ const GUIDES: Guide[] = [
       'Bringing home a new companion — whether a puppy, kitten, rabbit, bird or reptile — starts with a calm, safe space. Set up a quiet area with appropriate bedding, fresh water, and species-correct food before they arrive.',
       'Book a first wellness visit with a vet within the first week. They’ll confirm age, check for parasites, and start any vaccination or health plan suited to the species.',
       'Keep early days low-stress: limit visitors, give them somewhere to retreat, and let them explore at their own pace. Consistency in feeding times and handling builds trust fast.',
-      'Use PawPal’s Nutrition Planner to set correct portions from day one, and the Care Plan for a gentle week-by-week routine.',
+      'Use PetPal’s Nutrition Planner to set correct portions from day one, and the Care Plan for a gentle week-by-week routine.',
     ],
   },
   {
@@ -50,7 +50,7 @@ const GUIDES: Guide[] = [
       'Core vaccines protect against serious, widespread diseases and are recommended for nearly all dogs and cats. Other species (rabbits, ferrets) have their own core vaccines.',
       'Non-core vaccines are given based on lifestyle and risk — e.g. kennel cough for social dogs.',
       'Puppies and kittens need a series of boosters in their first months, then regular boosters through life. Your vet will tailor the schedule.',
-      'Keep records in PawPal so you never miss a booster — overdue vaccines can leave gaps in protection.',
+      'Keep records in PetPal so you never miss a booster — overdue vaccines can leave gaps in protection.',
     ],
   },
   {
@@ -75,7 +75,7 @@ const GUIDES: Guide[] = [
     title: 'Senior Pet Care', desc: 'Helping older companions stay comfortable, mobile and happy.', icon: Heart, tag: 'Care', read: '8 min',
     body: [
       'Older pets often need more frequent vet checks to catch age-related issues like arthritis, dental disease and organ changes early.',
-      'Adjust nutrition for slower metabolism and any medical needs — PawPal’s planner accounts for the senior life stage.',
+      'Adjust nutrition for slower metabolism and any medical needs — PetPal’s planner accounts for the senior life stage.',
       'Make life easier: softer bedding, ramps or steps, easy-access litter or food, and gentler exercise.',
       'Watch for subtle changes in appetite, mobility, toileting or mood — and log them so you can spot trends and share with your vet.',
     ],
@@ -143,7 +143,6 @@ export default function ResourcesPage() {
               initial={{ y: 40, opacity: 0, scale: 0.98 }} animate={{ y: 0, opacity: 1, scale: 1 }} exit={{ y: 40, opacity: 0 }}
               transition={{ type: 'spring', damping: 28, stiffness: 280 }}
               onClick={e => e.stopPropagation()}
-              data-lenis-prevent
               className="relative w-full sm:max-w-2xl max-h-[88vh] overflow-y-auto glass-strong border border-white/10 rounded-t-3xl sm:rounded-3xl p-7 sm:p-9"
             >
               <button onClick={() => setOpen(null)} className="absolute top-5 right-5 w-9 h-9 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10" aria-label="Close">

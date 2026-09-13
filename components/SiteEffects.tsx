@@ -1,32 +1,36 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import { motion, useScroll, useSpring } from 'framer-motion'
+import { useIsCoarsePointer, usePrefersReducedMotion } from '@/lib/use-client-value'
 
 /**
- * Site-wide premium effects:
- *  - Lenis buttery smooth/inertia scrolling
- *  - Top scroll-progress gradient bar
- *  - Soft glow that trails the cursor on dark surfaces
+ * Site-wide effects:
+ *  - top scroll-progress gradient bar
+ *  - a soft glow that trails the cursor on dark surfaces
+ *
+ * Smooth scrolling is native CSS (`scroll-behavior` in globals.css); the Lenis
+ * library was removed because it hijacked and broke native scroll on touch
+ * devices and inside scrollable panels.
  */
 export default function SiteEffects() {
   const { scrollYProgress } = useScroll()
   const scaleX = useSpring(scrollYProgress, { stiffness: 120, damping: 30, mass: 0.3 })
   const glowRef = useRef<HTMLDivElement>(null)
-  const [pointer, setPointer] = useState(false)
+  const coarsePointer = useIsCoarsePointer()
+  const reduceMotion = usePrefersReducedMotion()
+  const showGlow = !coarsePointer && !reduceMotion
 
-  // Lenis smooth scroll
-  // Cursor glow
+  // Cursor glow — pointer devices only, and never when reduced motion is on.
   useEffect(() => {
-    if (window.matchMedia('(pointer: coarse)').matches) return
-    setPointer(true)
+    if (!showGlow) return
     function move(e: MouseEvent) {
       if (!glowRef.current) return
       glowRef.current.style.transform = `translate(${e.clientX - 250}px, ${e.clientY - 250}px)`
     }
     window.addEventListener('mousemove', move, { passive: true })
     return () => window.removeEventListener('mousemove', move)
-  }, [])
+  }, [showGlow])
 
   return (
     <>
@@ -37,7 +41,7 @@ export default function SiteEffects() {
         aria-hidden="true"
       />
       {/* Cursor glow */}
-      {pointer && (
+      {showGlow && (
         <div
           ref={glowRef}
           className="fixed top-0 left-0 w-[500px] h-[500px] rounded-full pointer-events-none z-[5] mix-blend-screen will-change-transform"

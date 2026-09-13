@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 import { Mail, Lock, Eye, EyeOff, ArrowRight, PawPrint } from 'lucide-react'
@@ -8,27 +8,63 @@ import Logo from '@/components/public/Logo'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { toast } from 'sonner'
+import { useClientValue } from '@/lib/use-client-value'
+
+/** Only ever follow an internal, single-slash path. */
+function safeNext(next: string | null) {
+  if (!next || !next.startsWith('/') || next.startsWith('//') || next.startsWith('/\\')) {
+    return '/dashboard'
+  }
+  return next
+}
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
+  // Read the query string during render (a stable string) so this page stays
+  // statically prerendered — `useSearchParams` would force a Suspense boundary.
+  const search = useClientValue(() => window.location.search, '')
+  const next = safeNext(new URLSearchParams(search).get('next'))
+
+  useEffect(() => {
+    if (new URLSearchParams(search).get('error') === 'auth_callback_failed') {
+      toast.error('That sign-in link didn’t work', {
+        description: 'It may have expired. Please sign in again.',
+      })
+    }
+  }, [search])
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
-    if (!email || !password) { toast.error('Please fill all fields'); return }
+    const trimmedEmail = email.trim()
+    if (!trimmedEmail || !password) { toast.error('Please fill in both fields'); return }
     setLoading(true)
     try {
       const { createClient } = await import('@/lib/supabase/client')
       const supabase = createClient()
-      const { error } = await supabase.auth.signInWithPassword({ email, password })
-      if (error) { toast.error(error.message); return }
+      const { error } = await supabase.auth.signInWithPassword({ email: trimmedEmail, password })
+      if (error) {
+        // Supabase returns a deliberately vague message for bad credentials;
+        // surface something a human can act on.
+        toast.error(
+          /invalid login/i.test(error.message)
+            ? 'That email and password don’t match an account.'
+            : error.message
+        )
+        setLoading(false)
+        return
+      }
       toast.success('Welcome back.')
-      window.location.href = '/dashboard'
-    } catch {
-      toast.error('Something went wrong')
-    } finally {
+      // Keep `loading` true — we are navigating away.
+      window.location.href = next
+    } catch (err) {
+      toast.error(
+        err instanceof Error && err.message.includes('not configured')
+          ? 'Sign-in is unavailable right now. Please try again later.'
+          : 'Something went wrong. Please try again.'
+      )
       setLoading(false)
     }
   }
@@ -49,7 +85,7 @@ export default function LoginPage() {
         <div className="flex items-center justify-center gap-2.5 mb-10">
           <Logo size={38} glow />
           <span className="text-2xl font-bold" style={{ fontFamily: 'var(--font-display)' }}>
-            Paw<span className="text-[#FF7A6B]">Pal</span>
+            Pet<span className="text-[#FF7A6B]">Pal</span>
           </span>
         </div>
 
@@ -96,7 +132,7 @@ export default function LoginPage() {
             <Button
               type="submit"
               disabled={loading}
-              className="w-full btn-glass-emerald h-12 text-base font-semibold rounded-xl"
+              className="w-full btn-glass-primary h-12 text-base font-semibold rounded-xl"
             >
               {loading ? 'Signing in...' : 'Sign In'}
               {!loading && <ArrowRight className="w-4 h-4 ml-2" />}
@@ -117,7 +153,7 @@ export default function LoginPage() {
           <PawPrint className="w-4 h-4 text-[#FF7A6B] mt-0.5 shrink-0" />
           <p className="text-xs text-[#A79F9C] leading-relaxed">
             Your pets&rsquo; profiles, nutrition plans and reminders — all waiting for you.
-            PawPal keeps everything in one safe place.
+            PetPal keeps everything in one safe place.
           </p>
         </div>
 

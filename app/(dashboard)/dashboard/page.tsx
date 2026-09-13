@@ -5,14 +5,18 @@ import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 import {
-  PawPrint, Plus, Apple, Syringe, Bell, Scale, Calendar,
-  Dog, Cat, Bird, Rabbit, Fish, Turtle, Rat, Snail, ArrowUpRight, Stethoscope, ShieldCheck, Heart
+  PawPrint, Plus, Apple, Syringe, Bell, Scale,
+  Dog, Cat, Bird, Rabbit, Fish, Turtle, Rat, Snail, ArrowUpRight, Stethoscope, ShieldCheck,
+  type LucideIcon,
 } from 'lucide-react'
+import type { Pet } from '@/lib/types'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 
-const ICONS: Record<string, any> = { dog: Dog, cat: Cat, bird: Bird, rabbit: Rabbit, fish: Fish, reptile: Turtle, small: Rat, invert: Snail, other: PawPrint }
+// 'invert' is a legacy species value written by older builds of the add-pet
+// form; kept here so existing rows still render an icon.
+const ICONS: Record<string, LucideIcon> = { dog: Dog, cat: Cat, bird: Bird, rabbit: Rabbit, fish: Fish, reptile: Turtle, small: Rat, invert: Snail, other: PawPrint }
 
 interface DashPet { name: string; kind: string; species: string; age: string; weight: string; next: string }
 const SEED_PETS: DashPet[] = [
@@ -56,7 +60,7 @@ export default function DashboardPage() {
       try {
         const { data: rows } = await supabase.from('pets').select('*').order('created_at', { ascending: false })
         if (rows && rows.length > 0) {
-          setPets(rows.map((r: any) => ({
+          setPets((rows as Pet[]).map(r => ({
             name: r.name,
             kind: r.breed || r.species,
             species: r.species,
@@ -90,7 +94,7 @@ export default function DashboardPage() {
             </h1>
             <p className="text-zinc-400 text-sm mt-1">Here&rsquo;s how your pets are doing.</p>
           </div>
-          <Link href="/add-pet"><Button className="btn-glass-emerald rounded-xl gap-2"><Plus className="w-4 h-4" /> Add a pet</Button></Link>
+          <Link href="/add-pet"><Button className="btn-glass-primary rounded-xl gap-2"><Plus className="w-4 h-4" /> Add a pet</Button></Link>
         </motion.div>
 
         {/* Pets */}

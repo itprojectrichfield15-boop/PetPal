@@ -44,10 +44,10 @@ export default function Navbar() {
       >
         <div className="flex items-center justify-between pl-3 pr-2 py-2">
           {/* Brand */}
-          <Link href="/" className="flex items-center gap-2.5 group" aria-label="PawPal home">
+          <Link href="/" className="flex items-center gap-2.5 group" aria-label="PetPal home">
             <Logo size={34} className="group-hover:scale-105 transition-transform duration-300" />
             <span className="text-base font-bold tracking-tight" style={{ fontFamily: 'var(--font-display)' }}>
-              Paw<span className="text-[#FF7A6B]">Pal</span>
+              Pet<span className="text-[#FF7A6B]">Pal</span>
             </span>
           </Link>
 
@@ -76,7 +76,7 @@ export default function Navbar() {
             <Link href="/auth/signup">
               <Button
                 size="sm"
-                className="btn-glass-emerald font-semibold gap-1.5 h-9 px-4 rounded-full text-[13px]"
+                className="btn-glass-primary font-semibold gap-1.5 h-9 px-4 rounded-full text-[13px]"
               >
                 Add Your Pet <ArrowRight className="w-3.5 h-3.5" />
               </Button>

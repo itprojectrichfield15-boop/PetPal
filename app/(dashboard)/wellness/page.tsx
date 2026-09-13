@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
-import { Heart, ArrowRight, ArrowLeft, RotateCcw, PawPrint } from 'lucide-react'
+import { Heart, ArrowRight, ArrowLeft, RotateCcw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 const QUESTIONS = [
@@ -56,7 +56,7 @@ export default function WellnessPage() {
             <p className="text-sm text-zinc-300 mb-8 max-w-sm mx-auto">{verdict.msg}</p>
             <div className="flex gap-3 justify-center">
               <Button onClick={() => { setAnswers({}); setStep(0); setDone(false) }} className="btn-glass text-white gap-2 rounded-xl"><RotateCcw className="w-4 h-4" /> Retake</Button>
-              <Link href="/vet-finder"><Button className="btn-glass-emerald gap-2 rounded-xl">Find a Vet <ArrowRight className="w-4 h-4" /></Button></Link>
+              <Link href="/vet-finder"><Button className="btn-glass-primary gap-2 rounded-xl">Find a Vet <ArrowRight className="w-4 h-4" /></Button></Link>
             </div>
           </div>
         </motion.div>
@@ -96,7 +96,7 @@ export default function WellnessPage() {
         <div className="flex items-center justify-between mt-6">
           <Button onClick={() => { setDir(-1); setStep(s => Math.max(0, s - 1)) }} disabled={step === 0} className="btn-glass text-white gap-2 rounded-xl disabled:opacity-30"><ArrowLeft className="w-4 h-4" /> Back</Button>
           {answered && step < QUESTIONS.length - 1 && (
-            <Button onClick={() => { setDir(1); setStep(s => s + 1) }} className="btn-glass-emerald gap-2 rounded-xl">Next <ArrowRight className="w-4 h-4" /></Button>
+            <Button onClick={() => { setDir(1); setStep(s => s + 1) }} className="btn-glass-primary gap-2 rounded-xl">Next <ArrowRight className="w-4 h-4" /></Button>
           )}
         </div>
       </div>

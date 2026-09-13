@@ -108,11 +108,11 @@ export default function AdminPage() {
       <motion.div initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} className="relative z-10 max-w-md text-center">
         <div className="w-16 h-16 rounded-2xl bg-[#FF5A5F]/10 border border-[#FF5A5F]/30 flex items-center justify-center mx-auto mb-6"><Lock className="w-8 h-8 text-[#FF5A5F]" /></div>
         <h1 className="text-4xl font-semibold mb-3" style={{ fontFamily: 'var(--font-display)' }}>Access Denied</h1>
-        <p className="text-zinc-400 leading-relaxed mb-6">This area is for PawPal administrators only.
+        <p className="text-zinc-400 leading-relaxed mb-6">This area is for PetPal administrators only.
           {userEmail && <span className="block mt-2 text-xs text-zinc-500">Signed in as <span className="text-zinc-300 font-mono">{userEmail}</span></span>}</p>
         <div className="flex gap-3 justify-center">
           <Link href="/"><Button className="btn-glass text-white rounded-xl">Home</Button></Link>
-          <Link href="/dashboard"><Button className="btn-glass-emerald rounded-xl">Dashboard</Button></Link>
+          <Link href="/dashboard"><Button className="btn-glass-primary rounded-xl">Dashboard</Button></Link>
         </div>
       </motion.div>
     </div>
@@ -228,7 +228,7 @@ export default function AdminPage() {
               <div className="glass-card rounded-2xl overflow-hidden">
                 <div className="p-5 border-b border-white/8 flex items-center justify-between">
                   <h2 className="font-semibold flex items-center gap-2"><Stethoscope className="w-4 h-4 text-[#FF7A6B]" /> Vet listings</h2>
-                  <Button className="btn-glass-emerald h-9 rounded-lg text-sm gap-1.5"><Plus className="w-3.5 h-3.5" /> Add vet</Button>
+                  <Button className="btn-glass-primary h-9 rounded-lg text-sm gap-1.5"><Plus className="w-3.5 h-3.5" /> Add vet</Button>
                 </div>
                 <div className="overflow-x-auto">
                   <Table>

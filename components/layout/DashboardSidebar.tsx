@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  LayoutDashboard, PawPrint, Plus, Stethoscope, MapPin,
+  LayoutDashboard, PawPrint, Plus, MapPin,
   Heart, Settings, LogOut, Menu, X, ChevronRight,
   Apple, ShieldCheck, MessageSquare, ClipboardCheck, BookOpen, Shield
 } from 'lucide-react'
@@ -20,7 +20,6 @@ const NAV_ITEMS = [
   { href: '/food-safety', icon: ShieldCheck, label: 'Food Safety' },
   { href: '/wellness', icon: Heart, label: 'Wellness Check' },
   { href: '/care-plan', icon: ClipboardCheck, label: 'Care Plan' },
-  { href: '/vets', icon: Stethoscope, label: 'Vet Directory' },
   { href: '/vet-finder', icon: MapPin, label: 'Find a Vet' },
   { href: '/wall', icon: MessageSquare, label: 'Community' },
   { href: '/resources', icon: BookOpen, label: 'Care Guides' },
@@ -111,7 +110,7 @@ export default function DashboardSidebar() {
           </button>
         </div>
 
-        <nav className="flex-1 p-3 space-y-1 overflow-y-auto" data-lenis-prevent>
+        <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
           {!collapsed && (
             <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-widest px-3 py-2">Main</p>
           )}

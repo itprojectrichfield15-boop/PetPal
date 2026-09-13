@@ -1,99 +1,89 @@
-export interface ToxicityReport {
-  id: string
-  created_at: string
-  company_name: string
-  industry: string
-  company_size: string
-  city: string
-  country: string
-  report_type: string
-  severity: number
-  description: string
-  is_anonymous: boolean
-  user_id?: string
-  status: 'pending' | 'reviewed' | 'verified'
-  upvotes: number
-}
+/**
+ * PetPal domain types.
+ *
+ * This file previously held the type definitions of the unrelated workplace app
+ * this project was forked from (toxicity reports, burnout assessments) and was
+ * imported by nothing. These are the shapes the app actually stores.
+ */
 
-export interface Company {
+/** Species a pet profile can be created for. Mirrors the `pets.species` column. */
+export type PetSpecies =
+  | 'dog' | 'cat' | 'bird' | 'rabbit'
+  | 'fish' | 'reptile' | 'small' | 'other'
+
+export type PetSex = 'male' | 'female' | 'unknown'
+
+/** A row of the `pets` table. */
+export interface Pet {
   id: string
+  owner_id: string | null
   name: string
-  industry: string
-  city: string
-  country: string
-  toxicity_score: number
-  report_count: number
-  verified: boolean
+  species: PetSpecies
+  breed: string | null
+  /** Free text ("3 years", "8 months") — owners rarely know an exact date. */
+  age: string | null
+  weight: number | null
+  sex: PetSex
+  photo_url: string | null
   created_at: string
 }
 
-export interface BurnoutAssessment {
-  id: string
-  user_id: string
-  created_at: string
-  score: number
-  level: 'healthy' | 'caution' | 'warning' | 'critical'
-  exhaustion_score: number
-  cynicism_score: number
-  efficacy_score: number
-  answers: Record<string, number>
-}
-
-export interface Resource {
-  id: string
-  title: string
-  description: string
-  type: 'hotline' | 'app' | 'article' | 'therapy' | 'community'
-  url?: string
-  phone?: string
-  free: boolean
-  country?: string
-}
-
+/** A row of the `profiles` table. */
 export interface UserProfile {
   id: string
-  email: string
-  display_name?: string
-  avatar_url?: string
+  email: string | null
+  display_name: string | null
+  avatar_url: string | null
   role: 'user' | 'admin'
   created_at: string
-  burnout_streak: number
 }
 
-export type ReportType =
-  | 'harassment'
-  | 'overwork'
-  | 'gaslighting'
-  | 'discrimination'
-  | 'wage_theft'
-  | 'nepotism'
-  | 'retaliation'
-  | 'unsafe_conditions'
-  | 'micromanagement'
-  | 'other'
+/** Mood tag on a community post. */
+export type PostMood = 'happy' | 'proud' | 'help' | 'sad'
 
-export const REPORT_TYPE_LABELS: Record<ReportType, string> = {
-  harassment: 'Harassment / Bullying',
-  overwork: 'Chronic Overwork',
-  gaslighting: 'Gaslighting / Manipulation',
-  discrimination: 'Discrimination',
-  wage_theft: 'Wage Theft / Unpaid OT',
-  nepotism: 'Nepotism / Favoritism',
-  retaliation: 'Retaliation',
-  unsafe_conditions: 'Unsafe Conditions',
-  micromanagement: 'Micromanagement',
+/**
+ * A row of the `confessions` table (the community wall).
+ * The table name is a leftover from the original project; the migration that
+ * renames it is tracked separately so live data isn't dropped.
+ */
+export interface WallPost {
+  id: string
+  text: string
+  mood: PostMood
+  hearts: number
+  created_at: string
+}
+
+/** A veterinary practice shown in the directory and on the finder map. */
+export interface VetPractice {
+  id: string | number
+  name: string
+  city: string | null
+  lat: number
+  lng: number
+  rating: number | null
+  /** True when the practice runs a 24-hour emergency service. */
+  emergency: boolean
+  open: boolean
+  phone: string | null
+  distanceKm?: number
+}
+
+/** Display labels for each species, used across the pet screens. */
+export const SPECIES_LABELS: Record<PetSpecies, string> = {
+  dog: 'Dog',
+  cat: 'Cat',
+  bird: 'Bird',
+  rabbit: 'Rabbit',
+  fish: 'Fish',
+  reptile: 'Reptile',
+  small: 'Small pet',
   other: 'Other',
 }
 
-export const INDUSTRIES = [
-  'Technology', 'Finance / Banking', 'Healthcare', 'Education',
-  'Retail', 'Manufacturing', 'Government', 'Media / Entertainment',
-  'Legal', 'Hospitality', 'Construction', 'Agriculture', 'Other',
-]
-
-export const BURNOUT_LEVELS = {
-  healthy: { label: 'Healthy', color: '#4ECDC4', range: [0, 25] },
-  caution: { label: 'Caution', color: '#FFB347', range: [26, 50] },
-  warning: { label: 'Warning', color: '#FF6B6B', range: [51, 75] },
-  critical: { label: 'Critical', color: '#FF3B30', range: [76, 100] },
-} as const
+/** Narrow an arbitrary string from the database to a known species. */
+export function toSpecies(value: unknown): PetSpecies {
+  return typeof value === 'string' && value in SPECIES_LABELS
+    ? (value as PetSpecies)
+    : 'other'
+}

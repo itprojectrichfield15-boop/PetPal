@@ -17,7 +17,8 @@ export default function HeroCanvas() {
     if (!ctx) return
 
     let raf = 0
-    let w = 0, h = 0, dpr = Math.min(window.devicePixelRatio || 1, 2)
+    let w = 0, h = 0
+    const dpr = Math.min(window.devicePixelRatio || 1, 2)
     const mouse = { x: -9999, y: -9999 }
 
     const COLORS = ['#FF7A6B', '#2DD4BF', '#2DD4BF', '#2DD4BF', '#FFB84D']

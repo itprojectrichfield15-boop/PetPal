@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowRight } from 'lucide-react'
+import { readSession, writeSession, KEYS } from '@/lib/storage'
+import { useClientValue, usePrefersReducedMotion } from '@/lib/use-client-value'
 
 /**
  * A cinematic, minimal intro shown once per session.
@@ -18,16 +20,17 @@ const LINES = [
 const HOLD = 3400 // ms each line is visible
 
 export default function IntroExperience() {
-  const [mounted, setMounted] = useState(false)
-  const [visible, setVisible] = useState(false)
   const [index, setIndex] = useState(0)
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const reduceMotion = usePrefersReducedMotion()
 
-  useEffect(() => {
-    setMounted(true)
-    const seen = typeof window !== 'undefined' && sessionStorage.getItem('burnout_intro_seen')
-    if (!seen) setVisible(true)
-  }, [])
+  // Read during render (a stable primitive) rather than setting state in an
+  // effect — that produced a double render and a visible flash of the curtain.
+  const alreadySeen = useClientValue(() => readSession(KEYS.introSeen) !== null, true)
+
+  // Anyone who has asked for reduced motion skips the cinematic intro entirely.
+  const [dismissed, setDismissed] = useState(false)
+  const visible = !alreadySeen && !reduceMotion && !dismissed
 
   // Auto-advance the slideshow
   useEffect(() => {
@@ -86,11 +89,9 @@ export default function IntroExperience() {
   }, [visible])
 
   function dismiss() {
-    sessionStorage.setItem('burnout_intro_seen', '1')
-    setVisible(false)
+    writeSession(KEYS.introSeen, '1')
+    setDismissed(true)
   }
-
-  if (!mounted) return null
 
   return (
     <AnimatePresence>

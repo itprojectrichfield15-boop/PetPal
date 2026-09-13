@@ -1,12 +1,14 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Send, Heart, MessageCircle, Sparkles, PawPrint, ShieldCheck } from 'lucide-react'
+import { Send, Heart, Sparkles, PawPrint, ShieldCheck } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 import { formatRelative } from '@/lib/utils'
+import { readRaw, writeJSON, KEYS } from '@/lib/storage'
+import { useClientValue } from '@/lib/use-client-value'
 
 interface Confession {
   id: number | string
@@ -38,60 +40,130 @@ export default function WallPage() {
   const [draft, setDraft] = useState('')
   const [mood, setMood] = useState('happy')
   const [posting, setPosting] = useState(false)
+  const [loadState, setLoadState] = useState<'loading' | 'live' | 'offline'>('loading')
 
-  // Load real confessions; fall back to seed if unavailable/empty
+  // Which posts this browser has already hearted, so a refresh can't be used
+  // to like the same post over and over. Read during render (stable string).
+  const savedLikedRaw = useClientValue(() => readRaw(KEYS.wallLiked), null)
+  const savedLiked = useMemo(() => {
+    if (!savedLikedRaw) return new Set<string>()
+    try {
+      const v = JSON.parse(savedLikedRaw)
+      return new Set(Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [])
+    } catch {
+      return new Set<string>()
+    }
+  }, [savedLikedRaw])
+  const [editedLiked, setEditedLiked] = useState<Set<string> | null>(null)
+  const liked = editedLiked ?? savedLiked
+  const setLiked = setEditedLiked
+
+  // Load real posts; fall back to the seed if unavailable or empty.
   useEffect(() => {
+    let active = true
     async function load() {
       try {
-        const { createClient } = await import('@/lib/supabase/client')
-        const supabase = createClient()
+        const { tryCreateClient } = await import('@/lib/supabase/client')
+        const supabase = tryCreateClient()
+        if (!supabase) { if (active) setLoadState('offline'); return }
         const { data, error } = await supabase
           .from('confessions')
           .select('*')
           .order('created_at', { ascending: false })
           .limit(50)
-        if (error || !data || data.length === 0) return
+        if (!active) return
+        if (error || !data || data.length === 0) { setLoadState('offline'); return }
         setPosts(data.map(d => ({
-          id: d.id, text: d.text, mood: d.mood, hearts: d.hearts,
+          id: d.id, text: d.text, mood: d.mood, hearts: d.hearts ?? 0,
           time: formatRelative(d.created_at),
         })))
-      } catch {}
+        setLoadState('live')
+      } catch {
+        if (active) setLoadState('offline')
+      }
     }
     load()
+    return () => { active = false }
   }, [])
 
   async function post() {
-    if (draft.trim().length < 10) { toast.error('Say a little more — at least 10 characters.'); return }
-    setPosting(true)
     const text = draft.trim()
-    const optimistic: Confession = { id: 'tmp-' + Date.now(), text, mood, hearts: 0, time: 'just now' }
+    if (text.length < 10) { toast.error('Say a little more — at least 10 characters.'); return }
+    if (text.length > 280) { toast.error('That’s a bit long — keep it under 280 characters.'); return }
+    if (posting) return
+
+    setPosting(true)
+    const tempId = 'tmp-' + Date.now()
+    const optimistic: Confession = { id: tempId, text, mood, hearts: 0, time: 'just now' }
     setPosts(p => [optimistic, ...p])
     setDraft('')
+
     try {
-      const { createClient } = await import('@/lib/supabase/client')
-      const supabase = createClient()
-      const { data } = await supabase.from('confessions').insert({ text, mood }).select().single()
-      if (data) setPosts(p => p.map(c => c.id === optimistic.id ? { ...c, id: data.id } : c))
-      toast.success('Posted anonymously', { description: 'No name. No trace. Just your voice.' })
+      const { tryCreateClient } = await import('@/lib/supabase/client')
+      const supabase = tryCreateClient()
+      if (!supabase) {
+        // No backend configured: the post is real on screen but only for this
+        // session. Say so rather than implying it was published.
+        toast.success('Posted to this session', {
+          description: 'The community feed isn’t connected, so this won’t be saved.',
+        })
+        return
+      }
+
+      const { data, error } = await supabase
+        .from('confessions')
+        .insert({ text, mood })
+        .select()
+        .single()
+
+      if (error || !data) {
+        // Roll the optimistic post back and hand the text to the user so
+        // nothing they wrote is silently lost.
+        setPosts(p => p.filter(c => c.id !== tempId))
+        setDraft(text)
+        toast.error('Couldn’t post that', {
+          description: error?.message ?? 'Please check your connection and try again.',
+        })
+        return
+      }
+
+      setPosts(p => p.map(c => (c.id === tempId ? { ...c, id: data.id } : c)))
+      toast.success('Posted to the community', { description: 'Shared anonymously — no name attached.' })
     } catch {
-      toast.success('Posted anonymously')
+      setPosts(p => p.filter(c => c.id !== tempId))
+      setDraft(text)
+      toast.error('Couldn’t post that', { description: 'Please check your connection and try again.' })
     } finally {
       setPosting(false)
     }
   }
 
   async function like(id: number | string) {
-    const target = posts.find(c => c.id === id)
-    const wasLiked = target?.liked
-    setPosts(p => p.map(c => c.id === id ? { ...c, liked: !c.liked, hearts: c.hearts + (c.liked ? -1 : 1) } : c))
-    if (wasLiked) return // only persist new likes
+    const key = String(id)
+    if (liked.has(key)) return            // one heart per browser, per post
+    if (key.startsWith('tmp-')) return    // not saved yet — nothing to increment
+
+    // Optimistic bump.
+    setPosts(p => p.map(c => (c.id === id ? { ...c, hearts: c.hearts + 1, liked: true } : c)))
+    const nextLiked = new Set(liked).add(key)
+    setLiked(nextLiked)
+    writeJSON(KEYS.wallLiked, [...nextLiked])
+
     try {
-      const { createClient } = await import('@/lib/supabase/client')
-      const supabase = createClient()
-      if (typeof id === 'string' && !id.startsWith('tmp-')) {
-        await supabase.rpc('increment_hearts', { cid: id })
-      }
-    } catch {}
+      const { tryCreateClient } = await import('@/lib/supabase/client')
+      const supabase = tryCreateClient()
+      // Seed posts have numeric ids and exist only on the client.
+      if (!supabase || typeof id !== 'string') return
+      const { error } = await supabase.rpc('increment_hearts', { cid: id })
+      if (error) throw error
+    } catch {
+      // Undo the optimistic bump so the count on screen stays truthful.
+      setPosts(p => p.map(c => (c.id === id ? { ...c, hearts: Math.max(0, c.hearts - 1), liked: false } : c)))
+      const revert = new Set(nextLiked); revert.delete(key)
+      setLiked(revert)
+      writeJSON(KEYS.wallLiked, [...revert])
+      toast.error('Couldn’t save that heart')
+    }
   }
 
   const moodOf = (k: string) => MOODS.find(m => m.key === k) ?? MOODS[0]
@@ -101,7 +173,7 @@ export default function WallPage() {
       <div className="absolute inset-0 bg-mesh-soft pointer-events-none" />
       <div className="relative p-6 lg:p-8 max-w-3xl mx-auto">
         <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
-          <Badge className="mb-4 btn-glass-emerald border-0 font-mono text-[10px]">
+          <Badge className="mb-4 btn-glass-primary border-0 font-mono text-[10px]">
             <Sparkles className="w-3 h-3 mr-1.5" /> COMMUNITY
           </Badge>
           <h1 className="text-4xl lg:text-5xl font-semibold tracking-tight mb-2" style={{ fontFamily: 'var(--font-display)' }}>
@@ -137,7 +209,7 @@ export default function WallPage() {
             </div>
             <div className="flex items-center gap-3">
               <span className="text-xs text-zinc-600 font-mono">{draft.length}/280</span>
-              <Button onClick={post} disabled={posting} className="btn-glass-emerald gap-1.5 h-9 rounded-xl text-sm">
+              <Button onClick={post} disabled={posting} className="btn-glass-primary gap-1.5 h-9 rounded-xl text-sm">
                 <Send className="w-3.5 h-3.5" /> {posting ? 'Posting…' : 'Post'}
               </Button>
             </div>
@@ -148,6 +220,16 @@ export default function WallPage() {
           <ShieldCheck className="w-3.5 h-3.5 text-[#FF7A6B]" />
           Posts are anonymous. Be kind — we&rsquo;re all just trying to do right by our pets.
         </div>
+
+        {loadState === 'offline' && (
+          <div className="glass-card rounded-xl p-3 mb-4 flex items-start gap-2.5 text-xs text-zinc-400">
+            <Sparkles className="w-4 h-4 text-[#FFB84D] shrink-0 mt-px" />
+            <span>
+              Showing example posts — the live community feed isn&rsquo;t reachable right now, so anything you post
+              here won&rsquo;t be saved.
+            </span>
+          </div>
+        )}
 
         {/* Feed */}
         <div className="space-y-4">
@@ -175,14 +257,24 @@ export default function WallPage() {
                       {m.label}
                     </Badge>
                   </div>
-                  <p className="text-[15px] leading-relaxed text-zinc-200 mb-4">{c.text}</p>
+                  <p className="text-[15px] leading-relaxed text-zinc-200 mb-4 whitespace-pre-wrap break-words">{c.text}</p>
                   <div className="flex items-center gap-4">
-                    <button onClick={() => like(c.id)} className={`flex items-center gap-1.5 text-xs transition-colors ${c.liked ? 'text-[#FF5A5F]' : 'text-zinc-500 hover:text-zinc-300'}`}>
-                      <Heart className={`w-4 h-4 ${c.liked ? 'fill-[#FF5A5F]' : ''}`} /> {c.hearts}
-                    </button>
-                    <button className="flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-300 transition-colors">
-                      <MessageCircle className="w-4 h-4" /> Reply
-                    </button>
+                    {(() => {
+                      const isLiked = liked.has(String(c.id))
+                      return (
+                        <button
+                          onClick={() => like(c.id)}
+                          disabled={isLiked}
+                          aria-pressed={isLiked}
+                          aria-label={isLiked ? `Hearted, ${c.hearts} hearts` : `Heart this post, ${c.hearts} hearts`}
+                          className={`flex items-center gap-1.5 text-xs transition-colors ${
+                            isLiked ? 'text-[#FF5A5F] cursor-default' : 'text-zinc-500 hover:text-zinc-300'
+                          }`}
+                        >
+                          <Heart className={`w-4 h-4 ${isLiked ? 'fill-[#FF5A5F]' : ''}`} /> {c.hearts}
+                        </button>
+                      )
+                    })()}
                   </div>
                 </motion.div>
               )

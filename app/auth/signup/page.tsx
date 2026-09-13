@@ -55,10 +55,10 @@ export default function SignupPage() {
           <h1 className="text-3xl font-black mb-4" style={{ fontFamily: 'var(--font-display)' }}>CHECK YOUR EMAIL</h1>
           <p className="text-[#A79F9C] leading-relaxed">
             We sent a confirmation link to <span className="text-white">{email}</span>.
-            Verify it to start caring for your pets with PawPal.
+            Verify it to start caring for your pets with PetPal.
           </p>
           <Link href="/auth/login">
-            <Button className="mt-8 btn-glass-emerald rounded-xl">
+            <Button className="mt-8 btn-glass-primary rounded-xl">
               Back to Sign In
             </Button>
           </Link>
@@ -82,7 +82,7 @@ export default function SignupPage() {
         <div className="flex items-center justify-center gap-2.5 mb-10">
           <Logo size={38} glow />
           <span className="text-2xl font-bold" style={{ fontFamily: 'var(--font-display)' }}>
-            Paw<span className="text-[#FF7A6B]">Pal</span>
+            Pet<span className="text-[#FF7A6B]">Pal</span>
           </span>
         </div>
 
@@ -142,7 +142,7 @@ export default function SignupPage() {
             <Button
               type="submit"
               disabled={loading}
-              className="w-full btn-glass-emerald h-12 text-base font-semibold rounded-xl"
+              className="w-full btn-glass-primary h-12 text-base font-semibold rounded-xl"
             >
               {loading ? 'Creating account...' : 'Create Account'}
               {!loading && <ArrowRight className="w-4 h-4 ml-2" />}

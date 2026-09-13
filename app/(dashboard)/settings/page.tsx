@@ -1,17 +1,20 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   User, Bell, Shield, Palette, CreditCard, Trash2,
   Check, Camera, Mail, Globe, Moon, Lock, Eye, EyeOff,
-  Smartphone, Key, LogOut, Sparkles, BadgeCheck, Flame, Zap
+  Smartphone, Key, LogOut, Sparkles, BadgeCheck, Flame, Zap,
+  type LucideIcon,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
+import { writeJSON, readRaw, writeRaw, KEYS } from '@/lib/storage'
+import { useClientValue } from '@/lib/use-client-value'
 
 const TABS = [
   { key: 'profile', label: 'Profile', icon: User },
@@ -21,35 +24,70 @@ const TABS = [
   { key: 'account', label: 'Account', icon: CreditCard },
 ]
 
+/**
+ * Accent swatches.
+ *
+ * These were left over from an earlier palette and had drifted badly: three of
+ * the six were the identical teal, and no name matched its colour ("Emerald"
+ * was coral, "Deep Blue" was red). Each entry is now a genuinely distinct hue
+ * with an honest name.
+ */
 const ACCENTS = [
-  { name: 'Emerald', color: '#FF7A6B' },
+  { name: 'Coral', color: '#FF7A6B' },
   { name: 'Teal', color: '#2DD4BF' },
-  { name: 'Blue', color: '#2DD4BF' },
-  { name: 'Cyan', color: '#2DD4BF' },
-  { name: 'Mint', color: '#FFB84D' },
-  { name: 'Deep Blue', color: '#F2604F' },
+  { name: 'Amber', color: '#FFB84D' },
+  { name: 'Violet', color: '#A78BFA' },
+  { name: 'Sky', color: '#38BDF8' },
+  { name: 'Rose', color: '#FB7185' },
 ]
+
+/** Preference defaults, overlaid with whatever this device has saved. */
+const DEFAULT_TOGGLES = {
+  emailReports: true,
+  emailDigest: false,
+  pushNew: true,
+  pushReplies: true,
+  anonymous: true,
+  twoFactor: false,
+  publicProfile: false,
+  dataSharing: false,
+  reduceMotion: false,
+  highContrast: false,
+}
+
+type Toggles = typeof DEFAULT_TOGGLES
 
 export default function SettingsPage() {
   const [tab, setTab] = useState('profile')
   const [email, setEmail] = useState('')
   const [displayName, setDisplayName] = useState('Pet Parent')
   const [bio, setBio] = useState('')
-  const [accent, setAccent] = useState('#FF7A6B')
+  const [saving, setSaving] = useState(false)
+  const [toggleEdits, setToggleEdits] = useState<Partial<Toggles> | null>(null)
 
-  // Toggles
-  const [toggles, setToggles] = useState({
-    emailReports: true,
-    emailDigest: false,
-    pushNew: true,
-    pushReplies: true,
-    anonymous: true,
-    twoFactor: false,
-    publicProfile: false,
-    dataSharing: false,
-    reduceMotion: false,
-    highContrast: false,
-  })
+  // Saved preferences are read during render (raw strings are stable values),
+  // so the remembered accent and toggles are correct on the first paint rather
+  // than snapping into place a frame later. `readRaw` also migrates the
+  // pre-rename pawpal_* keys.
+  const savedAccent = useClientValue(() => readRaw(KEYS.accent), null)
+  const [accentEdited, setAccentEdited] = useState<string | null>(null)
+  const accent = accentEdited ?? savedAccent ?? '#FF7A6B'
+  const setAccent = setAccentEdited
+
+  // Toggles — defaults, overlaid with whatever was saved on this device.
+  const savedPrefsRaw = useClientValue(() => readRaw(KEYS.prefs), null)
+  const toggles = useMemo(() => {
+    let saved: Partial<Toggles> = {}
+    if (savedPrefsRaw) {
+      try {
+        const parsed = JSON.parse(savedPrefsRaw)
+        if (parsed && typeof parsed === 'object') saved = parsed
+      } catch {
+        // Corrupt entry — fall back to defaults rather than throwing.
+      }
+    }
+    return { ...DEFAULT_TOGGLES, ...saved, ...(toggleEdits ?? {}) }
+  }, [savedPrefsRaw, toggleEdits])
 
   useEffect(() => {
     async function load() {
@@ -66,34 +104,40 @@ export default function SettingsPage() {
     load()
   }, [])
 
-  // Restore saved preferences
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem('pawpal_prefs')
-      if (saved) setToggles(p => ({ ...p, ...JSON.parse(saved) }))
-      const a = localStorage.getItem('pawpal_accent')
-      if (a) setAccent(a)
-    } catch {}
-  }, [])
-
-  function set(key: keyof typeof toggles, val: boolean) {
-    setToggles(p => {
-      const next = { ...p, [key]: val }
-      try { localStorage.setItem('pawpal_prefs', JSON.stringify(next)) } catch {}
-      return next
-    })
+  function set(key: keyof Toggles, val: boolean) {
+    const next = { ...toggles, [key]: val }
+    setToggleEdits(next)
+    writeJSON(KEYS.prefs, next)
     toast.success('Preference saved')
   }
 
   async function save() {
+    if (saving) return
+    setSaving(true)
+    // The accent colour is a device-local preference and always applies.
+    writeRaw(KEYS.accent, accent)
+
     try {
-      localStorage.setItem('pawpal_accent', accent)
-      const { createClient } = await import('@/lib/supabase/client')
-      const supabase = createClient()
-      await supabase.auth.updateUser({ data: { display_name: displayName } })
+      const { tryCreateClient } = await import('@/lib/supabase/client')
+      const supabase = tryCreateClient()
+      if (!supabase) {
+        toast.success('Preferences saved on this device', {
+          description: 'Your account isn’t connected, so the display name wasn’t synced.',
+        })
+        return
+      }
+
+      const { error } = await supabase.auth.updateUser({ data: { display_name: displayName.trim() } })
+      if (error) {
+        // Previously this reported success regardless of the result.
+        toast.error('Couldn’t save your profile', { description: error.message })
+        return
+      }
       toast.success('Profile saved', { description: 'Your changes have been applied.' })
     } catch {
-      toast.success('Saved locally')
+      toast.error('Couldn’t save your profile', { description: 'Please check your connection and try again.' })
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -201,7 +245,7 @@ export default function SettingsPage() {
                   <Card title="Privacy" desc="You are protected by zero-knowledge encryption.">
                     <ToggleRow icon={EyeOff} label="Anonymous mode" desc="Hide your name on community posts" checked={toggles.anonymous} onChange={v => set('anonymous', v)} />
                     <ToggleRow icon={Eye} label="Public profile" desc="Let others see your verified contributions" checked={toggles.publicProfile} onChange={v => set('publicProfile', v)} />
-                    <ToggleRow icon={Globe} label="Anonymous data sharing" desc="Help improve PawPal with anonymised usage data" checked={toggles.dataSharing} onChange={v => set('dataSharing', v)} />
+                    <ToggleRow icon={Globe} label="Anonymous data sharing" desc="Help improve PetPal with anonymised usage data" checked={toggles.dataSharing} onChange={v => set('dataSharing', v)} />
                   </Card>
                   <Card title="Security" desc="Protect your account.">
                     <ToggleRow icon={Key} label="Two-factor authentication" desc="Require a code on every login" checked={toggles.twoFactor} onChange={v => set('twoFactor', v)} />
@@ -226,7 +270,7 @@ export default function SettingsPage() {
               {/* ─── APPEARANCE ─── */}
               {tab === 'appearance' && (
                 <>
-                  <Card title="Accent Color" desc="Personalise your PawPal experience.">
+                  <Card title="Accent Color" desc="Personalise your PetPal experience.">
                     <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
                       {ACCENTS.map(a => (
                         <button
@@ -242,7 +286,7 @@ export default function SettingsPage() {
                     </div>
                   </Card>
                   <Card title="Display" desc="Adjust for comfort and accessibility.">
-                    <ToggleRow icon={Moon} label="Dark mode" desc="Always on — PawPal is dark by design" checked disabled onChange={() => {}} />
+                    <ToggleRow icon={Moon} label="Dark mode" desc="Always on — PetPal is dark by design" checked disabled onChange={() => {}} />
                     <ToggleRow icon={Zap} label="Reduce motion" desc="Minimise animations and transitions" checked={toggles.reduceMotion} onChange={v => set('reduceMotion', v)} />
                     <ToggleRow icon={Eye} label="High contrast" desc="Increase text and border contrast" checked={toggles.highContrast} onChange={v => set('highContrast', v)} />
                   </Card>
@@ -326,7 +370,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 }
 
 function ToggleRow({ icon: Icon, label, desc, checked, onChange, disabled }: {
-  icon: any; label: string; desc: string; checked: boolean; onChange: (v: boolean) => void; disabled?: boolean
+  icon: LucideIcon; label: string; desc: string; checked: boolean; onChange: (v: boolean) => void; disabled?: boolean
 }) {
   return (
     <div className="flex items-center justify-between py-3 border-b border-white/5 last:border-0">

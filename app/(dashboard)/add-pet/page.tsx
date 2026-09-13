@@ -16,7 +16,7 @@ const SPECIES = [
   { key: 'fish', label: 'Fish', icon: Fish },
   { key: 'reptile', label: 'Reptile', icon: Turtle },
   { key: 'small', label: 'Small pet', icon: Rat },
-  { key: 'invert', label: 'Other', icon: Snail },
+  { key: 'other', label: 'Other', icon: Snail },
 ]
 
 export default function AddPetPage() {
@@ -113,7 +113,7 @@ export default function AddPetPage() {
             </div>
           </div>
 
-          <Button onClick={save} disabled={saving} className="btn-glass-emerald w-full h-12 rounded-xl text-base font-semibold gap-2">
+          <Button onClick={save} disabled={saving} className="btn-glass-primary w-full h-12 rounded-xl text-base font-semibold gap-2">
             {saving ? 'Saving…' : <><Check className="w-4 h-4" /> Add {form.name || 'Pet'}</>}
           </Button>
         </motion.div>

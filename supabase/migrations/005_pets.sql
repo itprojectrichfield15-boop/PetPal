@@ -1,5 +1,5 @@
 -- ════════════════════════════════════════════════════════════════
---  PawPal — Pets table. Run once in Supabase SQL editor.
+--  PetPal — Pets table. Run once in Supabase SQL editor.
 -- ════════════════════════════════════════════════════════════════
 
 create table if not exists pets (

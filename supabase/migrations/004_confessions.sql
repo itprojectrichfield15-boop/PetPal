@@ -1,5 +1,5 @@
 -- ════════════════════════════════════════════════════════════════
---  PawPal — Community Wall (anonymous pet posts)
+--  PetPal — Community Wall (anonymous pet posts)
 --  Run this once in your Supabase SQL editor.
 -- ════════════════════════════════════════════════════════════════
 

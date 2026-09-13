@@ -3,19 +3,22 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
-import { Dog, Cat, Bird, Rabbit, Fish, Turtle, Rat, Snail, PawPrint, Plus, Scale, Apple, Syringe, ChevronRight } from 'lucide-react'
+import { Dog, Cat, Bird, Rabbit, Fish, Turtle, Rat, Snail, PawPrint, Plus, Scale, Apple, Syringe, ChevronRight, type LucideIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
+import type { Pet } from '@/lib/types'
 
-const ICONS: Record<string, any> = { dog: Dog, cat: Cat, bird: Bird, rabbit: Rabbit, fish: Fish, reptile: Turtle, small: Rat, invert: Snail, other: PawPrint }
+// 'invert' is a legacy species value written by older builds of the add-pet
+// form; kept here so existing rows still render an icon.
+const ICONS: Record<string, LucideIcon> = { dog: Dog, cat: Cat, bird: Bird, rabbit: Rabbit, fish: Fish, reptile: Turtle, small: Rat, invert: Snail, other: PawPrint }
 
-const SEED = [
-  { id: 's1', name: 'Biscuit', species: 'dog', breed: 'Beagle', age: '3 years', weight: 12.4, sex: 'male' },
-  { id: 's2', name: 'Luna', species: 'cat', breed: 'Maine Coon', age: '2 years', weight: 5.1, sex: 'female' },
+/** Example pets shown until the owner adds their own. */
+const SEED: Pet[] = [
+  { id: 's1', owner_id: null, name: 'Biscuit', species: 'dog', breed: 'Beagle', age: '3 years', weight: 12.4, sex: 'male', photo_url: null, created_at: '' },
+  { id: 's2', owner_id: null, name: 'Luna', species: 'cat', breed: 'Maine Coon', age: '2 years', weight: 5.1, sex: 'female', photo_url: null, created_at: '' },
 ]
 
 export default function PetsPage() {
-  const [pets, setPets] = useState(SEED)
+  const [pets, setPets] = useState<Pet[]>(SEED)
 
   useEffect(() => {
     async function load() {
@@ -23,7 +26,7 @@ export default function PetsPage() {
         const { createClient } = await import('@/lib/supabase/client')
         const supabase = createClient()
         const { data } = await supabase.from('pets').select('*').order('created_at', { ascending: false })
-        if (data && data.length > 0) setPets(data as any)
+        if (data && data.length > 0) setPets(data as Pet[])
       } catch {}
     }
     load()
@@ -40,11 +43,11 @@ export default function PetsPage() {
             </h1>
             <p className="text-zinc-400">Every companion, all in one place.</p>
           </div>
-          <Link href="/add-pet"><Button className="btn-glass-emerald rounded-xl gap-2"><Plus className="w-4 h-4" /> Add</Button></Link>
+          <Link href="/add-pet"><Button className="btn-glass-primary rounded-xl gap-2"><Plus className="w-4 h-4" /> Add</Button></Link>
         </motion.div>
 
         <div className="grid sm:grid-cols-2 gap-5">
-          {pets.map((p: any, i) => {
+          {pets.map((p, i) => {
             const Icon = ICONS[p.species] ?? PawPrint
             return (
               <motion.div key={p.id} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07 }}

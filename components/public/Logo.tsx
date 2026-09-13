@@ -1,5 +1,6 @@
 'use client'
 
+import { useId } from 'react'
 import { cn } from '@/lib/utils'
 
 interface LogoProps {
@@ -10,7 +11,7 @@ interface LogoProps {
 }
 
 /**
- * PawPal logo — a crisp, high-contrast paw mark on an emerald tile.
+ * PetPal logo — a crisp, high-contrast paw mark on an emerald tile.
  */
 export default function Logo({ className, size = 38, glow = false, variant = 'mark' }: LogoProps) {
   if (variant === 'wordmark') {
@@ -18,7 +19,7 @@ export default function Logo({ className, size = 38, glow = false, variant = 'ma
       <div className={cn('flex items-center gap-2.5', className)}>
         <LogoMark size={size} glow={glow} />
         <span className="text-lg font-bold tracking-tight" style={{ fontFamily: 'var(--font-display)' }}>
-          Paw<span className="text-[#FF7A6B]">Pal</span>
+          Pet<span className="text-[#FF7A6B]">Pal</span>
         </span>
       </div>
     )
@@ -27,7 +28,9 @@ export default function Logo({ className, size = 38, glow = false, variant = 'ma
 }
 
 function LogoMark({ size = 38, glow = false, className }: { size?: number; glow?: boolean; className?: string }) {
-  const id = 'pp' + Math.round(size)
+  // useId gives a stable, collision-free id per instance (and matches between
+  // server and client render). Sanitised because raw useId contains ':'.
+  const id = 'pp' + useId().replace(/:/g, '')
   return (
     <div
       className={cn(
@@ -36,7 +39,7 @@ function LogoMark({ size = 38, glow = false, className }: { size?: number; glow?
         className
       )}
       style={{ width: size, height: size, borderRadius: size * 0.28 }}
-      aria-label="PawPal logo"
+      aria-label="PetPal logo"
     >
       <svg viewBox="0 0 48 48" width={size} height={size} className="relative z-10">
         <defs>
