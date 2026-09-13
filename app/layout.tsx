@@ -45,7 +45,7 @@ export const metadata: Metadata = {
 }
 
 export const viewport: Viewport = {
-  themeColor: "#0C0A0A",
+  themeColor: "#0D0A14",
   colorScheme: "dark",
 }
 
@@ -60,16 +60,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       data-scroll-behavior="smooth"
       className={`${spaceGrotesk.variable} ${inter.variable} ${instrumentSerif.variable} h-full antialiased dark`}
     >
-      <body className="min-h-full flex flex-col bg-[#0C0A0A] text-[#F6F1EE]">
+      <body className="min-h-full flex flex-col bg-[#0D0A14] text-[#F4EFF7]">
         <SiteEffects />
         {children}
         <Toaster
           position="top-right"
           toastOptions={{
             style: {
-              background: "#1A1516",
+              background: "#1C1630",
               border: "1px solid rgba(255,255,255,0.1)",
-              color: "#F6F1EE",
+              color: "#F4EFF7",
             },
           }}
         />

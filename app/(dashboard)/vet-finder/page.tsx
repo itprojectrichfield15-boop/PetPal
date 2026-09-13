@@ -15,8 +15,8 @@ import { useClientValue } from '@/lib/use-client-value'
 const VetMap = dynamic(() => import('@/components/VetMap'), {
   ssr: false,
   loading: () => (
-    <div className="h-full w-full flex items-center justify-center bg-[#161213]">
-      <Loader2 className="w-6 h-6 text-[#FF7A6B] animate-spin" aria-label="Loading map" />
+    <div className="h-full w-full flex items-center justify-center bg-[#171226]">
+      <Loader2 className="w-6 h-6 text-[#FFAE6D] animate-spin" aria-label="Loading map" />
     </div>
   ),
 })
@@ -103,18 +103,18 @@ export default function VetFinderPage() {
       <div className="absolute inset-0 bg-mesh-soft pointer-events-none" />
       <div className="relative p-6 lg:p-8 max-w-7xl mx-auto">
         <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
-          <Badge className="mb-4 bg-[#FF7A6B]/10 text-[#FF7A6B] border-[#FF7A6B]/30 font-mono text-[10px]">
+          <Badge className="mb-4 bg-[#FFAE6D]/10 text-[#FFAE6D] border-[#FFAE6D]/30 font-mono text-[10px]">
             <MapPin className="w-3 h-3 mr-1.5" /> LIVE MAP
           </Badge>
           <h1 className="text-4xl lg:text-5xl font-semibold tracking-tight mb-2" style={{ fontFamily: 'var(--font-display)' }}>
-            Find a <span className="text-[#FF7A6B]">Vet</span> near you
+            Find a <span className="text-[#FFAE6D]">Vet</span> near you
           </h1>
           <p className="text-zinc-400 max-w-xl" role="status" aria-live="polite">{statusLine}</p>
         </motion.div>
 
         {locState === 'denied' && (
           <div className="glass-card rounded-xl p-3 mb-4 flex items-center gap-2.5 text-xs text-zinc-400">
-            <AlertCircle className="w-4 h-4 text-[#FFB84D] shrink-0" aria-hidden="true" />
+            <AlertCircle className="w-4 h-4 text-[#FFD98E] shrink-0" aria-hidden="true" />
             Location access was blocked — searching around {DEFAULT_LABEL} instead. Allow location in your browser to
             see practices near you.
           </div>
@@ -133,14 +133,14 @@ export default function VetFinderPage() {
           <div className="space-y-3 lg:h-[640px] lg:overflow-y-auto no-scrollbar pr-1">
             {vetState === 'loading' && (
               <div className="glass-card rounded-2xl p-8 flex flex-col items-center justify-center text-center">
-                <Loader2 className="w-6 h-6 text-[#FF7A6B] animate-spin mb-3" aria-hidden="true" />
+                <Loader2 className="w-6 h-6 text-[#FFAE6D] animate-spin mb-3" aria-hidden="true" />
                 <p className="text-sm text-zinc-400">Searching the directory…</p>
               </div>
             )}
 
             {vetState === 'error' && (
               <div className="glass-card rounded-2xl p-8 text-center">
-                <AlertCircle className="w-8 h-8 text-[#FF5A5F] mx-auto mb-3" aria-hidden="true" />
+                <AlertCircle className="w-8 h-8 text-[#FF6B81] mx-auto mb-3" aria-hidden="true" />
                 <p className="text-sm text-zinc-300 mb-1">Couldn&rsquo;t load nearby practices</p>
                 <p className="text-xs text-zinc-500 leading-relaxed mb-4">
                   The public directory didn&rsquo;t respond. We won&rsquo;t show made-up clinics — if this is an
@@ -175,8 +175,8 @@ export default function VetFinderPage() {
               >
                 <div className="flex items-start justify-between gap-3 mb-2">
                   <div className="flex items-start gap-2.5 min-w-0">
-                    <div className="w-9 h-9 rounded-xl bg-[#FF7A6B]/12 border border-[#FF7A6B]/20 flex items-center justify-center shrink-0">
-                      <Stethoscope className="w-4 h-4 text-[#FF7A6B]" aria-hidden="true" />
+                    <div className="w-9 h-9 rounded-xl bg-[#FFAE6D]/12 border border-[#FFAE6D]/20 flex items-center justify-center shrink-0">
+                      <Stethoscope className="w-4 h-4 text-[#FFAE6D]" aria-hidden="true" />
                     </div>
                     <div className="min-w-0">
                       <div className="font-semibold text-sm leading-tight">{v.name}</div>
@@ -189,7 +189,7 @@ export default function VetFinderPage() {
                     </div>
                   </div>
                   {v.emergency && (
-                    <Badge className="bg-[#FFB84D]/15 text-[#FFB84D] border-[#FFB84D]/30 text-[10px] shrink-0">24/7</Badge>
+                    <Badge className="bg-[#FFD98E]/15 text-[#FFD98E] border-[#FFD98E]/30 text-[10px] shrink-0">24/7</Badge>
                   )}
                 </div>
 

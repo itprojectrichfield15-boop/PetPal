@@ -37,7 +37,7 @@ export default function SiteEffects() {
       {/* Scroll progress */}
       <motion.div
         style={{ scaleX }}
-        className="fixed top-0 left-0 right-0 h-[3px] origin-left z-[60] bg-gradient-to-r from-[#FF7A6B] via-[#FFB84D] to-[#2DD4BF]"
+        className="fixed top-0 left-0 right-0 h-[3px] origin-left z-[60] bg-gradient-to-r from-[#FFAE6D] via-[#FFD98E] to-[#8E8BF5]"
         aria-hidden="true"
       />
       {/* Cursor glow */}
@@ -45,7 +45,7 @@ export default function SiteEffects() {
         <div
           ref={glowRef}
           className="fixed top-0 left-0 w-[500px] h-[500px] rounded-full pointer-events-none z-[5] mix-blend-screen will-change-transform"
-          style={{ background: 'radial-gradient(circle, rgba(255,122,107,0.07) 0%, transparent 60%)' }}
+          style={{ background: 'radial-gradient(circle, rgba(255,174,109,0.07) 0%, transparent 60%)' }}
           aria-hidden="true"
         />
       )}

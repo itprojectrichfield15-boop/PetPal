@@ -51,11 +51,11 @@ export default function NutritionPage() {
       <div className="absolute inset-0 bg-mesh-soft pointer-events-none" />
       <div className="relative p-6 lg:p-8 max-w-5xl mx-auto">
         <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
-          <Badge className="mb-4 bg-[#FF7A6B]/10 text-[#FF7A6B] border-[#FF7A6B]/30 font-mono text-[10px]">
+          <Badge className="mb-4 bg-[#FFAE6D]/10 text-[#FFAE6D] border-[#FFAE6D]/30 font-mono text-[10px]">
             <Sparkles className="w-3 h-3 mr-1.5" /> VET-BACKED
           </Badge>
           <h1 className="text-4xl lg:text-5xl font-semibold tracking-tight mb-2" style={{ fontFamily: 'var(--font-display)' }}>
-            Nutrition <span className="text-[#FF7A6B]">Planner</span>
+            Nutrition <span className="text-[#FFAE6D]">Planner</span>
           </h1>
           <p className="text-zinc-400 max-w-xl">
             Precise daily calories, portions and feeding schedule — calculated with the energy formulas vets use.
@@ -77,7 +77,7 @@ export default function NutritionPage() {
                       aria-pressed={species === k}
                       className={`flex flex-col items-center gap-1 px-2 py-2.5 rounded-xl border text-xs transition-all ${
                         species === k
-                          ? 'bg-[#FF7A6B]/15 border-[#FF7A6B]/40 text-[#FF7A6B]'
+                          ? 'bg-[#FFAE6D]/15 border-[#FFAE6D]/40 text-[#FFAE6D]'
                           : 'bg-white/[0.03] border-white/8 text-zinc-400 hover:border-white/20'
                       }`}
                     >
@@ -91,7 +91,7 @@ export default function NutritionPage() {
             <div>
               <div className="flex items-center justify-between mb-2">
                 <label htmlFor="weight" className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Weight</label>
-                <span className="font-mono text-sm text-[#FF7A6B] font-semibold">{weight.toFixed(step < 1 ? 1 : 1)} kg</span>
+                <span className="font-mono text-sm text-[#FFAE6D] font-semibold">{weight.toFixed(step < 1 ? 1 : 1)} kg</span>
               </div>
               <input
                 id="weight"
@@ -101,7 +101,7 @@ export default function NutritionPage() {
                 step={step}
                 value={Math.min(weight, cfg.maxKg)}
                 onChange={e => setWeight(+e.target.value)}
-                className="w-full accent-[#FF7A6B]"
+                className="w-full accent-[#FFAE6D]"
               />
               <div className="flex justify-between text-[10px] text-zinc-600 mt-1 font-mono">
                 <span>0.1 kg</span><span>{cfg.maxKg} kg</span>
@@ -118,7 +118,7 @@ export default function NutritionPage() {
                     aria-pressed={lifeStage === s}
                     className={`px-2 py-2 rounded-xl border text-xs capitalize transition-all ${
                       lifeStage === s
-                        ? 'bg-[#FF7A6B]/15 border-[#FF7A6B]/40 text-[#FF7A6B]'
+                        ? 'bg-[#FFAE6D]/15 border-[#FFAE6D]/40 text-[#FFAE6D]'
                         : 'bg-white/[0.03] border-white/8 text-zinc-400 hover:border-white/20'
                     }`}
                   >
@@ -139,7 +139,7 @@ export default function NutritionPage() {
                     title={a.hint}
                     className={`px-2 py-2 rounded-xl border text-xs transition-all ${
                       activity === a.value
-                        ? 'bg-[#FF7A6B]/15 border-[#FF7A6B]/40 text-[#FF7A6B]'
+                        ? 'bg-[#FFAE6D]/15 border-[#FFAE6D]/40 text-[#FFAE6D]'
                         : 'bg-white/[0.03] border-white/8 text-zinc-400 hover:border-white/20'
                     }`}
                   >
@@ -164,7 +164,7 @@ export default function NutritionPage() {
                 step={1}
                 value={bodyCondition}
                 onChange={e => setBodyCondition(+e.target.value)}
-                className="w-full accent-[#FF7A6B]"
+                className="w-full accent-[#FFAE6D]"
               />
               <div className="flex justify-between text-[10px] text-zinc-600 mt-1">
                 <span>Very thin</span><span>Ideal</span><span>Obese</span>
@@ -174,12 +174,12 @@ export default function NutritionPage() {
 
           {/* ── Results ── */}
           <motion.div initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} className="space-y-4">
-            <div className="glass-card rounded-2xl p-6" style={{ borderColor: 'rgba(255,122,107,0.3)' }}>
+            <div className="glass-card rounded-2xl p-6" style={{ borderColor: 'rgba(255,174,109,0.3)' }}>
               <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-zinc-400 font-semibold mb-2">
-                <Flame className="w-3.5 h-3.5 text-[#FF7A6B]" aria-hidden="true" /> Daily energy target
+                <Flame className="w-3.5 h-3.5 text-[#FFAE6D]" aria-hidden="true" /> Daily energy target
               </div>
               <div className="flex items-end gap-2">
-                <span className="text-6xl font-semibold tabular-nums text-[#FF7A6B]" style={{ fontFamily: 'var(--font-display)' }}>
+                <span className="text-6xl font-semibold tabular-nums text-[#FFAE6D]" style={{ fontFamily: 'var(--font-display)' }}>
                   {plan.mer}
                 </span>
                 <span className="text-zinc-500 mb-2">kcal / day</span>
@@ -199,7 +199,7 @@ export default function NutritionPage() {
                 { icon: Droplets, label: 'Water', v: `${plan.waterMl}ml`, sub: 'min daily' },
               ].map(s => (
                 <div key={s.label} className="glass-card rounded-2xl p-4">
-                  <s.icon className="w-4 h-4 text-[#FF7A6B] mb-2" aria-hidden="true" />
+                  <s.icon className="w-4 h-4 text-[#FFAE6D] mb-2" aria-hidden="true" />
                   <div className="text-2xl font-semibold tabular-nums" style={{ fontFamily: 'var(--font-display)' }}>{s.v}</div>
                   <div className="text-[11px] text-zinc-500">{s.label} · {s.sub}</div>
                 </div>
@@ -211,8 +211,8 @@ export default function NutritionPage() {
               <ResponsiveContainer width="100%" height={200}>
                 <RadarChart data={cfg.macros}>
                   <PolarGrid stroke="rgba(255,255,255,0.08)" />
-                  <PolarAngleAxis dataKey="axis" tick={{ fill: '#A79F9C', fontSize: 11 }} />
-                  <Radar dataKey="value" stroke="#FF7A6B" fill="#FF7A6B" fillOpacity={0.3} strokeWidth={2} />
+                  <PolarAngleAxis dataKey="axis" tick={{ fill: '#A79CBF', fontSize: 11 }} />
+                  <Radar dataKey="value" stroke="#FFAE6D" fill="#FFAE6D" fillOpacity={0.3} strokeWidth={2} />
                 </RadarChart>
               </ResponsiveContainer>
               <p className="text-[10px] text-zinc-600 mt-2 leading-relaxed">
@@ -224,7 +224,7 @@ export default function NutritionPage() {
         </div>
 
         <div className="glass-card rounded-xl p-4 mt-6 flex items-start gap-3">
-          <Info className="w-4 h-4 text-[#FFB84D] mt-0.5 shrink-0" aria-hidden="true" />
+          <Info className="w-4 h-4 text-[#FFD98E] mt-0.5 shrink-0" aria-hidden="true" />
           <p className="text-xs text-zinc-400 leading-relaxed">
             {cfg.note} Calculated using RER (70 × weight<sup>0.75</sup>) with MER multipliers for life stage, activity and
             body condition, and {cfg.kcalPerGramDry} kcal/g for {cfg.foodLabel.toLowerCase()}. This is guidance — confirm

@@ -26,11 +26,11 @@ export default function FoodSafetyPage() {
       <div className="absolute inset-0 bg-mesh-soft pointer-events-none" />
       <div className="relative p-6 lg:p-8 max-w-3xl mx-auto">
         <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
-          <Badge className="mb-4 bg-[#FF7A6B]/10 text-[#FF7A6B] border-[#FF7A6B]/30 font-mono text-[10px]">
+          <Badge className="mb-4 bg-[#FFAE6D]/10 text-[#FFAE6D] border-[#FFAE6D]/30 font-mono text-[10px]">
             <Sparkles className="w-3 h-3 mr-1.5" /> LIFESAVER
           </Badge>
           <h1 className="text-4xl lg:text-5xl font-semibold tracking-tight mb-2" style={{ fontFamily: 'var(--font-display)' }}>
-            Food Safety <span className="text-[#FF7A6B]">Checker</span>
+            Food Safety <span className="text-[#FFAE6D]">Checker</span>
           </h1>
           <p className="text-zinc-400 max-w-xl">
             Can your pet eat that? Type any food, plant or household item to check instantly.
@@ -47,7 +47,7 @@ export default function FoodSafetyPage() {
               autoFocus
               enterKeyHint="search"
               aria-label="Food, plant or household item to check"
-              className="pl-12 pr-11 h-14 text-lg bg-[#100D0E] border-white/8 focus:border-[#FF7A6B]/40 rounded-xl"
+              className="pl-12 pr-11 h-14 text-lg bg-[#130F1C] border-white/8 focus:border-[#FFAE6D]/40 rounded-xl"
             />
             {query && (
               <button
@@ -121,8 +121,8 @@ export default function FoodSafetyPage() {
                 )}
 
                 {result.entry.level === 'toxic' && (
-                  <div className="mt-5 p-4 rounded-xl bg-[#FF5A5F]/8 border border-[#FF5A5F]/25">
-                    <div className="flex items-center gap-2 text-sm font-semibold text-[#FF5A5F] mb-1.5">
+                  <div className="mt-5 p-4 rounded-xl bg-[#FF6B81]/8 border border-[#FF6B81]/25">
+                    <div className="flex items-center gap-2 text-sm font-semibold text-[#FF6B81] mb-1.5">
                       <Stethoscope className="w-4 h-4 shrink-0" /> Suspected poisoning is an emergency
                     </div>
                     <p className="text-xs text-zinc-300 leading-relaxed mb-3">
@@ -148,7 +148,7 @@ export default function FoodSafetyPage() {
               role="status"
               aria-live="polite"
             >
-              <ShieldAlert className="w-10 h-10 mx-auto mb-3 text-[#FFB84D] opacity-70" />
+              <ShieldAlert className="w-10 h-10 mx-auto mb-3 text-[#FFD98E] opacity-70" />
               <p className="text-sm text-zinc-300">
                 <span className="text-white">&ldquo;{result.query}&rdquo;</span> isn&rsquo;t in our database yet.
               </p>
@@ -164,7 +164,7 @@ export default function FoodSafetyPage() {
                       <button
                         key={s}
                         onClick={() => setQuery(s)}
-                        className="px-3 py-1.5 rounded-full text-xs border border-white/10 text-zinc-300 hover:text-white hover:border-[#FF7A6B]/40 transition-all capitalize"
+                        className="px-3 py-1.5 rounded-full text-xs border border-white/10 text-zinc-300 hover:text-white hover:border-[#FFAE6D]/40 transition-all capitalize"
                       >
                         {s}
                       </button>

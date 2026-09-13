@@ -20,10 +20,10 @@ interface Confession {
 }
 
 const MOODS = [
-  { key: 'happy', label: 'Happy', color: '#FF7A6B' },
-  { key: 'proud', label: 'Proud', color: '#FFB84D' },
-  { key: 'help', label: 'Need advice', color: '#FFC83D' },
-  { key: 'sad', label: 'Tough day', color: '#A79F9C' },
+  { key: 'happy', label: 'Happy', color: '#FFAE6D' },
+  { key: 'proud', label: 'Proud', color: '#FFD98E' },
+  { key: 'help', label: 'Need advice', color: '#FFCF6B' },
+  { key: 'sad', label: 'Tough day', color: '#A79CBF' },
 ]
 
 const SEED: Confession[] = [
@@ -177,7 +177,7 @@ export default function WallPage() {
             <Sparkles className="w-3 h-3 mr-1.5" /> COMMUNITY
           </Badge>
           <h1 className="text-4xl lg:text-5xl font-semibold tracking-tight mb-2" style={{ fontFamily: 'var(--font-display)' }}>
-            Owner <span className="text-[#FF7A6B]">Community</span>
+            Owner <span className="text-[#FFAE6D]">Community</span>
           </h1>
           <p className="text-zinc-400 max-w-xl">
             Wins, worries and wisdom from fellow pet parents. Share a moment, ask for advice, cheer each other on.
@@ -217,13 +217,13 @@ export default function WallPage() {
         </motion.div>
 
         <div className="flex items-center gap-2 text-xs text-zinc-500 mb-4">
-          <ShieldCheck className="w-3.5 h-3.5 text-[#FF7A6B]" />
+          <ShieldCheck className="w-3.5 h-3.5 text-[#FFAE6D]" />
           Posts are anonymous. Be kind — we&rsquo;re all just trying to do right by our pets.
         </div>
 
         {loadState === 'offline' && (
           <div className="glass-card rounded-xl p-3 mb-4 flex items-start gap-2.5 text-xs text-zinc-400">
-            <Sparkles className="w-4 h-4 text-[#FFB84D] shrink-0 mt-px" />
+            <Sparkles className="w-4 h-4 text-[#FFD98E] shrink-0 mt-px" />
             <span>
               Showing example posts — the live community feed isn&rsquo;t reachable right now, so anything you post
               here won&rsquo;t be saved.
@@ -268,10 +268,10 @@ export default function WallPage() {
                           aria-pressed={isLiked}
                           aria-label={isLiked ? `Hearted, ${c.hearts} hearts` : `Heart this post, ${c.hearts} hearts`}
                           className={`flex items-center gap-1.5 text-xs transition-colors ${
-                            isLiked ? 'text-[#FF5A5F] cursor-default' : 'text-zinc-500 hover:text-zinc-300'
+                            isLiked ? 'text-[#FF6B81] cursor-default' : 'text-zinc-500 hover:text-zinc-300'
                           }`}
                         >
-                          <Heart className={`w-4 h-4 ${isLiked ? 'fill-[#FF5A5F]' : ''}`} /> {c.hearts}
+                          <Heart className={`w-4 h-4 ${isLiked ? 'fill-[#FF6B81]' : ''}`} /> {c.hearts}
                         </button>
                       )
                     })()}

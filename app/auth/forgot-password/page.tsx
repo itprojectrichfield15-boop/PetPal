@@ -8,6 +8,7 @@ import Logo from '@/components/public/Logo'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { toast } from 'sonner'
+import { describeSupabaseError } from '@/lib/supabase/errors'
 
 /**
  * Password reset request.
@@ -32,7 +33,8 @@ export default function ForgotPasswordPage() {
         redirectTo: `${window.location.origin}/auth/callback?next=/settings`,
       })
       if (error) {
-        toast.error(error.message)
+        const f = describeSupabaseError(error)
+        toast.error(f.title, { description: f.detail })
         setLoading(false)
         return
       }
@@ -40,22 +42,19 @@ export default function ForgotPasswordPage() {
       // so this page can't be used to discover which emails are registered.
       setSent(true)
     } catch (err) {
-      toast.error(
-        err instanceof Error && err.message.includes('not configured')
-          ? 'Password reset is unavailable right now. Please try again later.'
-          : 'Something went wrong. Please try again.'
-      )
+      const f = describeSupabaseError(err)
+      toast.error(f.title, { description: f.detail })
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className="min-h-screen bg-[#0C0A0A] flex items-center justify-center px-6 relative overflow-hidden">
+    <div className="min-h-screen bg-[#0D0A14] flex items-center justify-center px-6 relative overflow-hidden">
       <div className="absolute inset-0 bg-grid-full opacity-30" aria-hidden="true" />
       <div
         className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full pointer-events-none"
-        style={{ background: 'radial-gradient(circle, rgba(255,122,107,0.08) 0%, transparent 70%)' }}
+        style={{ background: 'radial-gradient(circle, rgba(255,174,109,0.08) 0%, transparent 70%)' }}
         aria-hidden="true"
       />
 
@@ -68,20 +67,20 @@ export default function ForgotPasswordPage() {
         <div className="flex items-center justify-center gap-2.5 mb-10">
           <Logo size={38} glow />
           <span className="text-2xl font-bold" style={{ fontFamily: 'var(--font-display)' }}>
-            Paw<span className="text-[#FF7A6B]">Pal</span>
+            Paw<span className="text-[#FFAE6D]">Pal</span>
           </span>
         </div>
 
         <div className="p-8 glass-card rounded-2xl">
           {sent ? (
             <div className="text-center">
-              <div className="w-14 h-14 rounded-2xl bg-[#FF7A6B]/12 border border-[#FF7A6B]/25 flex items-center justify-center mx-auto mb-5">
-                <MailCheck className="w-7 h-7 text-[#FF7A6B]" />
+              <div className="w-14 h-14 rounded-2xl bg-[#FFAE6D]/12 border border-[#FFAE6D]/25 flex items-center justify-center mx-auto mb-5">
+                <MailCheck className="w-7 h-7 text-[#FFAE6D]" />
               </div>
               <h1 className="text-2xl font-semibold mb-2" style={{ fontFamily: 'var(--font-display)' }}>
                 Check your inbox
               </h1>
-              <p className="text-sm text-[#A79F9C] leading-relaxed mb-6">
+              <p className="text-sm text-[#A79CBF] leading-relaxed mb-6">
                 If an account exists for <span className="text-white">{email.trim()}</span>, we&rsquo;ve sent a link to
                 reset your password. It expires in an hour.
               </p>
@@ -94,17 +93,17 @@ export default function ForgotPasswordPage() {
               <h1 className="text-3xl font-black mb-2" style={{ fontFamily: 'var(--font-display)' }}>
                 RESET PASSWORD
               </h1>
-              <p className="text-[#A79F9C] mb-8 text-sm">
+              <p className="text-[#A79CBF] mb-8 text-sm">
                 Enter your email and we&rsquo;ll send you a link to set a new one.
               </p>
 
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-2">
-                  <label htmlFor="reset-email" className="text-xs font-semibold text-[#A79F9C] uppercase tracking-wider">
+                  <label htmlFor="reset-email" className="text-xs font-semibold text-[#A79CBF] uppercase tracking-wider">
                     Email
                   </label>
                   <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#A79F9C] pointer-events-none" />
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#A79CBF] pointer-events-none" />
                     <Input
                       id="reset-email"
                       type="email"
@@ -112,7 +111,7 @@ export default function ForgotPasswordPage() {
                       value={email}
                       onChange={e => setEmail(e.target.value)}
                       placeholder="you@example.com"
-                      className="pl-10 bg-[#0C0A0A] border-white/10 focus:border-[#FF7A6B]/50"
+                      className="pl-10 bg-[#0D0A14] border-white/10 focus:border-[#FFAE6D]/50"
                     />
                   </div>
                 </div>
@@ -127,7 +126,7 @@ export default function ForgotPasswordPage() {
               </form>
 
               <div className="mt-6 pt-6 border-t border-white/8 text-sm text-center">
-                <Link href="/auth/login" className="text-[#A79F9C] hover:text-[#FF7A6B] transition-colors inline-flex items-center gap-1.5">
+                <Link href="/auth/login" className="text-[#A79CBF] hover:text-[#FFAE6D] transition-colors inline-flex items-center gap-1.5">
                   <ArrowLeft className="w-3.5 h-3.5" /> Back to sign in
                 </Link>
               </div>
@@ -135,9 +134,9 @@ export default function ForgotPasswordPage() {
           )}
         </div>
 
-        <div className="mt-6 flex items-start gap-3 p-4 rounded-xl bg-[#FF7A6B]/5 border border-[#FF7A6B]/20">
-          <PawPrint className="w-4 h-4 text-[#FF7A6B] mt-0.5 shrink-0" />
-          <p className="text-xs text-[#A79F9C] leading-relaxed">
+        <div className="mt-6 flex items-start gap-3 p-4 rounded-xl bg-[#FFAE6D]/5 border border-[#FFAE6D]/20">
+          <PawPrint className="w-4 h-4 text-[#FFAE6D] mt-0.5 shrink-0" />
+          <p className="text-xs text-[#A79CBF] leading-relaxed">
             Your pets&rsquo; profiles and reminders stay exactly where you left them.
           </p>
         </div>

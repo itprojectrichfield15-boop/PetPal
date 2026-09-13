@@ -19,7 +19,7 @@ export default function Logo({ className, size = 38, glow = false, variant = 'ma
       <div className={cn('flex items-center gap-2.5', className)}>
         <LogoMark size={size} glow={glow} />
         <span className="text-lg font-bold tracking-tight" style={{ fontFamily: 'var(--font-display)' }}>
-          Pet<span className="text-[#FF7A6B]">Pal</span>
+          Pet<span className="text-[#FFAE6D]">Pal</span>
         </span>
       </div>
     )
@@ -35,7 +35,7 @@ function LogoMark({ size = 38, glow = false, className }: { size?: number; glow?
     <div
       className={cn(
         'relative inline-flex items-center justify-center shrink-0',
-        glow && 'shadow-[0_6px_28px_rgba(255,122,107,0.45)]',
+        glow && 'shadow-[0_6px_28px_rgba(255,174,109,0.45)]',
         className
       )}
       style={{ width: size, height: size, borderRadius: size * 0.28 }}
@@ -44,9 +44,9 @@ function LogoMark({ size = 38, glow = false, className }: { size?: number; glow?
       <svg viewBox="0 0 48 48" width={size} height={size} className="relative z-10">
         <defs>
           <linearGradient id={`${id}-tile`} x1="6" y1="2" x2="42" y2="46" gradientUnits="userSpaceOnUse">
-            <stop offset="0%" stopColor="#FFA694" />
-            <stop offset="50%" stopColor="#FF7A6B" />
-            <stop offset="100%" stopColor="#EC5440" />
+            <stop offset="0%" stopColor="#FFC79A" />
+            <stop offset="50%" stopColor="#FFAE6D" />
+            <stop offset="100%" stopColor="#E0682F" />
           </linearGradient>
           {/* Soft inner shadow for depth on the beans */}
           <radialGradient id={`${id}-bean`} cx="38%" cy="32%" r="75%">
@@ -75,7 +75,7 @@ function LogoMark({ size = 38, glow = false, className }: { size?: number; glow?
           <ellipse cx="34.2" cy="24" rx="3" ry="3.9" transform="rotate(24 34.2 24)" />
         </g>
         {/* tiny highlights on beans for a soft, real sheen */}
-        <g fill="#FF7A6B" opacity="0.35">
+        <g fill="#FFAE6D" opacity="0.35">
           <ellipse cx="19" cy="15" rx="1" ry="1.4" />
           <ellipse cx="27.4" cy="15" rx="1" ry="1.4" />
           <ellipse cx="22.5" cy="29" rx="1.6" ry="1.1" />

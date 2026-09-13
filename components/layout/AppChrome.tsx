@@ -46,7 +46,7 @@ export default function AppChrome({ children }: { children: React.ReactNode }) {
 
   if (signedIn && mode === 'app') {
     return (
-      <div className="flex min-h-screen bg-[#0C0A0A] text-zinc-100">
+      <div className="flex min-h-screen bg-[#0D0A14] text-zinc-100">
         <DashboardSidebar />
         <main className="flex-1 min-h-screen lg:pl-60">{children}</main>
       </div>
@@ -54,7 +54,7 @@ export default function AppChrome({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen bg-[#0C0A0A] text-zinc-100">
+    <div className="min-h-screen bg-[#0D0A14] text-zinc-100">
       <Navbar />
       <main className="min-h-screen pt-20">{children}</main>
     </div>

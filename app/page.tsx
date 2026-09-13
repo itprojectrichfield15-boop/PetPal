@@ -14,8 +14,8 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import Navbar from '@/components/public/Navbar'
 import Logo from '@/components/public/Logo'
-import IntroExperience from '@/components/public/IntroExperience'
 import Hero from '@/components/public/Hero'
+import AnimalField from '@/components/public/AnimalField'
 import {
   AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid
 } from 'recharts'
@@ -143,7 +143,7 @@ function NutritionDemo() {
           <div className="grid grid-cols-2 gap-2">
             {([['dog', 'Dog', Dog], ['cat', 'Cat', Cat]] as const).map(([k, label, Icon]) => (
               <button key={k} onClick={() => { setSpecies(k); setWeight(w => Math.min(w, SPECIES_CFG[k].maxKg)) }} aria-pressed={species === k}
-                className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border text-sm transition-all ${species === k ? 'bg-[#FF7A6B]/15 border-[#FF7A6B]/40 text-[#FF7A6B]' : 'bg-white/[0.03] border-white/8 text-zinc-400 hover:border-white/20'}`}>
+                className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border text-sm transition-all ${species === k ? 'bg-[#FFAE6D]/15 border-[#FFAE6D]/40 text-[#FFAE6D]' : 'bg-white/[0.03] border-white/8 text-zinc-400 hover:border-white/20'}`}>
                 <Icon className="w-4 h-4" /> {label}
               </button>
             ))}
@@ -152,16 +152,16 @@ function NutritionDemo() {
         <div>
           <div className="flex items-center justify-between mb-2">
             <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Weight</label>
-            <span className="font-mono text-sm text-[#FF7A6B] font-semibold">{weight} kg</span>
+            <span className="font-mono text-sm text-[#FFAE6D] font-semibold">{weight} kg</span>
           </div>
-          <input type="range" min={1} max={maxKg} value={Math.min(weight, maxKg)} onChange={e => setWeight(+e.target.value)} className="w-full accent-[#FF7A6B]" aria-label="Weight" />
+          <input type="range" min={1} max={maxKg} value={Math.min(weight, maxKg)} onChange={e => setWeight(+e.target.value)} className="w-full accent-[#FFAE6D]" aria-label="Weight" />
         </div>
         <div>
           <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider block mb-2">Life stage</label>
           <div className="grid grid-cols-3 gap-2">
             {(['young', 'adult', 'senior'] as const).map(s => (
               <button key={s} onClick={() => setLifeStage(s)} aria-pressed={lifeStage === s}
-                className={`px-2 py-2 rounded-xl border text-xs capitalize transition-all ${lifeStage === s ? 'bg-[#FF7A6B]/15 border-[#FF7A6B]/40 text-[#FF7A6B]' : 'bg-white/[0.03] border-white/8 text-zinc-400 hover:border-white/20'}`}>
+                className={`px-2 py-2 rounded-xl border text-xs capitalize transition-all ${lifeStage === s ? 'bg-[#FFAE6D]/15 border-[#FFAE6D]/40 text-[#FFAE6D]' : 'bg-white/[0.03] border-white/8 text-zinc-400 hover:border-white/20'}`}>
                 {s === 'young' ? SPECIES_CFG[species].youngLabel : s}
               </button>
             ))}
@@ -172,7 +172,7 @@ function NutritionDemo() {
           <div className="grid grid-cols-3 gap-2">
             {([['Low', 1.3], ['Normal', 1.6], ['High', 2.0]] as const).map(([label, f]) => (
               <button key={label} onClick={() => setActivity(f)} aria-pressed={activity === f}
-                className={`px-2 py-2 rounded-xl border text-xs transition-all ${activity === f ? 'bg-[#FF7A6B]/15 border-[#FF7A6B]/40 text-[#FF7A6B]' : 'bg-white/[0.03] border-white/8 text-zinc-400 hover:border-white/20'}`}>
+                className={`px-2 py-2 rounded-xl border text-xs transition-all ${activity === f ? 'bg-[#FFAE6D]/15 border-[#FFAE6D]/40 text-[#FFAE6D]' : 'bg-white/[0.03] border-white/8 text-zinc-400 hover:border-white/20'}`}>
                 {label}
               </button>
             ))}
@@ -181,10 +181,10 @@ function NutritionDemo() {
       </div>
 
       <div className="space-y-4">
-        <div className="glass-card rounded-2xl p-5" style={{ borderColor: 'rgba(255,122,107,0.3)' }}>
+        <div className="glass-card rounded-2xl p-5" style={{ borderColor: 'rgba(255,174,109,0.3)' }}>
           <div className="text-xs uppercase tracking-wider text-zinc-400 font-semibold mb-1">Daily calories</div>
           <div className="flex items-end gap-2">
-            <span className="text-5xl font-semibold tabular-nums text-[#FF7A6B]" style={{ fontFamily: 'var(--font-display)' }}>{mer}</span>
+            <span className="text-5xl font-semibold tabular-nums text-[#FFAE6D]" style={{ fontFamily: 'var(--font-display)' }}>{mer}</span>
             <span className="text-zinc-500 mb-2 text-sm">kcal / day</span>
           </div>
         </div>
@@ -211,10 +211,10 @@ function NutritionDemo() {
 function TestimonialCard({ t }: { t: typeof TESTIMONIALS[number] }) {
   return (
     <div className="glass-card rounded-2xl p-6 surface-hover h-full flex flex-col">
-      <Quote className="w-7 h-7 text-[#FF7A6B]/40 mb-4" />
+      <Quote className="w-7 h-7 text-[#FFAE6D]/40 mb-4" />
       <p className="text-zinc-300 leading-relaxed mb-6 flex-1">&ldquo;{t.quote}&rdquo;</p>
-      <div className="inline-flex items-center gap-2 self-start px-3 py-1.5 rounded-xl bg-[#FF7A6B]/10 border border-[#FF7A6B]/20 mb-5">
-        <span className="text-2xl font-semibold tabular-nums text-[#FF7A6B]" style={{ fontFamily: 'var(--font-display)' }}>{t.metric}</span>
+      <div className="inline-flex items-center gap-2 self-start px-3 py-1.5 rounded-xl bg-[#FFAE6D]/10 border border-[#FFAE6D]/20 mb-5">
+        <span className="text-2xl font-semibold tabular-nums text-[#FFAE6D]" style={{ fontFamily: 'var(--font-display)' }}>{t.metric}</span>
         <span className="text-[11px] text-zinc-400 leading-tight">{t.metricLabel}</span>
       </div>
       <div className="flex items-center gap-3 pt-4 border-t border-white/5">
@@ -267,12 +267,12 @@ function ImmersiveReveal() {
           <motion.div style={{ scale, y: imgY }} className="absolute inset-0">
             <Image src="https://images.unsplash.com/photo-1450778869180-41d0601e046e?w=1600&h=1000&fit=crop" alt="A person and their dog" fill className="object-cover" sizes="100vw" priority />
           </motion.div>
-          <div className="absolute inset-0 bg-gradient-to-t from-[#0C0A0A] via-[#0C0A0A]/30 to-[#0C0A0A]/20" />
-          <div className="absolute inset-0 bg-gradient-to-r from-[#0C0A0A]/60 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#0D0A14] via-[#0D0A14]/30 to-[#0D0A14]/20" />
+          <div className="absolute inset-0 bg-gradient-to-r from-[#0D0A14]/60 to-transparent" />
           <motion.div style={{ y: textY, opacity: textO }} className="absolute inset-0 flex flex-col justify-end p-8 md:p-16">
-            <p className="text-xs uppercase tracking-[0.3em] text-[#FF7A6B] mb-5">Why we built PetPal</p>
+            <p className="text-xs uppercase tracking-[0.3em] text-[#FFAE6D] mb-5">Why we built PetPal</p>
             <h2 className="text-4xl md:text-7xl font-semibold leading-[1.0] max-w-3xl mb-5" style={{ fontFamily: 'var(--font-display)' }}>
-              They give you their <span style={{ fontFamily: 'var(--font-serif)' }} className="italic text-[#FF7A6B]">whole</span> world.
+              They give you their <span style={{ fontFamily: 'var(--font-serif)' }} className="italic text-[#FFAE6D]">whole</span> world.
             </h2>
             <p className="text-lg md:text-xl text-zinc-200 max-w-xl leading-relaxed">
               The least we can do is make sure they&rsquo;re fed right, kept safe, and never one tap away from help.
@@ -321,7 +321,7 @@ function Slider3D() {
       <div className="absolute inset-0 bg-mesh-soft" aria-hidden="true" />
       <div className="relative max-w-7xl mx-auto px-6">
         <motion.div initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-14">
-          <Badge className="mb-5 bg-[#FF7A6B]/10 text-[#FF7A6B] border-[#FF7A6B]/30 font-mono"><PawPrint className="w-3 h-3 mr-1.5" /> HOW IT HELPS</Badge>
+          <Badge className="mb-5 bg-[#FFAE6D]/10 text-[#FFAE6D] border-[#FFAE6D]/30 font-mono"><PawPrint className="w-3 h-3 mr-1.5" /> HOW IT HELPS</Badge>
           <h2 className="text-4xl md:text-6xl font-semibold leading-[1.05]" style={{ fontFamily: 'var(--font-display)' }}>
             <span className="text-gradient-soft">Five ways PetPal</span> <span className="text-gradient-aurora">has your back.</span>
           </h2>
@@ -352,15 +352,15 @@ function Slider3D() {
                   style={{ pointerEvents: abs > 2 ? 'none' : 'auto' }}
                 >
                   <Image src={s.img} alt={s.title} fill className="object-cover" sizes="360px" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#0C0A0A] via-[#0C0A0A]/20 to-transparent" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#0D0A14] via-[#0D0A14]/20 to-transparent" />
                   <div className="absolute top-5 left-6 text-5xl font-semibold text-white/15 tabular-nums" style={{ fontFamily: 'var(--font-display)' }}>0{i + 1}</div>
                   <AnimatePresence>
                     {isCenter && (
                       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="absolute bottom-0 left-0 right-0 p-7">
-                        <Badge className="mb-3 bg-[#FF7A6B]/15 text-[#FF7A6B] border-[#FF7A6B]/30 font-mono text-[10px]">{s.tag}</Badge>
+                        <Badge className="mb-3 bg-[#FFAE6D]/15 text-[#FFAE6D] border-[#FFAE6D]/30 font-mono text-[10px]">{s.tag}</Badge>
                         <h3 className="text-2xl font-semibold mb-1.5" style={{ fontFamily: 'var(--font-display)' }}>{s.title}</h3>
                         <p className="text-zinc-300 text-sm leading-relaxed mb-4">{s.desc}</p>
-                        <Link href={s.href} className="inline-flex items-center gap-1.5 text-sm text-[#FF7A6B] font-medium" onClick={e => e.stopPropagation()}>Explore <ArrowUpRight className="w-4 h-4" /></Link>
+                        <Link href={s.href} className="inline-flex items-center gap-1.5 text-sm text-[#FFAE6D] font-medium" onClick={e => e.stopPropagation()}>Explore <ArrowUpRight className="w-4 h-4" /></Link>
                       </motion.div>
                     )}
                   </AnimatePresence>
@@ -372,14 +372,14 @@ function Slider3D() {
 
         {/* Controls */}
         <div className="flex items-center justify-center gap-5 mt-10">
-          <button onClick={() => setActive(a => (a - 1 + n) % n)} className="w-11 h-11 rounded-full glass-card flex items-center justify-center hover:border-[#FF7A6B]/40 transition-colors" aria-label="Previous"><ChevronLeft className="w-5 h-5" /></button>
+          <button onClick={() => setActive(a => (a - 1 + n) % n)} className="w-11 h-11 rounded-full glass-card flex items-center justify-center hover:border-[#FFAE6D]/40 transition-colors" aria-label="Previous"><ChevronLeft className="w-5 h-5" /></button>
           <div className="flex items-center gap-2">
             {SHOWCASE.map((_, i) => (
               <button key={i} onClick={() => setActive(i)} aria-label={`Go to slide ${i + 1}`}
-                className={`h-2 rounded-full transition-all ${i === active ? 'w-8 bg-[#FF7A6B]' : 'w-2 bg-white/15 hover:bg-white/30'}`} />
+                className={`h-2 rounded-full transition-all ${i === active ? 'w-8 bg-[#FFAE6D]' : 'w-2 bg-white/15 hover:bg-white/30'}`} />
             ))}
           </div>
-          <button onClick={() => setActive(a => (a + 1) % n)} className="w-11 h-11 rounded-full glass-card flex items-center justify-center hover:border-[#FF7A6B]/40 transition-colors" aria-label="Next"><ChevronRight className="w-5 h-5" /></button>
+          <button onClick={() => setActive(a => (a + 1) % n)} className="w-11 h-11 rounded-full glass-card flex items-center justify-center hover:border-[#FFAE6D]/40 transition-colors" aria-label="Next"><ChevronRight className="w-5 h-5" /></button>
         </div>
       </div>
     </section>
@@ -388,12 +388,12 @@ function Slider3D() {
 
 // ═══════════ Exploding Stats — burst-to-reveal ═══════════
 const EXPLODE = [
-  { icon: Apple, label: 'Nutrition plans', value: '2.4M', x: -240, y: -120, c: '#FF7A6B' },
-  { icon: ShieldCheck, label: 'Foods checked', value: '890k', x: 240, y: -130, c: '#2DD4BF' },
-  { icon: MapPin, label: 'Vets mapped', value: '12k', x: -270, y: 90, c: '#FFB84D' },
-  { icon: Heart, label: 'Wellness checks', value: '640k', x: 250, y: 110, c: '#FF7A6B' },
-  { icon: Activity, label: 'Weigh-ins logged', value: '5.1M', x: -120, y: 180, c: '#2DD4BF' },
-  { icon: Stethoscope, label: 'Vet bookings', value: '210k', x: 130, y: 190, c: '#FFB84D' },
+  { icon: Apple, label: 'Nutrition plans', value: '2.4M', x: -240, y: -120, c: '#FFAE6D' },
+  { icon: ShieldCheck, label: 'Foods checked', value: '890k', x: 240, y: -130, c: '#8E8BF5' },
+  { icon: MapPin, label: 'Vets mapped', value: '12k', x: -270, y: 90, c: '#FFD98E' },
+  { icon: Heart, label: 'Wellness checks', value: '640k', x: 250, y: 110, c: '#FFAE6D' },
+  { icon: Activity, label: 'Weigh-ins logged', value: '5.1M', x: -120, y: 180, c: '#8E8BF5' },
+  { icon: Stethoscope, label: 'Vet bookings', value: '210k', x: 130, y: 190, c: '#FFD98E' },
 ]
 
 function ExplodeStats() {
@@ -421,8 +421,8 @@ function ExplodeStats() {
           className="relative h-[400px] sm:h-[520px] flex items-center justify-center"
         >
           {/* Pulsing rings */}
-          <div className="absolute w-32 h-32 sm:w-40 sm:h-40 rounded-full border border-[#FF7A6B]/20 animate-pulse-ring" />
-          <div className="absolute w-32 h-32 sm:w-40 sm:h-40 rounded-full border border-[#FF7A6B]/20 animate-pulse-ring" style={{ animationDelay: '0.8s' }} />
+          <div className="absolute w-32 h-32 sm:w-40 sm:h-40 rounded-full border border-[#FFAE6D]/20 animate-pulse-ring" />
+          <div className="absolute w-32 h-32 sm:w-40 sm:h-40 rounded-full border border-[#FFAE6D]/20 animate-pulse-ring" style={{ animationDelay: '0.8s' }} />
 
           {/* Core paw — click to re-explode */}
           <motion.button
@@ -430,7 +430,7 @@ function ExplodeStats() {
             whileTap={{ scale: 0.9 }}
             animate={{ rotate: cycle * 360 }}
             transition={{ type: 'spring', stiffness: 140, damping: 12 }}
-            className="relative z-10 w-24 h-24 sm:w-28 sm:h-28 rounded-[1.75rem] bg-gradient-to-br from-[#FF9485] to-[#EC5440] flex items-center justify-center shadow-[0_12px_50px_rgba(255,122,107,0.5)] hover:scale-105 transition-transform"
+            className="relative z-10 w-24 h-24 sm:w-28 sm:h-28 rounded-[1.75rem] bg-gradient-to-br from-[#FFBE8C] to-[#E0682F] flex items-center justify-center shadow-[0_12px_50px_rgba(255,174,109,0.5)] hover:scale-105 transition-transform"
             aria-label="Replay animation"
           >
             <Logo size={vw < 640 ? 52 : 64} />
@@ -470,8 +470,11 @@ function ExplodeStats() {
 // ─────────── MAIN ───────────
 export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-[#0C0A0A] text-zinc-100 overflow-x-hidden">
-      <IntroExperience />
+    <div className="relative min-h-screen text-zinc-100 overflow-x-hidden">
+      {/* Fixed 3D layer behind every section — morphs dog -> cat -> bird ->
+          rabbit -> fish across the length of the page. */}
+      <AnimalField />
+      <div className="relative z-10">
       <Navbar />
 
       {/* ─── HERO ─── */}
@@ -485,10 +488,10 @@ export default function LandingPage() {
             {STATS.map((s, i) => (
               <motion.div key={s.label} initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1, duration: 0.6 }}
                 className="glass-card rounded-2xl p-5 surface-hover">
-                <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-4 bg-[#FF7A6B]/12 border border-[#FF7A6B]/20">
-                  <s.icon className="w-4 h-4 text-[#FF7A6B]" />
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-4 bg-[#FFAE6D]/12 border border-[#FFAE6D]/20">
+                  <s.icon className="w-4 h-4 text-[#FFAE6D]" />
                 </div>
-                <div className="text-4xl lg:text-5xl font-semibold mb-1 tabular-nums text-[#FF7A6B]" style={{ fontFamily: 'var(--font-display)' }}>
+                <div className="text-4xl lg:text-5xl font-semibold mb-1 tabular-nums text-[#FFAE6D]" style={{ fontFamily: 'var(--font-display)' }}>
                   <Counter to={s.value} suffix={s.suffix} />
                 </div>
                 <p className="text-zinc-300 text-sm mb-1">{s.label}</p>
@@ -500,11 +503,11 @@ export default function LandingPage() {
       </section>
 
       {/* ─── SPECIES TICKER ─── */}
-      <div className="border-b border-white/5 py-5 overflow-hidden bg-[#100D0E]">
+      <div className="border-b border-white/5 py-5 overflow-hidden bg-[#130F1C]">
         <div className="animate-marquee-x">
           {[...SPECIES_TICKER, ...SPECIES_TICKER].map((s, i) => (
             <div key={i} className="mx-6 flex items-center gap-2 whitespace-nowrap text-sm text-zinc-400">
-              <PawPrint className="w-3.5 h-3.5 text-[#FF7A6B]" /> {s}
+              <PawPrint className="w-3.5 h-3.5 text-[#FFAE6D]" /> {s}
             </div>
           ))}
         </div>
@@ -522,7 +525,7 @@ export default function LandingPage() {
       {/* ─── BENTO FEATURES ─── */}
       <section className="py-32 px-6 max-w-7xl mx-auto">
         <motion.div initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="max-w-3xl mb-16">
-          <Badge className="mb-5 bg-[#FF7A6B]/10 text-[#FF7A6B] border-[#FF7A6B]/30 font-mono">
+          <Badge className="mb-5 bg-[#FFAE6D]/10 text-[#FFAE6D] border-[#FFAE6D]/30 font-mono">
             <PawPrint className="w-3 h-3 mr-1.5" /> THE PLATFORM
           </Badge>
           <h2 className="text-5xl md:text-6xl font-semibold mb-6 leading-[1.05] tracking-tight" style={{ fontFamily: 'var(--font-display)' }}>
@@ -539,13 +542,13 @@ export default function LandingPage() {
             <motion.div key={f.title} initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.08, duration: 0.5 }}
               className={f.span}>
               <Tilt className="group relative h-full p-7 rounded-3xl glass-card surface-hover overflow-hidden">
-                <div className="absolute -top-24 -right-24 w-64 h-64 rounded-full opacity-[0.12] group-hover:opacity-30 transition-opacity duration-500" style={{ background: 'radial-gradient(circle, #FF7A6B, transparent 70%)' }} />
+                <div className="absolute -top-24 -right-24 w-64 h-64 rounded-full opacity-[0.12] group-hover:opacity-30 transition-opacity duration-500" style={{ background: 'radial-gradient(circle, #FFAE6D, transparent 70%)' }} />
                 <div className="relative" style={{ transform: 'translateZ(40px)' }}>
                   <div className="flex items-center gap-3 mb-5">
-                    <div className="w-11 h-11 rounded-xl flex items-center justify-center backdrop-blur-sm bg-[#FF7A6B]/12 border border-[#FF7A6B]/20">
-                      <f.icon className="w-5 h-5 text-[#FF7A6B]" />
+                    <div className="w-11 h-11 rounded-xl flex items-center justify-center backdrop-blur-sm bg-[#FFAE6D]/12 border border-[#FFAE6D]/20">
+                      <f.icon className="w-5 h-5 text-[#FFAE6D]" />
                     </div>
-                    <Badge className="text-[10px] font-mono uppercase bg-[#FF7A6B]/10 text-[#FF7A6B] border-[#FF7A6B]/25">{f.tag}</Badge>
+                    <Badge className="text-[10px] font-mono uppercase bg-[#FFAE6D]/10 text-[#FFAE6D] border-[#FFAE6D]/25">{f.tag}</Badge>
                   </div>
                   <h3 className="text-xl font-semibold mb-2.5 tracking-tight" style={{ fontFamily: 'var(--font-display)' }}>{f.title}</h3>
                   <p className="text-zinc-400 text-sm leading-relaxed">{f.desc}</p>
@@ -561,7 +564,7 @@ export default function LandingPage() {
         <div className="absolute inset-0 bg-mesh-soft" aria-hidden="true" />
         <div className="relative max-w-7xl mx-auto px-6 grid lg:grid-cols-2 gap-16 items-start">
           <motion.div initial={{ opacity: 0, x: -16 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }}>
-            <Badge className="mb-5 bg-[#FF7A6B]/10 text-[#FF7A6B] border-[#FF7A6B]/30 font-mono">
+            <Badge className="mb-5 bg-[#FFAE6D]/10 text-[#FFAE6D] border-[#FFAE6D]/30 font-mono">
               <Apple className="w-3 h-3 mr-1.5" /> NUTRITION PLANNER
             </Badge>
             <h2 className="text-5xl md:text-6xl font-semibold mb-6 leading-[1.05]" style={{ fontFamily: 'var(--font-display)' }}>
@@ -575,7 +578,7 @@ export default function LandingPage() {
             <ul className="space-y-3 mb-10">
               {['Vet-grade RER/MER calorie math', 'Adjusts for breed, life stage & activity', 'Exact grams, cups and meals per day', 'Re-plans automatically as they grow'].map(t => (
                 <li key={t} className="flex items-center gap-3 text-sm text-zinc-300">
-                  <CheckCircle2 className="w-5 h-5 text-[#FF7A6B] shrink-0" /> {t}
+                  <CheckCircle2 className="w-5 h-5 text-[#FFAE6D] shrink-0" /> {t}
                 </li>
               ))}
             </ul>
@@ -586,12 +589,12 @@ export default function LandingPage() {
 
           <motion.div initial={{ opacity: 0, x: 16 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} className="lg:sticky lg:top-32">
             <div className="relative p-7 rounded-3xl border-gradient glass-card shadow-2xl">
-              <div className="absolute -top-3 -right-3 w-12 h-12 rounded-full bg-gradient-to-br from-[#FF7A6B] to-[#2DD4BF] flex items-center justify-center shadow-[0_8px_30px_rgba(255,122,107,0.5)]">
-                <Apple className="w-5 h-5 text-[#2A0E0A]" />
+              <div className="absolute -top-3 -right-3 w-12 h-12 rounded-full bg-gradient-to-br from-[#FFAE6D] to-[#8E8BF5] flex items-center justify-center shadow-[0_8px_30px_rgba(255,174,109,0.5)]">
+                <Apple className="w-5 h-5 text-[#2A1A08]" />
               </div>
               <div className="flex items-center justify-between mb-5">
                 <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Live Demo</span>
-                <div className="flex items-center gap-1.5 text-[10px] text-[#FF7A6B]"><span className="w-1.5 h-1.5 rounded-full bg-[#FF7A6B] animate-pulse" /> Calculating</div>
+                <div className="flex items-center gap-1.5 text-[10px] text-[#FFAE6D]"><span className="w-1.5 h-1.5 rounded-full bg-[#FFAE6D] animate-pulse" /> Calculating</div>
               </div>
               <NutritionDemo />
             </div>
@@ -602,7 +605,7 @@ export default function LandingPage() {
       {/* ─── HEALTH TRACKING ─── */}
       <section className="py-32 px-6 max-w-7xl mx-auto grid lg:grid-cols-2 gap-12 items-center">
         <motion.div initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
-          <Badge className="mb-5 bg-[#FF7A6B]/10 text-[#FF7A6B] border-[#FF7A6B]/30 font-mono">
+          <Badge className="mb-5 bg-[#FFAE6D]/10 text-[#FFAE6D] border-[#FFAE6D]/30 font-mono">
             <Activity className="w-3 h-3 mr-1.5" /> HEALTH TRACKING
           </Badge>
           <h2 className="text-5xl font-semibold mb-5 leading-[1.05]" style={{ fontFamily: 'var(--font-display)' }}>
@@ -615,7 +618,7 @@ export default function LandingPage() {
           <div className="grid grid-cols-3 gap-4">
             {[{ icon: Syringe, label: 'Vaccines', v: 'On track' }, { icon: Bell, label: 'Reminders', v: '3 upcoming' }, { icon: Scale, label: 'Weight', v: '−1.4 kg' }].map(s => (
               <div key={s.label} className="glass-card rounded-xl p-4">
-                <s.icon className="w-4 h-4 text-[#FF7A6B] mb-2" />
+                <s.icon className="w-4 h-4 text-[#FFAE6D] mb-2" />
                 <div className="text-lg font-semibold tabular-nums" style={{ fontFamily: 'var(--font-display)' }}>{s.v}</div>
                 <div className="text-[11px] text-zinc-500">{s.label}</div>
               </div>
@@ -625,22 +628,22 @@ export default function LandingPage() {
 
         <motion.div initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="glass-card rounded-3xl p-6">
           <div className="flex items-center justify-between mb-4">
-            <span className="text-sm font-semibold flex items-center gap-2"><Dog className="w-4 h-4 text-[#FF7A6B]" /> Biscuit · weight (kg)</span>
-            <Badge className="bg-[#FF7A6B]/10 text-[#FF7A6B] border-[#FF7A6B]/30 text-xs">Healthy trend</Badge>
+            <span className="text-sm font-semibold flex items-center gap-2"><Dog className="w-4 h-4 text-[#FFAE6D]" /> Biscuit · weight (kg)</span>
+            <Badge className="bg-[#FFAE6D]/10 text-[#FFAE6D] border-[#FFAE6D]/30 text-xs">Healthy trend</Badge>
           </div>
           <ResponsiveContainer width="100%" height={260}>
             <AreaChart data={TREND_DATA}>
               <defs>
                 <linearGradient id="wgrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#FF7A6B" stopOpacity={0.5} />
-                  <stop offset="100%" stopColor="#FF7A6B" stopOpacity={0} />
+                  <stop offset="0%" stopColor="#FFAE6D" stopOpacity={0.5} />
+                  <stop offset="100%" stopColor="#FFAE6D" stopOpacity={0} />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
-              <XAxis dataKey="week" tick={{ fill: '#A79F9C', fontSize: 11 }} axisLine={false} tickLine={false} />
-              <YAxis domain={['dataMin - 0.5', 'dataMax + 0.5']} tick={{ fill: '#A79F9C', fontSize: 11 }} axisLine={false} tickLine={false} />
-              <Tooltip contentStyle={{ background: '#1A1516', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, fontSize: 12 }} />
-              <Area type="monotone" dataKey="weight" stroke="#FF7A6B" strokeWidth={2.5} fill="url(#wgrad)" />
+              <XAxis dataKey="week" tick={{ fill: '#A79CBF', fontSize: 11 }} axisLine={false} tickLine={false} />
+              <YAxis domain={['dataMin - 0.5', 'dataMax + 0.5']} tick={{ fill: '#A79CBF', fontSize: 11 }} axisLine={false} tickLine={false} />
+              <Tooltip contentStyle={{ background: '#1C1630', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, fontSize: 12 }} />
+              <Area type="monotone" dataKey="weight" stroke="#FFAE6D" strokeWidth={2.5} fill="url(#wgrad)" />
             </AreaChart>
           </ResponsiveContainer>
         </motion.div>
@@ -651,7 +654,7 @@ export default function LandingPage() {
         <div className="absolute inset-0 bg-mesh-soft" aria-hidden="true" />
         <div className="relative max-w-7xl mx-auto px-6">
           <motion.div initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-16">
-            <Badge className="mb-5 bg-[#FF7A6B]/10 text-[#FF7A6B] border-[#FF7A6B]/30 font-mono">
+            <Badge className="mb-5 bg-[#FFAE6D]/10 text-[#FFAE6D] border-[#FFAE6D]/30 font-mono">
               <Heart className="w-3 h-3 mr-1.5" /> HAPPY TAILS
             </Badge>
             <h2 className="text-5xl md:text-6xl font-semibold mb-5 leading-[1.05]" style={{ fontFamily: 'var(--font-display)' }}>
@@ -710,7 +713,7 @@ export default function LandingPage() {
             <div className="md:col-span-2">
               <Link href="/" className="flex items-center gap-2.5 mb-4">
                 <Logo size={36} />
-                <span className="text-lg font-bold" style={{ fontFamily: 'var(--font-display)' }}>Pet<span className="text-[#FF7A6B]">Pal</span></span>
+                <span className="text-lg font-bold" style={{ fontFamily: 'var(--font-display)' }}>Pet<span className="text-[#FFAE6D]">Pal</span></span>
               </Link>
               <p className="text-zinc-400 text-sm leading-relaxed max-w-sm">
                 The all-in-one companion for pet owners — nutrition, health, safety and care, beautifully in one place.
@@ -735,10 +738,11 @@ export default function LandingPage() {
           </div>
           <div className="pt-8 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-zinc-500">
             <p>&copy; 2026 PetPal · Made for the ones who never let you down.</p>
-            <div className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-[#FF7A6B] animate-pulse" /> All systems operational</div>
+            <div className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-[#FFAE6D] animate-pulse" /> All systems operational</div>
           </div>
         </div>
       </footer>
+      </div>
     </div>
   )
 }

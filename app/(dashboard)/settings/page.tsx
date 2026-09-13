@@ -33,12 +33,12 @@ const TABS = [
  * with an honest name.
  */
 const ACCENTS = [
-  { name: 'Coral', color: '#FF7A6B' },
-  { name: 'Teal', color: '#2DD4BF' },
-  { name: 'Amber', color: '#FFB84D' },
-  { name: 'Violet', color: '#A78BFA' },
-  { name: 'Sky', color: '#38BDF8' },
-  { name: 'Rose', color: '#FB7185' },
+  { name: 'Coral', color: '#FFAE6D' },
+  { name: 'Teal', color: '#8E8BF5' },
+  { name: 'Amber', color: '#FFD98E' },
+  { name: 'Violet', color: '#B6A6FF' },
+  { name: 'Sky', color: '#68C9F0' },
+  { name: 'Rose', color: '#FF8FA6' },
 ]
 
 /** Preference defaults, overlaid with whatever this device has saved. */
@@ -71,7 +71,7 @@ export default function SettingsPage() {
   // pre-rename pawpal_* keys.
   const savedAccent = useClientValue(() => readRaw(KEYS.accent), null)
   const [accentEdited, setAccentEdited] = useState<string | null>(null)
-  const accent = accentEdited ?? savedAccent ?? '#FF7A6B'
+  const accent = accentEdited ?? savedAccent ?? '#FFAE6D'
   const setAccent = setAccentEdited
 
   // Toggles — defaults, overlaid with whatever was saved on this device.
@@ -149,7 +149,7 @@ export default function SettingsPage() {
         <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
           <div className="flex items-center gap-2 mb-1">
             <h1 className="text-4xl font-black tracking-tight" style={{ fontFamily: 'var(--font-display)' }}>Settings</h1>
-            <Badge className="bg-[#2DD4BF]/10 text-[#2DD4BF] border-[#2DD4BF]/30 font-mono text-[10px]">LIVE</Badge>
+            <Badge className="bg-[#8E8BF5]/10 text-[#8E8BF5] border-[#8E8BF5]/30 font-mono text-[10px]">LIVE</Badge>
           </div>
           <p className="text-zinc-400 text-sm">Manage your account, privacy, and preferences.</p>
         </motion.div>
@@ -163,7 +163,7 @@ export default function SettingsPage() {
                 onClick={() => setTab(t.key)}
                 className={`flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm whitespace-nowrap transition-all ${
                   tab === t.key
-                    ? 'bg-[#FF7A6B]/12 text-[#FF7A6B] border border-[#FF7A6B]/20'
+                    ? 'bg-[#FFAE6D]/12 text-[#FFAE6D] border border-[#FFAE6D]/20'
                     : 'text-zinc-400 hover:text-white hover:bg-white/5 border border-transparent'
                 }`}
               >
@@ -188,36 +188,36 @@ export default function SettingsPage() {
                     {/* Avatar */}
                     <div className="flex items-center gap-5 mb-6">
                       <div className="relative">
-                        <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-[#FF7A6B] via-[#2DD4BF] to-[#FFB84D] flex items-center justify-center text-2xl font-black text-white" style={{ fontFamily: 'var(--font-display)' }}>
+                        <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-[#FFAE6D] via-[#8E8BF5] to-[#FFD98E] flex items-center justify-center text-2xl font-black text-white" style={{ fontFamily: 'var(--font-display)' }}>
                           {displayName.slice(0, 2).toUpperCase()}
                         </div>
-                        <button className="absolute -bottom-1 -right-1 w-7 h-7 rounded-lg bg-[#161213] border border-white/10 flex items-center justify-center hover:bg-[#1A1516]" aria-label="Change avatar">
+                        <button className="absolute -bottom-1 -right-1 w-7 h-7 rounded-lg bg-[#171226] border border-white/10 flex items-center justify-center hover:bg-[#1C1630]" aria-label="Change avatar">
                           <Camera className="w-3.5 h-3.5" />
                         </button>
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
                           <span className="font-semibold">{displayName}</span>
-                          <BadgeCheck className="w-4 h-4 text-[#2DD4BF]" />
+                          <BadgeCheck className="w-4 h-4 text-[#8E8BF5]" />
                         </div>
                         <p className="text-zinc-400 text-xs mt-0.5">Member since June 2026 · 2 pets</p>
                       </div>
                     </div>
 
                     <Field label="Display Name">
-                      <Input value={displayName} onChange={e => setDisplayName(e.target.value)} className="bg-[#100D0E] border-white/10 focus:border-[#FF7A6B]/50" />
+                      <Input value={displayName} onChange={e => setDisplayName(e.target.value)} className="bg-[#130F1C] border-white/10 focus:border-[#FFAE6D]/50" />
                     </Field>
                     <Field label="Email">
                       <div className="relative">
                         <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
-                        <Input value={email} disabled className="pl-10 bg-[#100D0E] border-white/10 opacity-60" />
+                        <Input value={email} disabled className="pl-10 bg-[#130F1C] border-white/10 opacity-60" />
                       </div>
                     </Field>
                     <Field label="Bio (optional)">
                       <textarea
                         value={bio} onChange={e => setBio(e.target.value)}
                         placeholder="Tell us about your pets…" rows={3}
-                        className="w-full px-3 py-2 rounded-lg bg-[#100D0E] border border-white/10 text-sm focus:outline-none focus:border-[#FF7A6B]/50 resize-none"
+                        className="w-full px-3 py-2 rounded-lg bg-[#130F1C] border border-white/10 text-sm focus:outline-none focus:border-[#FFAE6D]/50 resize-none"
                       />
                     </Field>
                   </Card>
@@ -260,8 +260,8 @@ export default function SettingsPage() {
                       <Button variant="outline" size="sm" className="border-white/15" onClick={() => toast.info('Password reset email sent (demo)')}>Update</Button>
                     </div>
                   </Card>
-                  <div className="p-4 rounded-xl bg-[#2DD4BF]/5 border border-[#2DD4BF]/20 flex items-start gap-3">
-                    <Shield className="w-4 h-4 text-[#2DD4BF] mt-0.5 shrink-0" />
+                  <div className="p-4 rounded-xl bg-[#8E8BF5]/5 border border-[#8E8BF5]/20 flex items-start gap-3">
+                    <Shield className="w-4 h-4 text-[#8E8BF5] mt-0.5 shrink-0" />
                     <p className="text-xs text-zinc-400 leading-relaxed">Your data is encrypted and never sold. We only use it to give your pets better care.</p>
                   </div>
                 </>
@@ -297,18 +297,18 @@ export default function SettingsPage() {
               {tab === 'account' && (
                 <>
                   <Card title="Plan" desc="You're on the free plan — forever.">
-                    <div className="p-5 rounded-2xl border-gradient border border-white/8 bg-gradient-to-br from-[#161213] to-[#161213]">
+                    <div className="p-5 rounded-2xl border-gradient border border-white/8 bg-gradient-to-br from-[#171226] to-[#171226]">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                          <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#FF7A6B] to-[#2DD4BF] flex items-center justify-center">
+                          <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#FFAE6D] to-[#8E8BF5] flex items-center justify-center">
                             <Flame className="w-5 h-5 text-white" />
                           </div>
                           <div>
-                            <div className="font-bold flex items-center gap-2">Free Forever <Sparkles className="w-3.5 h-3.5 text-[#FFB84D]" /></div>
+                            <div className="font-bold flex items-center gap-2">Free Forever <Sparkles className="w-3.5 h-3.5 text-[#FFD98E]" /></div>
                             <div className="text-xs text-zinc-400">Unlimited pets, plans & tools</div>
                           </div>
                         </div>
-                        <Badge className="bg-[#2DD4BF]/10 text-[#2DD4BF] border-[#2DD4BF]/20">ACTIVE</Badge>
+                        <Badge className="bg-[#8E8BF5]/10 text-[#8E8BF5] border-[#8E8BF5]/20">ACTIVE</Badge>
                       </div>
                     </div>
                   </Card>
@@ -321,7 +321,7 @@ export default function SettingsPage() {
                           <div className="text-xs text-zinc-400">Johannesburg, ZA · Active now</div>
                         </div>
                       </div>
-                      <Badge className="bg-[#2DD4BF]/10 text-[#2DD4BF] border-[#2DD4BF]/20 text-xs">Current</Badge>
+                      <Badge className="bg-[#8E8BF5]/10 text-[#8E8BF5] border-[#8E8BF5]/20 text-xs">Current</Badge>
                     </div>
                     <button onClick={() => toast.success('Signed out of all other sessions')} className="text-sm text-zinc-400 hover:text-white mt-3 flex items-center gap-2">
                       <LogOut className="w-4 h-4" /> Sign out of all other sessions
@@ -330,10 +330,10 @@ export default function SettingsPage() {
                   <Card title="Danger Zone" desc="Irreversible account actions." danger>
                     <div className="flex items-center justify-between">
                       <div>
-                        <div className="text-sm font-medium text-[#FF7A6B]">Delete account</div>
+                        <div className="text-sm font-medium text-[#FFAE6D]">Delete account</div>
                         <div className="text-xs text-zinc-400">Permanently remove your account and all data</div>
                       </div>
-                      <Button variant="outline" size="sm" className="border-[#FF7A6B]/30 text-[#FF7A6B] hover:bg-[#FF7A6B]/10" onClick={() => toast.error('Account deletion is disabled in demo mode')}>
+                      <Button variant="outline" size="sm" className="border-[#FFAE6D]/30 text-[#FFAE6D] hover:bg-[#FFAE6D]/10" onClick={() => toast.error('Account deletion is disabled in demo mode')}>
                         <Trash2 className="w-4 h-4 mr-1.5" /> Delete
                       </Button>
                     </div>
@@ -350,9 +350,9 @@ export default function SettingsPage() {
 
 function Card({ title, desc, children, danger }: { title: string; desc?: string; children: React.ReactNode; danger?: boolean }) {
   return (
-    <div className={`p-6 glass-card rounded-2xl ${danger ? '!border-[#FF7A6B]/20' : ''}`}>
+    <div className={`p-6 glass-card rounded-2xl ${danger ? '!border-[#FFAE6D]/20' : ''}`}>
       <div className="mb-5">
-        <h2 className={`font-bold ${danger ? 'text-[#FF7A6B]' : ''}`}>{title}</h2>
+        <h2 className={`font-bold ${danger ? 'text-[#FFAE6D]' : ''}`}>{title}</h2>
         {desc && <p className="text-zinc-400 text-xs mt-0.5">{desc}</p>}
       </div>
       {children}
@@ -383,7 +383,7 @@ function ToggleRow({ icon: Icon, label, desc, checked, onChange, disabled }: {
           <div className="text-xs text-zinc-400">{desc}</div>
         </div>
       </div>
-      <Switch checked={checked} onCheckedChange={onChange} disabled={disabled} className="data-[state=checked]:bg-[#FF7A6B]" />
+      <Switch checked={checked} onCheckedChange={onChange} disabled={disabled} className="data-[state=checked]:bg-[#FFAE6D]" />
     </div>
   )
 }
@@ -392,7 +392,7 @@ function SaveBar({ onSave }: { onSave: () => void }) {
   return (
     <div className="flex justify-end gap-3">
       <Button variant="outline" className="border-white/15">Cancel</Button>
-      <Button onClick={onSave} className="bg-gradient-to-r from-[#FF7A6B] to-[#2DD4BF] hover:from-[#F2604F] text-white border-0">
+      <Button onClick={onSave} className="bg-gradient-to-r from-[#FFAE6D] to-[#8E8BF5] hover:from-[#F2814F] text-white border-0">
         <Check className="w-4 h-4 mr-1.5" /> Save Changes
       </Button>
     </div>

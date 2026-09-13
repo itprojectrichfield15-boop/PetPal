@@ -39,7 +39,7 @@ export default function PetsPage() {
         <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-4xl lg:text-5xl font-semibold tracking-tight mb-2" style={{ fontFamily: 'var(--font-display)' }}>
-              My <span className="text-[#FF7A6B]">Pets</span>
+              My <span className="text-[#FFAE6D]">Pets</span>
             </h1>
             <p className="text-zinc-400">Every companion, all in one place.</p>
           </div>
@@ -53,8 +53,8 @@ export default function PetsPage() {
               <motion.div key={p.id} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07 }}
                 className="glass-card rounded-3xl p-6 surface-hover">
                 <div className="flex items-center gap-4 mb-5">
-                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#FF7A6B] to-[#2DD4BF] flex items-center justify-center">
-                    <Icon className="w-8 h-8 text-[#2A0E0A]" />
+                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#FFAE6D] to-[#8E8BF5] flex items-center justify-center">
+                    <Icon className="w-8 h-8 text-[#2A1A08]" />
                   </div>
                   <div>
                     <div className="text-xl font-semibold" style={{ fontFamily: 'var(--font-display)' }}>{p.name}</div>
@@ -63,15 +63,15 @@ export default function PetsPage() {
                 </div>
                 <div className="grid grid-cols-3 gap-2 mb-4">
                   <div className="glass-card rounded-xl p-3 text-center">
-                    <Scale className="w-4 h-4 text-[#FF7A6B] mx-auto mb-1" />
+                    <Scale className="w-4 h-4 text-[#FFAE6D] mx-auto mb-1" />
                     <div className="text-sm font-semibold tabular-nums">{p.weight ?? '—'} kg</div>
                   </div>
                   <div className="glass-card rounded-xl p-3 text-center">
-                    <Apple className="w-4 h-4 text-[#FF7A6B] mx-auto mb-1" />
+                    <Apple className="w-4 h-4 text-[#FFAE6D] mx-auto mb-1" />
                     <div className="text-sm font-semibold">On plan</div>
                   </div>
                   <div className="glass-card rounded-xl p-3 text-center">
-                    <Syringe className="w-4 h-4 text-[#FF7A6B] mx-auto mb-1" />
+                    <Syringe className="w-4 h-4 text-[#FFAE6D] mx-auto mb-1" />
                     <div className="text-sm font-semibold">Current</div>
                   </div>
                 </div>
@@ -80,8 +80,8 @@ export default function PetsPage() {
             )
           })}
           <Link href="/add-pet">
-            <div className="glass-card rounded-3xl p-6 h-full flex flex-col items-center justify-center text-center border-dashed border-white/15 hover:border-[#FF7A6B]/40 transition-all min-h-[220px] cursor-pointer">
-              <Plus className="w-7 h-7 text-[#FF7A6B] mb-2" />
+            <div className="glass-card rounded-3xl p-6 h-full flex flex-col items-center justify-center text-center border-dashed border-white/15 hover:border-[#FFAE6D]/40 transition-all min-h-[220px] cursor-pointer">
+              <Plus className="w-7 h-7 text-[#FFAE6D] mb-2" />
               <span className="text-sm text-zinc-300">Add another pet</span>
             </div>
           </Link>

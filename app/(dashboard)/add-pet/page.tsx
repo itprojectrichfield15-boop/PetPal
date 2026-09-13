@@ -56,7 +56,7 @@ export default function AddPetPage() {
       <div className="relative p-6 lg:p-8 max-w-2xl mx-auto">
         <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
           <h1 className="text-4xl lg:text-5xl font-semibold tracking-tight mb-2" style={{ fontFamily: 'var(--font-display)' }}>
-            Add a <span className="text-[#FF7A6B]">Pet</span>
+            Add a <span className="text-[#FFAE6D]">Pet</span>
           </h1>
           <p className="text-zinc-400">Set up a profile to unlock nutrition plans, reminders and health tracking.</p>
         </motion.div>
@@ -64,13 +64,13 @@ export default function AddPetPage() {
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="glass-card rounded-3xl p-6 space-y-6">
           {/* Avatar */}
           <div className="flex items-center gap-4">
-            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-[#FF7A6B] to-[#2DD4BF] flex items-center justify-center relative">
-              <SpeciesIcon className="w-9 h-9 text-[#2A0E0A]" />
-              <button className="absolute -bottom-1 -right-1 w-7 h-7 rounded-lg bg-[#1A1516] border border-white/10 flex items-center justify-center" aria-label="Add photo"><Camera className="w-3.5 h-3.5" /></button>
+            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-[#FFAE6D] to-[#8E8BF5] flex items-center justify-center relative">
+              <SpeciesIcon className="w-9 h-9 text-[#2A1A08]" />
+              <button className="absolute -bottom-1 -right-1 w-7 h-7 rounded-lg bg-[#1C1630] border border-white/10 flex items-center justify-center" aria-label="Add photo"><Camera className="w-3.5 h-3.5" /></button>
             </div>
             <div className="flex-1">
               <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider block mb-2">Name</label>
-              <Input value={form.name} onChange={e => set('name', e.target.value)} placeholder="e.g. Biscuit" className="bg-[#100D0E] border-white/10 focus:border-[#FF7A6B]/40" />
+              <Input value={form.name} onChange={e => set('name', e.target.value)} placeholder="e.g. Biscuit" className="bg-[#130F1C] border-white/10 focus:border-[#FFAE6D]/40" />
             </div>
           </div>
 
@@ -80,7 +80,7 @@ export default function AddPetPage() {
             <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
               {SPECIES.map(s => (
                 <button key={s.key} onClick={() => set('species', s.key)} aria-pressed={form.species === s.key}
-                  className={`flex flex-col items-center gap-1.5 py-3 rounded-xl border text-xs transition-all ${form.species === s.key ? 'bg-[#FF7A6B]/15 border-[#FF7A6B]/40 text-[#FF7A6B]' : 'bg-white/[0.03] border-white/8 text-zinc-400 hover:border-white/20'}`}>
+                  className={`flex flex-col items-center gap-1.5 py-3 rounded-xl border text-xs transition-all ${form.species === s.key ? 'bg-[#FFAE6D]/15 border-[#FFAE6D]/40 text-[#FFAE6D]' : 'bg-white/[0.03] border-white/8 text-zinc-400 hover:border-white/20'}`}>
                   <s.icon className="w-5 h-5" /> {s.label}
                 </button>
               ))}
@@ -90,22 +90,22 @@ export default function AddPetPage() {
           <div className="grid sm:grid-cols-2 gap-4">
             <div>
               <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider block mb-2">Breed</label>
-              <Input value={form.breed} onChange={e => set('breed', e.target.value)} placeholder="e.g. Beagle" className="bg-[#100D0E] border-white/10 focus:border-[#FF7A6B]/40" />
+              <Input value={form.breed} onChange={e => set('breed', e.target.value)} placeholder="e.g. Beagle" className="bg-[#130F1C] border-white/10 focus:border-[#FFAE6D]/40" />
             </div>
             <div>
               <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider block mb-2">Age</label>
-              <Input value={form.age} onChange={e => set('age', e.target.value)} placeholder="e.g. 3 years" className="bg-[#100D0E] border-white/10 focus:border-[#FF7A6B]/40" />
+              <Input value={form.age} onChange={e => set('age', e.target.value)} placeholder="e.g. 3 years" className="bg-[#130F1C] border-white/10 focus:border-[#FFAE6D]/40" />
             </div>
             <div>
               <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider block mb-2">Weight (kg)</label>
-              <Input type="number" value={form.weight} onChange={e => set('weight', e.target.value)} placeholder="e.g. 12.4" className="bg-[#100D0E] border-white/10 focus:border-[#FF7A6B]/40" />
+              <Input type="number" value={form.weight} onChange={e => set('weight', e.target.value)} placeholder="e.g. 12.4" className="bg-[#130F1C] border-white/10 focus:border-[#FFAE6D]/40" />
             </div>
             <div>
               <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider block mb-2">Sex</label>
               <div className="grid grid-cols-2 gap-2">
                 {['male', 'female'].map(s => (
                   <button key={s} onClick={() => set('sex', s)} aria-pressed={form.sex === s}
-                    className={`px-3 py-2 rounded-xl border text-sm capitalize transition-all ${form.sex === s ? 'bg-[#FF7A6B]/15 border-[#FF7A6B]/40 text-[#FF7A6B]' : 'bg-white/[0.03] border-white/8 text-zinc-400 hover:border-white/20'}`}>
+                    className={`px-3 py-2 rounded-xl border text-sm capitalize transition-all ${form.sex === s ? 'bg-[#FFAE6D]/15 border-[#FFAE6D]/40 text-[#FFAE6D]' : 'bg-white/[0.03] border-white/8 text-zinc-400 hover:border-white/20'}`}>
                     {s}
                   </button>
                 ))}

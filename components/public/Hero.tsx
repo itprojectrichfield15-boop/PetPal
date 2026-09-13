@@ -1,27 +1,10 @@
 'use client'
 
-import dynamic from 'next/dynamic'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 import Image from 'next/image'
 import { ArrowUpRight, ArrowRight, PawPrint, Apple, Star, ShieldCheck, MapPin } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-
-/**
- * The 3D orb is loaded only in the browser and only after the hero's text has
- * painted. The headline, sub-copy and CTAs are ordinary DOM, so the page is
- * fully readable (and indexable) before a byte of WebGL arrives.
- */
-const PetOrb = dynamic(() => import('@/components/public/PetOrb'), {
-  ssr: false,
-  loading: () => (
-    <div
-      className="w-full h-full rounded-full animate-glow-pulse"
-      style={{ background: 'radial-gradient(circle, rgba(255,122,107,0.22) 0%, rgba(45,212,191,0.10) 45%, transparent 70%)' }}
-      aria-hidden="true"
-    />
-  ),
-})
 
 /** Owner avatars for the social-proof pill. */
 const FACES = [
@@ -35,21 +18,11 @@ const EASE = [0.16, 1, 0.3, 1] as const
 export default function Hero() {
   return (
     <section className="relative min-h-screen flex items-center pt-28 pb-20 overflow-hidden grain">
-      {/* Ambient warmth behind everything */}
-      <div className="absolute inset-0 bg-mesh" aria-hidden="true" />
-      <div className="absolute inset-0 bg-grid opacity-40" aria-hidden="true" />
+      <div className="absolute inset-0 bg-grid opacity-30" aria-hidden="true" />
 
-      {/* ── The orb ── */}
+      {/* Readability scrim so the headline always clears the 3D layer behind it */}
       <div
-        className="absolute inset-y-0 right-0 w-full lg:w-[62%] pointer-events-none"
-        aria-hidden="true"
-      >
-        <PetOrb className="w-full h-full" />
-      </div>
-
-      {/* Readability scrim so the headline always clears the particles */}
-      <div
-        className="absolute inset-0 pointer-events-none lg:bg-gradient-to-r lg:from-[#0C0A0A] lg:via-[#0C0A0A]/80 lg:to-transparent bg-[#0C0A0A]/45"
+        className="absolute inset-0 pointer-events-none lg:bg-gradient-to-r lg:from-[var(--bg)] lg:via-[var(--bg)]/75 lg:to-transparent bg-[var(--bg)]/50"
         aria-hidden="true"
       />
 
@@ -61,7 +34,7 @@ export default function Hero() {
           >
             <div className="flex -space-x-2">
               {FACES.map((p, i) => (
-                <div key={i} className="relative w-6 h-6 rounded-full overflow-hidden border-2 border-[#0C0A0A]">
+                <div key={i} className="relative w-6 h-6 rounded-full overflow-hidden border-2 border-[#0D0A14]">
                   <Image src={`https://images.unsplash.com/${p}?w=48&h=48&fit=crop`} alt="" fill className="object-cover" sizes="24px" />
                 </div>
               ))}
@@ -76,7 +49,7 @@ export default function Hero() {
           >
             <span className="block text-gradient-soft">The whole world of</span>
             <span className="block">
-              <span style={{ fontFamily: 'var(--font-serif)' }} className="italic font-normal text-[#FF7A6B]">pet care</span>
+              <span style={{ fontFamily: 'var(--font-serif)' }} className="italic font-normal text-[#FFAE6D]">pet care</span>
               <span className="text-gradient-soft">, in one app.</span>
             </span>
           </motion.h1>
@@ -118,7 +91,7 @@ export default function Hero() {
             <div className="w-px h-8 bg-white/10" aria-hidden="true" />
             <div>
               <div className="text-2xl font-semibold tabular-nums flex items-center gap-1" style={{ fontFamily: 'var(--font-display)' }}>
-                4.9 <Star className="w-4 h-4 text-[#FFB84D] fill-[#FFB84D]" aria-hidden="true" />
+                4.9 <Star className="w-4 h-4 text-[#FFD98E] fill-[#FFD98E]" aria-hidden="true" />
               </div>
               <div className="text-xs text-zinc-500">avg. rating</div>
             </div>
@@ -136,8 +109,8 @@ export default function Hero() {
         initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.9, ease: EASE }}
         className="hidden xl:flex absolute right-[12%] top-[22%] z-10 glass-card rounded-2xl p-3.5 pr-5 items-center gap-3 shadow-2xl"
       >
-        <div className="w-9 h-9 rounded-xl bg-[#FF7A6B]/15 border border-[#FF7A6B]/25 flex items-center justify-center shrink-0">
-          <Apple className="w-4 h-4 text-[#FF7A6B]" aria-hidden="true" />
+        <div className="w-9 h-9 rounded-xl bg-[#FFAE6D]/15 border border-[#FFAE6D]/25 flex items-center justify-center shrink-0">
+          <Apple className="w-4 h-4 text-[#FFAE6D]" aria-hidden="true" />
         </div>
         <div>
           <div className="text-sm font-semibold leading-tight">Biscuit&rsquo;s plan</div>
@@ -149,8 +122,8 @@ export default function Hero() {
         initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.05, ease: EASE }}
         className="hidden xl:flex absolute right-[8%] bottom-[26%] z-10 glass-card rounded-2xl p-3.5 pr-5 items-center gap-3 shadow-2xl"
       >
-        <div className="w-9 h-9 rounded-xl bg-[#2DD4BF]/15 border border-[#2DD4BF]/25 flex items-center justify-center shrink-0">
-          <MapPin className="w-4 h-4 text-[#2DD4BF]" aria-hidden="true" />
+        <div className="w-9 h-9 rounded-xl bg-[#8E8BF5]/15 border border-[#8E8BF5]/25 flex items-center justify-center shrink-0">
+          <MapPin className="w-4 h-4 text-[#8E8BF5]" aria-hidden="true" />
         </div>
         <div>
           <div className="text-sm font-semibold leading-tight">Vet 1.2km away</div>
@@ -162,8 +135,8 @@ export default function Hero() {
         initial={{ opacity: 0, scale: 0.85 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 1.2, ease: EASE }}
         className="hidden xl:flex absolute right-[26%] bottom-[14%] z-10 glass-card rounded-full px-4 py-2 items-center gap-2 shadow-2xl"
       >
-        <ShieldCheck className="w-4 h-4 text-[#FF7A6B] shrink-0" aria-hidden="true" />
-        <span className="text-xs font-medium">Chocolate? <span className="text-[#FF5A5F]">Toxic</span> — checked</span>
+        <ShieldCheck className="w-4 h-4 text-[#FFAE6D] shrink-0" aria-hidden="true" />
+        <span className="text-xs font-medium">Chocolate? <span className="text-[#FF6B81]">Toxic</span> — checked</span>
       </motion.div>
 
       {/* Scroll hint */}
