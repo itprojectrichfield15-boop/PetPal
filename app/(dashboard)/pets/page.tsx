@@ -5,6 +5,7 @@ import { motion } from 'framer-motion'
 import Link from 'next/link'
 import { Dog, Cat, Bird, Rabbit, Fish, Turtle, Rat, Snail, PawPrint, Plus, Scale, Apple, Syringe, ChevronRight, type LucideIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import PageHeader from '@/components/layout/PageHeader'
 import type { Pet } from '@/lib/types'
 
 // 'invert' is a legacy species value written by older builds of the add-pet
@@ -34,17 +35,20 @@ export default function PetsPage() {
 
   return (
     <div className="relative min-h-screen">
-      <div className="absolute inset-0 bg-mesh-soft pointer-events-none" />
-      <div className="relative p-6 lg:p-8 max-w-5xl mx-auto">
-        <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-4xl lg:text-5xl font-semibold tracking-tight mb-2" style={{ fontFamily: 'var(--font-display)' }}>
-              My <span className="text-[#FFAE6D]">Pets</span>
-            </h1>
-            <p className="text-zinc-400">Every companion, all in one place.</p>
-          </div>
-          <Link href="/add-pet"><Button className="btn-glass-primary rounded-xl gap-2"><Plus className="w-4 h-4" /> Add</Button></Link>
-        </motion.div>
+      <PageHeader
+        eyebrow="Your family"
+        icon={PawPrint}
+        title="My"
+        accent="pets"
+        sub="Every companion, all in one place."
+        species="dog"
+        action={
+          <Link href="/add-pet">
+            <Button className="btn-glass-primary rounded-xl gap-2"><Plus className="w-4 h-4" /> Add a pet</Button>
+          </Link>
+        }
+      />
+      <div className="relative px-6 lg:px-8 py-10 max-w-5xl mx-auto">
 
         <div className="grid sm:grid-cols-2 gap-5">
           {pets.map((p, i) => {

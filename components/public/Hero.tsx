@@ -22,7 +22,7 @@ export default function Hero() {
 
       {/* Readability scrim so the headline always clears the 3D layer behind it */}
       <div
-        className="absolute inset-0 pointer-events-none lg:bg-gradient-to-r lg:from-[var(--bg)] lg:via-[var(--bg)]/75 lg:to-transparent bg-[var(--bg)]/50"
+        className="absolute inset-0 pointer-events-none lg:bg-gradient-to-r lg:from-[var(--bg)] lg:via-[var(--bg)]/55 lg:to-transparent bg-[var(--bg)]/35"
         aria-hidden="true"
       />
 

@@ -5,13 +5,14 @@ import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 import {
-  PawPrint, Plus, Apple, Syringe, Bell, Scale,
+  PawPrint, Plus, Apple, Syringe, Bell, Scale, LayoutDashboard,
   Dog, Cat, Bird, Rabbit, Fish, Turtle, Rat, Snail, ArrowUpRight, Stethoscope, ShieldCheck,
   type LucideIcon,
 } from 'lucide-react'
 import type { Pet } from '@/lib/types'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import PageHeader from '@/components/layout/PageHeader'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 
 // 'invert' is a legacy species value written by older builds of the add-pet
@@ -84,18 +85,21 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="relative">
-      <div className="absolute inset-0 bg-mesh-soft pointer-events-none" />
-      <div className="relative p-6 lg:p-8 max-w-7xl mx-auto">
-        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-4xl font-semibold tracking-tight" style={{ fontFamily: 'var(--font-display)' }}>
-              Welcome back{user?.email ? `, ${user.email.split('@')[0]}` : ''}
-            </h1>
-            <p className="text-zinc-400 text-sm mt-1">Here&rsquo;s how your pets are doing.</p>
-          </div>
-          <Link href="/add-pet"><Button className="btn-glass-primary rounded-xl gap-2"><Plus className="w-4 h-4" /> Add a pet</Button></Link>
-        </motion.div>
+    <div className="relative min-h-screen">
+      <PageHeader
+        eyebrow="Overview"
+        icon={LayoutDashboard}
+        title="Welcome back"
+        accent={user?.email ? user.email.split('@')[0] : undefined}
+        sub="Here's how your pets are doing."
+        species="cat"
+        action={
+          <Link href="/add-pet">
+            <Button className="btn-glass-primary rounded-xl gap-2"><Plus className="w-4 h-4" /> Add a pet</Button>
+          </Link>
+        }
+      />
+      <div className="relative px-6 lg:px-8 py-10 max-w-7xl mx-auto">
 
         {/* Pets */}
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">

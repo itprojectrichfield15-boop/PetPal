@@ -7,6 +7,7 @@ import { ShieldCheck, ShieldAlert, ShieldX, Search, MapPin, Sparkles, Stethoscop
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import PageHeader from '@/components/layout/PageHeader'
 import { lookupFood, QUICK_CHECKS, LEVEL_META, type SafetyLevel } from '@/lib/food-safety'
 
 const ICONS: Record<SafetyLevel, typeof ShieldCheck> = {
@@ -23,19 +24,15 @@ export default function FoodSafetyPage() {
 
   return (
     <div className="relative min-h-screen">
-      <div className="absolute inset-0 bg-mesh-soft pointer-events-none" />
-      <div className="relative p-6 lg:p-8 max-w-3xl mx-auto">
-        <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
-          <Badge className="mb-4 bg-[#FFAE6D]/10 text-[#FFAE6D] border-[#FFAE6D]/30 font-mono text-[10px]">
-            <Sparkles className="w-3 h-3 mr-1.5" /> LIFESAVER
-          </Badge>
-          <h1 className="text-4xl lg:text-5xl font-semibold tracking-tight mb-2" style={{ fontFamily: 'var(--font-display)' }}>
-            Food Safety <span className="text-[#FFAE6D]">Checker</span>
-          </h1>
-          <p className="text-zinc-400 max-w-xl">
-            Can your pet eat that? Type any food, plant or household item to check instantly.
-          </p>
-        </motion.div>
+      <PageHeader
+        eyebrow="Lifesaver"
+        icon={Sparkles}
+        title="Food Safety"
+        accent="Checker"
+        sub="Can your pet eat that? Check any food, plant or household item against 89 verified entries."
+        species="dog"
+      />
+      <div className="relative px-6 lg:px-8 py-10 max-w-3xl mx-auto">
 
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="glass-card rounded-2xl p-5 mb-5">
           <div className="relative">

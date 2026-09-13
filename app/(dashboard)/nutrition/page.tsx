@@ -5,7 +5,7 @@ import { motion } from 'framer-motion'
 import {
   Dog, Cat, Rabbit, Bird, Turtle, Rat, Bone, Flame, Droplets, Beef, Wheat, Info, Sparkles,
 } from 'lucide-react'
-import { Badge } from '@/components/ui/badge'
+import PageHeader from '@/components/layout/PageHeader'
 import { RadarChart, Radar, PolarGrid, PolarAngleAxis, ResponsiveContainer } from 'recharts'
 import {
   SPECIES_CFG, ACTIVITY_LEVELS, BODY_CONDITIONS, computePlan,
@@ -48,19 +48,15 @@ export default function NutritionPage() {
 
   return (
     <div className="relative min-h-screen">
-      <div className="absolute inset-0 bg-mesh-soft pointer-events-none" />
-      <div className="relative p-6 lg:p-8 max-w-5xl mx-auto">
-        <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
-          <Badge className="mb-4 bg-[#FFAE6D]/10 text-[#FFAE6D] border-[#FFAE6D]/30 font-mono text-[10px]">
-            <Sparkles className="w-3 h-3 mr-1.5" /> VET-BACKED
-          </Badge>
-          <h1 className="text-4xl lg:text-5xl font-semibold tracking-tight mb-2" style={{ fontFamily: 'var(--font-display)' }}>
-            Nutrition <span className="text-[#FFAE6D]">Planner</span>
-          </h1>
-          <p className="text-zinc-400 max-w-xl">
-            Precise daily calories, portions and feeding schedule — calculated with the energy formulas vets use.
-          </p>
-        </motion.div>
+      <PageHeader
+        eyebrow="Vet-backed"
+        icon={Sparkles}
+        title="Nutrition"
+        accent="Planner"
+        sub="Precise daily calories, portions and a feeding schedule — calculated with the energy formulas vets actually use."
+        species="cat"
+      />
+      <div className="relative px-6 lg:px-8 py-10 max-w-5xl mx-auto">
 
         <div className="grid lg:grid-cols-2 gap-6">
           {/* ── Inputs ── */}

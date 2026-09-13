@@ -8,6 +8,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
+import PageHeader from '@/components/layout/PageHeader'
 
 interface Guide { title: string; desc: string; icon: LucideIcon; tag: string; read: string; body: string[] }
 
@@ -233,15 +234,15 @@ export default function ResourcesPage() {
 
   return (
     <div className="relative min-h-screen">
-      <div className="absolute inset-0 bg-mesh-soft pointer-events-none" />
-      <div className="relative p-6 lg:p-8 max-w-5xl mx-auto">
-        <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
-          <Badge className="mb-4 bg-[#FFAE6D]/10 text-[#FFAE6D] border-[#FFAE6D]/30 font-mono text-[10px]"><BookOpen className="w-3 h-3 mr-1.5" /> CARE GUIDES</Badge>
-          <h1 className="text-4xl lg:text-5xl font-semibold tracking-tight mb-2" style={{ fontFamily: 'var(--font-display)' }}>
-            Care <span className="text-[#FFAE6D]">Guides</span>
-          </h1>
-          <p className="text-zinc-400 max-w-xl">Vet-reviewed, plain-English guides for every kind of pet, at every stage of life.</p>
-        </motion.div>
+      <PageHeader
+        eyebrow="Care guides"
+        icon={BookOpen}
+        title="Twenty-one guides,"
+        accent="one honest voice."
+        sub="Plain-English guides for every kind of pet, at every stage of life — from the first week to the last."
+        species="orb"
+      />
+      <div className="relative px-6 lg:px-8 py-10 max-w-5xl mx-auto">
 
         <div className="flex gap-2 flex-wrap mb-8">
           {TAGS.map(t => (

@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Send, Heart, Sparkles, PawPrint, ShieldCheck } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import PageHeader from '@/components/layout/PageHeader'
 import { toast } from 'sonner'
 import { formatRelative } from '@/lib/utils'
 import { readRaw, writeJSON, KEYS } from '@/lib/storage'
@@ -170,19 +171,15 @@ export default function WallPage() {
 
   return (
     <div className="relative min-h-screen">
-      <div className="absolute inset-0 bg-mesh-soft pointer-events-none" />
-      <div className="relative p-6 lg:p-8 max-w-3xl mx-auto">
-        <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
-          <Badge className="mb-4 btn-glass-primary border-0 font-mono text-[10px]">
-            <Sparkles className="w-3 h-3 mr-1.5" /> COMMUNITY
-          </Badge>
-          <h1 className="text-4xl lg:text-5xl font-semibold tracking-tight mb-2" style={{ fontFamily: 'var(--font-display)' }}>
-            Owner <span className="text-[#FFAE6D]">Community</span>
-          </h1>
-          <p className="text-zinc-400 max-w-xl">
-            Wins, worries and wisdom from fellow pet parents. Share a moment, ask for advice, cheer each other on.
-          </p>
-        </motion.div>
+      <PageHeader
+        eyebrow="Community"
+        icon={Sparkles}
+        title="Owner"
+        accent="community"
+        sub="Wins, worries and wisdom from fellow pet parents. Share a moment, ask for advice, cheer each other on — anonymously."
+        species="fish"
+      />
+      <div className="relative px-6 lg:px-8 py-10 max-w-3xl mx-auto">
 
         {/* Composer */}
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="glass-card rounded-2xl p-5 mb-6">

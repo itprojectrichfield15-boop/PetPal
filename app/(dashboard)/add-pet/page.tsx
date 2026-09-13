@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { Dog, Cat, Bird, Rabbit, Fish, Turtle, Rat, Snail, PawPrint, Check, Camera } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import PageHeader from '@/components/layout/PageHeader'
 import { toast } from 'sonner'
 
 const SPECIES = [
@@ -52,14 +53,15 @@ export default function AddPetPage() {
 
   return (
     <div className="relative min-h-screen">
-      <div className="absolute inset-0 bg-mesh-soft pointer-events-none" />
-      <div className="relative p-6 lg:p-8 max-w-2xl mx-auto">
-        <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
-          <h1 className="text-4xl lg:text-5xl font-semibold tracking-tight mb-2" style={{ fontFamily: 'var(--font-display)' }}>
-            Add a <span className="text-[#FFAE6D]">Pet</span>
-          </h1>
-          <p className="text-zinc-400">Set up a profile to unlock nutrition plans, reminders and health tracking.</p>
-        </motion.div>
+      <PageHeader
+        eyebrow="New profile"
+        icon={PawPrint}
+        title="Add a"
+        accent="pet"
+        sub="Set up a profile to unlock nutrition plans, reminders and health tracking."
+        species="rabbit"
+      />
+      <div className="relative px-6 lg:px-8 py-10 max-w-2xl mx-auto">
 
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="glass-card rounded-3xl p-6 space-y-6">
           {/* Avatar */}

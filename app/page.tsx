@@ -5,84 +5,33 @@ import { useRef, useState, useEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import {
-  ArrowUpRight, ChevronLeft, ChevronRight, PawPrint, Apple,
-  ShieldCheck, Heart, Stethoscope, MapPin, MessageSquare,
-  ClipboardCheck, CheckCircle2, Quote, Plus,
-  Cat, Dog, Activity, Bell, Syringe, Scale
+  ArrowUpRight, ArrowRight, Apple, ShieldCheck, Heart, MapPin, MessageSquare,
+  ClipboardCheck, CheckCircle2, Plus, Cat, Dog, Activity, Minus,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import Navbar from '@/components/public/Navbar'
 import Logo from '@/components/public/Logo'
 import Hero from '@/components/public/Hero'
 import AnimalField from '@/components/public/AnimalField'
-import {
-  AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid
-} from 'recharts'
 import { computePlan, SPECIES_CFG, type LifeStage } from '@/lib/nutrition'
 import { usePrefersReducedMotion } from '@/lib/use-client-value'
 
-// ─────────── Data ───────────
-const STATS = [
-  { value: 38, suffix: 'M+', label: 'households own a pet', sub: 'And counting', icon: Dog },
-  { value: 56, suffix: '%', label: 'of pets are overweight', sub: 'Mostly from wrong portions', icon: Scale },
-  { value: 70, suffix: '%', label: 'of owners miss vaccine dates', sub: 'PetPal reminds you', icon: Syringe },
-  { value: 24, suffix: '/7', label: 'food-safety & symptom help', sub: 'Whenever you need it', icon: ShieldCheck },
-]
+const EASE = [0.16, 1, 0.3, 1] as const
 
-const FEATURES_BENTO = [
-  { title: 'Nutrition & Portion Planner', desc: 'Tell us your pet’s species, breed, weight and activity — get an exact daily food plan, calorie target, and feeding schedule.', icon: Apple, span: 'lg:col-span-2', tag: 'Smart' },
-  { title: 'Food Safety Checker', desc: 'Is it safe to feed? Instantly check any food or plant.', icon: ShieldCheck, span: '', tag: 'Lifesaver' },
-  { title: 'Find a Vet', desc: 'A live map of trusted vets near your location.', icon: MapPin, span: '', tag: 'Live Map' },
-  { title: 'Pet Wellness Check', desc: 'A quick guided check-up of your pet’s health, weight, mood and routine — with a personalised wellbeing score.', icon: Heart, span: 'lg:col-span-2', tag: 'Quiz' },
-  { title: 'New Pet Care Plan', desc: 'A gentle week-by-week roadmap for your new puppy or kitten.', icon: ClipboardCheck, span: '', tag: 'Roadmap' },
-  { title: 'Health Records & Reminders', desc: 'Vaccines, weight, meds and vet visits — tracked and never forgotten.', icon: Activity, span: '', tag: 'Tracking' },
-  { title: 'Owner Community', desc: 'Swap stories, photos and advice with pet owners who get it.', icon: MessageSquare, span: 'lg:col-span-2', tag: 'Community' },
-]
+/* ═══════════════════════════════════════════════════════════════════════════
+   Shared primitives
+   ═══════════════════════════════════════════════════════════════════════════ */
 
-const TESTIMONIALS = [
-  { name: 'Amara Okonkwo', role: 'Mum to Biscuit (Beagle)', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&h=200&fit=crop', quote: 'The portion planner alone fixed Biscuit’s weight in two months. I had been overfeeding him for a year without realising.', metricLabel: 'Weight to healthy', metric: '−18%' },
-  { name: 'Thabo Mokoena', role: 'Dad to Luna (Maine Coon)', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&h=200&fit=crop', quote: 'Luna ate something off the counter at 11pm. The food checker told me it was toxic and the vet finder had an emergency clinic open. PetPal saved her life.', metricLabel: 'Emergency vet found', metric: '4 min' },
-  { name: 'Lerato Dube', role: 'Mum to Max & Milo (Huskies)', avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=200&h=200&fit=crop', quote: 'Two dogs, endless vaccine dates, two diets. PetPal keeps all of it straight. I finally feel like a good pet parent.', metricLabel: 'Reminders kept', metric: '100%' },
-]
-
-const FAQS = [
-  { q: 'Is PetPal free?', a: 'Yes — creating pet profiles, the nutrition planner, food-safety checker, wellness check and vet finder are all free for pet owners. Forever.' },
-  { q: 'How accurate is the nutrition planner?', a: 'It uses veterinary RER/MER energy formulas (Resting and Maintenance Energy Requirements) based on your pet’s weight, species, life stage and activity level. It is guidance, not a substitute for your vet’s advice.' },
-  { q: 'How does the food-safety checker work?', a: 'We maintain a curated database of foods, plants and household items that are unsafe for pets — with the clinical reason, which animals it affects most, and exactly what to do. If we haven’t verified an item we say so rather than guessing, because a wrong “safe” is worse than no answer.' },
-  { q: 'How does Find a Vet know where I am?', a: 'With your permission, your browser shares your approximate location so we can show vets near you on the map. We never store your location.' },
-  { q: 'Can I track more than one pet?', a: 'Absolutely. Add as many pets as you like — each with their own profile, diet, weight history, vaccine schedule and reminders.' },
-]
-
-const SPECIES_TICKER = [
-  'Dogs', 'Cats', 'Rabbits', 'Birds', 'Hamsters', 'Guinea Pigs',
-  'Ferrets', 'Reptiles', 'Fish', 'Horses', 'Tortoises', 'Parrots',
-]
-
-const TREND_DATA = [
-  { week: 'Mon', weight: 32.1 }, { week: 'Tue', weight: 31.8 },
-  { week: 'Wed', weight: 31.9 }, { week: 'Thu', weight: 31.5 },
-  { week: 'Fri', weight: 31.2 }, { week: 'Sat', weight: 31.0 },
-  { week: 'Sun', weight: 30.7 },
-]
-
-// ─────────── Animated Counter ───────────
-// 3D tilt-on-hover wrapper that tracks the cursor
-function Tilt({ children, className }: { children: React.ReactNode; className?: string }) {
-  const x = useMotionValue(0)
-  const y = useMotionValue(0)
-  const rx = useSpring(useTransform(y, [-0.5, 0.5], [8, -8]), { stiffness: 180, damping: 16 })
-  const ry = useSpring(useTransform(x, [-0.5, 0.5], [-8, 8]), { stiffness: 180, damping: 16 })
-  function onMove(e: React.MouseEvent<HTMLDivElement>) {
-    const r = e.currentTarget.getBoundingClientRect()
-    x.set((e.clientX - r.left) / r.width - 0.5)
-    y.set((e.clientY - r.top) / r.height - 0.5)
-  }
-  function reset() { x.set(0); y.set(0) }
+/** Fade-and-rise on scroll into view. One place, so timing stays consistent. */
+function Reveal({
+  children, delay = 0, y = 22, className,
+}: { children: React.ReactNode; delay?: number; y?: number; className?: string }) {
   return (
     <motion.div
-      onMouseMove={onMove} onMouseLeave={reset}
-      style={{ rotateX: rx, rotateY: ry, transformPerspective: 900, transformStyle: 'preserve-3d' }}
+      initial={{ opacity: 0, y }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, amount: 0.25 }}
+      transition={{ delay, duration: 0.7, ease: EASE }}
       className={className}
     >
       {children}
@@ -90,89 +39,384 @@ function Tilt({ children, className }: { children: React.ReactNode; className?: 
   )
 }
 
-function Counter({ to, suffix = '', prefix = '' }: { to: number; suffix?: string; prefix?: string }) {
+/** Small uppercase label — the editorial anchor above each heading. */
+function Eyebrow({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="inline-flex items-center gap-2 mb-5">
+      <span className="w-6 h-px bg-[var(--apricot)]" aria-hidden="true" />
+      <span className="text-[11px] uppercase tracking-[0.28em] text-[var(--apricot)] font-medium">
+        {children}
+      </span>
+    </div>
+  )
+}
+
+function SectionHeading({
+  lead, accent, sub, align = 'left',
+}: { lead: string; accent?: string; sub?: string; align?: 'left' | 'center' }) {
+  return (
+    <div className={align === 'center' ? 'text-center max-w-2xl mx-auto' : 'max-w-2xl'}>
+      <h2
+        className="text-4xl md:text-5xl lg:text-[3.4rem] font-semibold leading-[1.04] tracking-[-0.03em]"
+        style={{ fontFamily: 'var(--font-display)' }}
+      >
+        <span className="text-gradient-soft">{lead}</span>
+        {accent && (
+          <>
+            {' '}
+            <span style={{ fontFamily: 'var(--font-serif)' }} className="italic font-normal text-[var(--apricot)]">
+              {accent}
+            </span>
+          </>
+        )}
+      </h2>
+      {sub && <p className="text-zinc-400 text-base md:text-lg leading-relaxed mt-5">{sub}</p>}
+    </div>
+  )
+}
+
+function Counter({ to, suffix = '' }: { to: number; suffix?: string }) {
   const [val, setVal] = useState(0)
   const ref = useRef<HTMLSpanElement>(null)
   const inView = useInView(ref, { once: true, amount: 0.5 })
   const reduceMotion = usePrefersReducedMotion()
-
-  // Anyone who has asked for less motion just sees the final number.
   const shown = reduceMotion ? to : val
 
   useEffect(() => {
     if (!inView || reduceMotion) return
-
     let raf = 0
-    const DURATION = 1600
+    const DURATION = 1500
     const startedAt = performance.now()
-
     function tick(now: number) {
       const t = Math.min(1, (now - startedAt) / DURATION)
-      // easeOutCubic — fast start, gentle settle.
-      const eased = 1 - Math.pow(1 - t, 3)
-      setVal(Math.round(to * eased))
+      setVal(Math.round(to * (1 - Math.pow(1 - t, 3))))
       if (t < 1) raf = requestAnimationFrame(tick)
     }
-
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
   }, [inView, to, reduceMotion])
 
-  return <span ref={ref}>{prefix}{shown.toLocaleString()}{suffix}</span>
+  return <span ref={ref}>{shown.toLocaleString()}{suffix}</span>
 }
 
-// ─────────── Nutrition Planner (inline live demo) ───────────
+/** Cursor-tracked tilt, used on the bento cards. */
+function Tilt({ children, className }: { children: React.ReactNode; className?: string }) {
+  const reduceMotion = usePrefersReducedMotion()
+  const x = useMotionValue(0)
+  const y = useMotionValue(0)
+  const rx = useSpring(useTransform(y, [-0.5, 0.5], [6, -6]), { stiffness: 170, damping: 18 })
+  const ry = useSpring(useTransform(x, [-0.5, 0.5], [-6, 6]), { stiffness: 170, damping: 18 })
+
+  function onMove(e: React.MouseEvent<HTMLDivElement>) {
+    if (reduceMotion) return
+    const r = e.currentTarget.getBoundingClientRect()
+    x.set((e.clientX - r.left) / r.width - 0.5)
+    y.set((e.clientY - r.top) / r.height - 0.5)
+  }
+
+  return (
+    <motion.div
+      onMouseMove={onMove}
+      onMouseLeave={() => { x.set(0); y.set(0) }}
+      style={reduceMotion ? undefined : { rotateX: rx, rotateY: ry, transformPerspective: 1100, transformStyle: 'preserve-3d' }}
+      className={className}
+    >
+      {children}
+    </motion.div>
+  )
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Trust bar — compact, replacing four oversized counter cards
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+const TRUST = [
+  { value: 56, suffix: '%', label: 'of pets are overweight', note: 'almost always from guessed portions' },
+  { value: 70, suffix: '%', label: 'of owners miss a vaccine date', note: 'PetPal keeps the schedule' },
+  { value: 89, suffix: '', label: 'foods & plants verified', note: 'with the clinical reason, not a guess' },
+  { value: 21, suffix: '', label: 'care guides', note: 'written in one consistent voice' },
+]
+
+function TrustBar() {
+  return (
+    <section className="relative border-y border-white/[0.06] bg-[var(--bg)]/85 backdrop-blur-sm">
+      <div className="max-w-7xl mx-auto px-6 grid grid-cols-2 lg:grid-cols-4 divide-x divide-white/[0.06]">
+        {TRUST.map((s, i) => (
+          <Reveal key={s.label} delay={i * 0.07} y={14} className="px-5 py-9 first:pl-0 lg:last:pr-0">
+            <div
+              className="text-3xl lg:text-4xl font-semibold tabular-nums text-[var(--apricot)] mb-1.5"
+              style={{ fontFamily: 'var(--font-display)' }}
+            >
+              <Counter to={s.value} suffix={s.suffix} />
+            </div>
+            <div className="text-sm text-zinc-200 leading-snug">{s.label}</div>
+            <div className="text-[11px] text-zinc-500 mt-1 leading-snug">{s.note}</div>
+          </Reveal>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Editorial reveal — a photograph that opens as you scroll past it
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+function EditorialReveal() {
+  const ref = useRef<HTMLDivElement>(null)
+  const reduceMotion = usePrefersReducedMotion()
+  const { scrollYProgress } = useScroll({ target: ref, offset: ['start end', 'end start'] })
+  const clip = useTransform(scrollYProgress, [0, 0.5], ['inset(34% 20% 34% 20% round 2rem)', 'inset(0% 0% 0% 0% round 1.5rem)'])
+  const scale = useTransform(scrollYProgress, [0, 0.5], [1.22, 1])
+  const imgY = useTransform(scrollYProgress, [0, 1], ['-7%', '7%'])
+  const textY = useTransform(scrollYProgress, [0.22, 0.6], [36, 0])
+  const textO = useTransform(scrollYProgress, [0.26, 0.55], [0, 1])
+
+  return (
+    <section ref={ref} className="relative py-24 px-6">
+      <div className="relative max-w-7xl mx-auto h-[78vh] min-h-[500px]">
+        <motion.div
+          style={reduceMotion ? undefined : { clipPath: clip }}
+          className="absolute inset-0 overflow-hidden rounded-[1.5rem] will-change-transform"
+        >
+          <motion.div style={reduceMotion ? undefined : { scale, y: imgY }} className="absolute inset-0">
+            <Image
+              src="https://images.unsplash.com/photo-1450778869180-41d0601e046e?w=1800&h=1100&fit=crop&q=90"
+              alt="A person sitting with their dog"
+              fill
+              className="object-cover"
+              sizes="100vw"
+              priority
+              quality={90}
+            />
+          </motion.div>
+          <div className="absolute inset-0 bg-gradient-to-t from-[var(--bg)] via-[var(--bg)]/25 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-r from-[var(--bg)]/70 to-transparent" />
+          <motion.div
+            style={reduceMotion ? undefined : { y: textY, opacity: textO }}
+            className="absolute inset-0 flex flex-col justify-end p-8 md:p-16"
+          >
+            <Eyebrow>Why we built it</Eyebrow>
+            <h2
+              className="text-4xl md:text-6xl lg:text-7xl font-semibold leading-[1.0] max-w-3xl mb-5 tracking-[-0.03em]"
+              style={{ fontFamily: 'var(--font-display)' }}
+            >
+              They give you their{' '}
+              <span style={{ fontFamily: 'var(--font-serif)' }} className="italic font-normal text-[var(--apricot)]">
+                whole
+              </span>{' '}
+              world.
+            </h2>
+            <p className="text-lg md:text-xl text-zinc-200 max-w-xl leading-relaxed">
+              The least we can do is get their food right, keep them away from what hurts them, and know where the
+              nearest vet is before we need one.
+            </p>
+          </motion.div>
+        </motion.div>
+      </div>
+    </section>
+  )
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Bento — asymmetric, photographic, every cell links somewhere real
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+interface Cell {
+  title: string
+  desc: string
+  icon: typeof Apple
+  href: string
+  span: string
+  img?: string
+  tall?: boolean
+}
+
+const CELLS: Cell[] = [
+  {
+    title: 'Feed them exactly right',
+    desc: 'Species, weight, life stage, activity and body condition in — an exact daily calorie target, food weight and meal schedule out. The same energy formulas a vet uses.',
+    icon: Apple, href: '/nutrition', span: 'lg:col-span-7',
+    img: 'https://images.unsplash.com/photo-1601758228041-f3b2795255f1?w=1200&h=760&fit=crop&q=88',
+  },
+  {
+    title: 'Know what’s safe',
+    desc: '89 foods, plants and household items — each with the clinical reason and what to actually do about it.',
+    icon: ShieldCheck, href: '/food-safety', span: 'lg:col-span-5', tall: true,
+    img: 'https://images.unsplash.com/photo-1425082661705-1834bfd09dca?w=900&h=1000&fit=crop&q=88',
+  },
+  {
+    title: 'Help, nearby',
+    desc: 'Real veterinary practices mapped around you, sorted by distance.',
+    icon: MapPin, href: '/vet-finder', span: 'lg:col-span-4',
+  },
+  {
+    title: 'A quick health check',
+    desc: 'Eight guided questions, one honest score, and what to do about it.',
+    icon: Heart, href: '/wellness', span: 'lg:col-span-4',
+  },
+  {
+    title: 'The first four weeks',
+    desc: 'A week-by-week plan, with separate puppy and kitten tracks.',
+    icon: ClipboardCheck, href: '/care-plan', span: 'lg:col-span-4',
+  },
+  {
+    title: 'Never parent alone',
+    desc: 'Wins, worries and advice from owners who are in exactly the same week as you.',
+    icon: MessageSquare, href: '/wall', span: 'lg:col-span-7',
+    img: 'https://images.unsplash.com/photo-1583337130417-3346a1be7dee?w=1200&h=700&fit=crop&q=88',
+  },
+  {
+    title: 'Nothing slips',
+    desc: 'Vaccines, weight, medication and vet visits, all on one timeline.',
+    icon: Activity, href: '/dashboard', span: 'lg:col-span-5',
+  },
+]
+
+function BentoCard({ cell, index }: { cell: Cell; index: number }) {
+  const Icon = cell.icon
+  return (
+    <Reveal delay={Math.min(index * 0.06, 0.3)} className={cell.span}>
+      <Tilt className="group h-full">
+        <Link
+          href={cell.href}
+          className={`relative flex flex-col h-full overflow-hidden rounded-[1.5rem] border border-white/[0.08] bg-[var(--card)]/92 backdrop-blur-xl transition-all duration-500 hover:border-[var(--apricot)]/35 hover:shadow-[0_24px_70px_-24px_rgba(255,174,109,0.3)] ${
+            cell.tall ? 'min-h-[420px]' : 'min-h-[260px]'
+          }`}
+        >
+          {cell.img && (
+            <div className={`relative w-full overflow-hidden ${cell.tall ? 'h-[230px]' : 'h-[170px]'}`}>
+              <Image
+                src={cell.img}
+                alt=""
+                fill
+                className="object-cover transition-transform duration-[900ms] ease-out group-hover:scale-[1.06]"
+                sizes="(max-width: 1024px) 100vw, 50vw"
+                quality={88}
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-[var(--card)] via-[var(--card)]/25 to-transparent" />
+            </div>
+          )}
+
+          <div className="relative flex-1 p-7 flex flex-col" style={{ transform: 'translateZ(30px)' }}>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-[var(--apricot)]/12 border border-[var(--apricot)]/22 shrink-0">
+                <Icon className="w-[18px] h-[18px] text-[var(--apricot)]" aria-hidden="true" />
+              </div>
+              <ArrowUpRight className="w-4 h-4 text-zinc-600 ml-auto transition-all duration-300 group-hover:text-[var(--apricot)] group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+            </div>
+            <h3
+              className="text-xl lg:text-[1.4rem] font-semibold mb-2.5 tracking-[-0.02em] leading-snug"
+              style={{ fontFamily: 'var(--font-display)' }}
+            >
+              {cell.title}
+            </h3>
+            <p className="text-[14.5px] text-zinc-400 leading-relaxed">{cell.desc}</p>
+          </div>
+
+          {/* Warm bloom that lifts on hover */}
+          <div
+            className="pointer-events-none absolute -bottom-24 -right-16 w-64 h-64 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-700"
+            style={{ background: 'radial-gradient(circle, rgba(255,174,109,0.18), transparent 70%)' }}
+            aria-hidden="true"
+          />
+        </Link>
+      </Tilt>
+    </Reveal>
+  )
+}
+
+function Bento() {
+  return (
+    <section className="relative py-28 lg:py-36 px-6">
+      <div className="max-w-7xl mx-auto">
+        <Reveal className="mb-14">
+          <Eyebrow>The platform</Eyebrow>
+          <SectionHeading
+            lead="One app for every"
+            accent="wag, purr and paw."
+            sub="Seven tools covering the parts of pet care people actually get wrong — portions, poisons, paperwork and panic."
+          />
+        </Reveal>
+
+        <div className="grid lg:grid-cols-12 gap-4 lg:gap-5">
+          {CELLS.map((c, i) => <BentoCard key={c.title} cell={c} index={i} />)}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Live nutrition demo — the strongest proof on the page, so it gets room
+   ═══════════════════════════════════════════════════════════════════════════ */
+
 function NutritionDemo() {
   const [species, setSpecies] = useState<'dog' | 'cat'>('dog')
   const [weight, setWeight] = useState(12)
   const [activity, setActivity] = useState(1.6)
   const [lifeStage, setLifeStage] = useState<LifeStage>('adult')
 
-  // Shared with the full planner (lib/nutrition.ts). These two screens used to
-  // carry separate copies of the maths and quoted different calorie targets for
-  // the same pet.
+  // Shared with the full planner (lib/nutrition.ts) so the two can never quote
+  // different numbers for the same pet.
   const plan = computePlan({ species, weightKg: weight, activity, lifeStage })
-  const { mer, dryGrams: grams, cups, meals } = plan
   const maxKg = SPECIES_CFG[species].maxKg
 
+  const pill = (active: boolean) =>
+    `px-3 py-2 rounded-xl border text-xs transition-all duration-200 ${
+      active
+        ? 'bg-[var(--apricot)]/15 border-[var(--apricot)]/40 text-[var(--apricot)]'
+        : 'bg-white/[0.03] border-white/[0.08] text-zinc-400 hover:border-white/20 hover:text-zinc-200'
+    }`
+
   return (
-    <div className="grid sm:grid-cols-2 gap-5">
+    <div className="grid sm:grid-cols-2 gap-6">
       <div className="space-y-5">
         <div>
-          <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider block mb-2">Species</label>
+          <label className="text-[10px] font-semibold text-zinc-500 uppercase tracking-[0.2em] block mb-2.5">Species</label>
           <div className="grid grid-cols-2 gap-2">
             {([['dog', 'Dog', Dog], ['cat', 'Cat', Cat]] as const).map(([k, label, Icon]) => (
-              <button key={k} onClick={() => { setSpecies(k); setWeight(w => Math.min(w, SPECIES_CFG[k].maxKg)) }} aria-pressed={species === k}
-                className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border text-sm transition-all ${species === k ? 'bg-[#FFAE6D]/15 border-[#FFAE6D]/40 text-[#FFAE6D]' : 'bg-white/[0.03] border-white/8 text-zinc-400 hover:border-white/20'}`}>
+              <button
+                key={k}
+                onClick={() => { setSpecies(k); setWeight(w => Math.min(w, SPECIES_CFG[k].maxKg)) }}
+                aria-pressed={species === k}
+                className={`${pill(species === k)} flex items-center justify-center gap-2 py-2.5`}
+              >
                 <Icon className="w-4 h-4" /> {label}
               </button>
             ))}
           </div>
         </div>
+
         <div>
-          <div className="flex items-center justify-between mb-2">
-            <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Weight</label>
-            <span className="font-mono text-sm text-[#FFAE6D] font-semibold">{weight} kg</span>
+          <div className="flex items-center justify-between mb-2.5">
+            <label htmlFor="demo-weight" className="text-[10px] font-semibold text-zinc-500 uppercase tracking-[0.2em]">Weight</label>
+            <span className="font-mono text-sm text-[var(--apricot)] font-semibold tabular-nums">{Math.min(weight, maxKg)} kg</span>
           </div>
-          <input type="range" min={1} max={maxKg} value={Math.min(weight, maxKg)} onChange={e => setWeight(+e.target.value)} className="w-full accent-[#FFAE6D]" aria-label="Weight" />
+          <input
+            id="demo-weight" type="range" min={1} max={maxKg}
+            value={Math.min(weight, maxKg)}
+            onChange={e => setWeight(+e.target.value)}
+            className="w-full accent-[var(--apricot)]"
+          />
         </div>
+
         <div>
-          <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider block mb-2">Life stage</label>
+          <label className="text-[10px] font-semibold text-zinc-500 uppercase tracking-[0.2em] block mb-2.5">Life stage</label>
           <div className="grid grid-cols-3 gap-2">
             {(['young', 'adult', 'senior'] as const).map(s => (
-              <button key={s} onClick={() => setLifeStage(s)} aria-pressed={lifeStage === s}
-                className={`px-2 py-2 rounded-xl border text-xs capitalize transition-all ${lifeStage === s ? 'bg-[#FFAE6D]/15 border-[#FFAE6D]/40 text-[#FFAE6D]' : 'bg-white/[0.03] border-white/8 text-zinc-400 hover:border-white/20'}`}>
+              <button key={s} onClick={() => setLifeStage(s)} aria-pressed={lifeStage === s} className={`${pill(lifeStage === s)} capitalize`}>
                 {s === 'young' ? SPECIES_CFG[species].youngLabel : s}
               </button>
             ))}
           </div>
         </div>
+
         <div>
-          <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider block mb-2">Activity</label>
+          <label className="text-[10px] font-semibold text-zinc-500 uppercase tracking-[0.2em] block mb-2.5">Activity</label>
           <div className="grid grid-cols-3 gap-2">
             {([['Low', 1.3], ['Normal', 1.6], ['High', 2.0]] as const).map(([label, f]) => (
-              <button key={label} onClick={() => setActivity(f)} aria-pressed={activity === f}
-                className={`px-2 py-2 rounded-xl border text-xs transition-all ${activity === f ? 'bg-[#FFAE6D]/15 border-[#FFAE6D]/40 text-[#FFAE6D]' : 'bg-white/[0.03] border-white/8 text-zinc-400 hover:border-white/20'}`}>
+              <button key={label} onClick={() => setActivity(f)} aria-pressed={activity === f} className={pill(activity === f)}>
                 {label}
               </button>
             ))}
@@ -180,568 +424,372 @@ function NutritionDemo() {
         </div>
       </div>
 
-      <div className="space-y-4">
-        <div className="glass-card rounded-2xl p-5" style={{ borderColor: 'rgba(255,174,109,0.3)' }}>
-          <div className="text-xs uppercase tracking-wider text-zinc-400 font-semibold mb-1">Daily calories</div>
+      <div className="space-y-3">
+        <div className="rounded-2xl p-6 border border-[var(--apricot)]/25 bg-[var(--apricot)]/[0.06]">
+          <div className="text-[10px] uppercase tracking-[0.2em] text-zinc-500 font-semibold mb-2">Daily energy</div>
           <div className="flex items-end gap-2">
-            <span className="text-5xl font-semibold tabular-nums text-[#FFAE6D]" style={{ fontFamily: 'var(--font-display)' }}>{mer}</span>
+            <span
+              className="text-[3.4rem] leading-none font-semibold tabular-nums text-[var(--apricot)]"
+              style={{ fontFamily: 'var(--font-display)' }}
+            >
+              {plan.mer}
+            </span>
             <span className="text-zinc-500 mb-2 text-sm">kcal / day</span>
           </div>
         </div>
+
         <div className="grid grid-cols-2 gap-3">
-          <div className="glass-card rounded-2xl p-4">
-            <div className="text-xs text-zinc-400 mb-1">Dry food</div>
-            <div className="text-2xl font-semibold tabular-nums" style={{ fontFamily: 'var(--font-display)' }}>{grams}g</div>
-            <div className="text-[11px] text-zinc-500">≈ {cups} cups</div>
-          </div>
-          <div className="glass-card rounded-2xl p-4">
-            <div className="text-xs text-zinc-400 mb-1">Meals / day</div>
-            <div className="text-2xl font-semibold tabular-nums" style={{ fontFamily: 'var(--font-display)' }}>{meals}</div>
-            <div className="text-[11px] text-zinc-500">≈ {Math.round(grams / meals)}g each</div>
-          </div>
+          {[
+            { label: 'Dry food', v: `${plan.dryGrams}g`, sub: `≈ ${plan.cups} cups` },
+            { label: 'Meals', v: `${plan.meals}×`, sub: `≈ ${plan.gramsPerMeal}g each` },
+          ].map(s => (
+            <div key={s.label} className="rounded-2xl p-4 border border-white/[0.08] bg-white/[0.02]">
+              <div className="text-xs text-zinc-500 mb-1">{s.label}</div>
+              <div className="text-2xl font-semibold tabular-nums" style={{ fontFamily: 'var(--font-display)' }}>{s.v}</div>
+              <div className="text-[11px] text-zinc-500">{s.sub}</div>
+            </div>
+          ))}
         </div>
-        <p className="text-[11px] text-zinc-500 leading-relaxed">
-          Based on veterinary RER/MER energy formulas. Always confirm with your vet for medical diets.
+
+        <p className="text-[11px] text-zinc-600 leading-relaxed">
+          RER/MER energy formulas. Guidance, not a prescription — confirm medical diets with your vet.
         </p>
       </div>
     </div>
   )
 }
 
-function TestimonialCard({ t }: { t: typeof TESTIMONIALS[number] }) {
+function NutritionSection() {
   return (
-    <div className="glass-card rounded-2xl p-6 surface-hover h-full flex flex-col">
-      <Quote className="w-7 h-7 text-[#FFAE6D]/40 mb-4" />
-      <p className="text-zinc-300 leading-relaxed mb-6 flex-1">&ldquo;{t.quote}&rdquo;</p>
-      <div className="inline-flex items-center gap-2 self-start px-3 py-1.5 rounded-xl bg-[#FFAE6D]/10 border border-[#FFAE6D]/20 mb-5">
-        <span className="text-2xl font-semibold tabular-nums text-[#FFAE6D]" style={{ fontFamily: 'var(--font-display)' }}>{t.metric}</span>
-        <span className="text-[11px] text-zinc-400 leading-tight">{t.metricLabel}</span>
+    <section className="relative py-28 lg:py-36 px-6 border-y border-white/[0.06]">
+      <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-14 lg:gap-20 items-start">
+        <Reveal>
+          <Eyebrow>Try it now</Eyebrow>
+          <SectionHeading
+            lead="Portion size is the"
+            accent="quiet problem."
+            sub="Over half of pets are overweight, and it almost never comes from cruelty — it comes from a scoop nobody ever measured. Move the sliders and see what your pet actually needs."
+          />
+          <ul className="space-y-3 mt-9 mb-10">
+            {[
+              'Vet-grade RER/MER calorie maths',
+              'Adjusts for species, life stage, activity and body condition',
+              'Exact grams, cups, meals and water per day',
+              'Recalculates as they grow or slim down',
+            ].map(t => (
+              <li key={t} className="flex items-start gap-3 text-[14.5px] text-zinc-300">
+                <CheckCircle2 className="w-[18px] h-[18px] text-[var(--apricot)] shrink-0 mt-0.5" aria-hidden="true" /> {t}
+              </li>
+            ))}
+          </ul>
+          <Link href="/nutrition">
+            <Button size="lg" className="btn-glass-primary gap-2 rounded-2xl px-7">
+              Open the full planner <ArrowUpRight className="w-4 h-4" />
+            </Button>
+          </Link>
+        </Reveal>
+
+        <Reveal delay={0.12} className="lg:sticky lg:top-28">
+          <div className="relative p-7 rounded-[1.5rem] border border-white/[0.09] bg-[var(--card)]/94 backdrop-blur-xl shadow-[0_30px_80px_-30px_rgba(0,0,0,0.8)]">
+            <div className="flex items-center justify-between mb-6">
+              <span className="text-[10px] font-semibold text-zinc-500 uppercase tracking-[0.2em]">Live calculation</span>
+              <span className="flex items-center gap-1.5 text-[10px] text-[var(--apricot)]">
+                <span className="w-1.5 h-1.5 rounded-full bg-[var(--apricot)] animate-pulse" /> updating
+              </span>
+            </div>
+            <NutritionDemo />
+          </div>
+        </Reveal>
       </div>
-      <div className="flex items-center gap-3 pt-4 border-t border-white/5">
-        <div className="relative w-11 h-11 rounded-full overflow-hidden border border-white/10">
-          <Image src={t.avatar} alt={t.name} fill className="object-cover" sizes="44px" />
-        </div>
-        <div>
-          <div className="font-semibold text-sm">{t.name}</div>
-          <div className="text-xs text-zinc-400">{t.role}</div>
-        </div>
+    </section>
+  )
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Testimonials — one large editorial quote rather than three equal cards
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+const VOICES = [
+  {
+    quote: 'The portion planner alone fixed Biscuit’s weight in two months. I had been overfeeding him for a year without realising it.',
+    name: 'Amara Okonkwo', role: 'Mum to Biscuit, a beagle',
+    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&h=200&fit=crop&q=85',
+    metric: '−18%', metricLabel: 'to a healthy weight',
+  },
+  {
+    quote: 'Luna got something off the counter at 11pm. The food checker told me it was toxic and the vet finder had a clinic open four minutes away.',
+    name: 'Thabo Mokoena', role: 'Dad to Luna, a Maine Coon',
+    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&h=200&fit=crop&q=85',
+    metric: '4 min', metricLabel: 'to an open clinic',
+  },
+  {
+    quote: 'Two dogs, endless vaccine dates, two different diets. PetPal keeps all of it straight so I don’t have to hold it in my head.',
+    name: 'Lerato Dube', role: 'Mum to Max & Milo, huskies',
+    avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=200&h=200&fit=crop&q=85',
+    metric: '100%', metricLabel: 'reminders kept',
+  },
+]
+
+function Testimonials() {
+  const [active, setActive] = useState(0)
+  const v = VOICES[active]
+
+  return (
+    <section className="relative py-28 lg:py-36 px-6">
+      <div className="max-w-6xl mx-auto">
+        <Reveal className="mb-12">
+          <Eyebrow>Happy tails</Eyebrow>
+          <SectionHeading lead="Owners who" accent="rest easier." />
+        </Reveal>
+
+        <Reveal delay={0.1}>
+          <div className="relative rounded-[1.75rem] border border-white/[0.08] bg-[var(--card)]/88 backdrop-blur-xl p-8 md:p-14 overflow-hidden">
+            <div
+              className="pointer-events-none absolute -top-32 -right-20 w-[26rem] h-[26rem] rounded-full opacity-30"
+              style={{ background: 'radial-gradient(circle, rgba(255,174,109,0.22), transparent 70%)' }}
+              aria-hidden="true"
+            />
+
+            <AnimatePresence mode="wait">
+              <motion.blockquote
+                key={active}
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -12 }}
+                transition={{ duration: 0.45, ease: EASE }}
+                className="relative"
+              >
+                <p
+                  className="text-2xl md:text-[2.1rem] leading-[1.35] tracking-[-0.02em] text-zinc-100 max-w-3xl"
+                  style={{ fontFamily: 'var(--font-display)' }}
+                >
+                  &ldquo;{v.quote}&rdquo;
+                </p>
+
+                <div className="flex flex-wrap items-center gap-6 mt-10">
+                  <div className="flex items-center gap-3.5">
+                    <div className="relative w-12 h-12 rounded-full overflow-hidden border border-white/12 shrink-0">
+                      <Image src={v.avatar} alt="" fill className="object-cover" sizes="48px" />
+                    </div>
+                    <div>
+                      <div className="font-semibold text-sm">{v.name}</div>
+                      <div className="text-xs text-zinc-500">{v.role}</div>
+                    </div>
+                  </div>
+                  <div className="h-10 w-px bg-white/10 hidden sm:block" aria-hidden="true" />
+                  <div>
+                    <div
+                      className="text-2xl font-semibold tabular-nums text-[var(--apricot)] leading-none"
+                      style={{ fontFamily: 'var(--font-display)' }}
+                    >
+                      {v.metric}
+                    </div>
+                    <div className="text-[11px] text-zinc-500 mt-1">{v.metricLabel}</div>
+                  </div>
+                </div>
+              </motion.blockquote>
+            </AnimatePresence>
+
+            <div className="flex items-center gap-2 mt-12" role="tablist" aria-label="Testimonials">
+              {VOICES.map((t, i) => (
+                <button
+                  key={t.name}
+                  role="tab"
+                  aria-selected={i === active}
+                  aria-label={`Read ${t.name}'s story`}
+                  onClick={() => setActive(i)}
+                  className={`h-1.5 rounded-full transition-all duration-300 ${
+                    i === active ? 'w-10 bg-[var(--apricot)]' : 'w-1.5 bg-white/15 hover:bg-white/30'
+                  }`}
+                />
+              ))}
+            </div>
+          </div>
+        </Reveal>
       </div>
+    </section>
+  )
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   FAQ — two quiet columns, no boxes inside boxes
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+const FAQS = [
+  { q: 'Is PetPal free?', a: 'Yes. Pet profiles, the nutrition planner, food-safety checker, wellness check, care plan, guides and vet finder are all free — and most of them work without an account at all.' },
+  { q: 'How accurate is the nutrition planner?', a: 'It uses the standard veterinary RER and MER energy equations, adjusted for species, life stage, activity and body condition. It is planning guidance — prescription and therapeutic diets are always your vet’s call.' },
+  { q: 'How does the food-safety checker work?', a: 'A curated database of 89 foods, plants and household items, each with the clinical reason, the animals most affected, and what to do. If an item has not been verified we say so rather than guessing, because a wrong “safe” could kill an animal.' },
+  { q: 'Where do the vets come from?', a: 'Real practices recorded in OpenStreetMap, ranked by distance from you. We show only what the directory actually holds — no invented ratings, and a phone number only where one is verified.' },
+  { q: 'What happens to my location?', a: 'Your browser shares an approximate position with your permission, it is used to run one search, and it is never stored or sent to us.' },
+  { q: 'Can I track more than one pet?', a: 'As many as you like. Each gets its own profile, diet, weight and schedule — and only you can see them, which is enforced by the database itself, not just by the app.' },
+]
+
+function FaqRow({ q, a, idx }: { q: string; a: string; idx: number }) {
+  const [open, setOpen] = useState(idx === 0)
+  return (
+    <div className="border-b border-white/[0.07]">
+      <button
+        onClick={() => setOpen(o => !o)}
+        aria-expanded={open}
+        className="w-full flex items-start justify-between gap-6 py-6 text-left group"
+      >
+        <span className="text-[15.5px] font-medium text-zinc-100 group-hover:text-white transition-colors leading-snug">
+          {q}
+        </span>
+        <span className="shrink-0 mt-0.5 w-6 h-6 rounded-full border border-white/12 flex items-center justify-center text-zinc-400 group-hover:border-[var(--apricot)]/40 group-hover:text-[var(--apricot)] transition-colors">
+          {open ? <Minus className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
+        </span>
+      </button>
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.32, ease: EASE }}
+            className="overflow-hidden"
+          >
+            <p className="pb-6 pr-10 text-sm text-zinc-400 leading-relaxed">{a}</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
 
-function FaqItem({ q, a, idx }: { q: string; a: string; idx: number }) {
-  const [open, setOpen] = useState(idx === 0)
+function Faq() {
+  const mid = Math.ceil(FAQS.length / 2)
   return (
-    <motion.div initial={{ opacity: 0, y: 8 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: idx * 0.04 }}
-      className="glass-card rounded-xl overflow-hidden">
-      <button onClick={() => setOpen(!open)} className="w-full flex items-center justify-between p-5 text-left hover:bg-white/[0.02] transition-colors" aria-expanded={open}>
-        <span className="font-semibold text-sm">{q}</span>
-        <motion.div animate={{ rotate: open ? 45 : 0 }} transition={{ duration: 0.3 }}><Plus className="w-4 h-4 text-zinc-400" /></motion.div>
-      </button>
-      <AnimatePresence initial={false}>
-        {open && (
-          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}>
-            <div className="px-5 pb-5 text-sm text-zinc-400 leading-relaxed">{a}</div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </motion.div>
-  )
-}
-
-// ═══════════ Immersive Reveal — emotional scroll band ═══════════
-function ImmersiveReveal() {
-  const ref = useRef<HTMLDivElement>(null)
-  const { scrollYProgress } = useScroll({ target: ref, offset: ['start end', 'end start'] })
-  const clip = useTransform(scrollYProgress, [0, 0.5, 1], ['inset(38% 22% 38% 22% round 2.5rem)', 'inset(0% 0% 0% 0% round 1.25rem)', 'inset(0% 0% 0% 0% round 1.25rem)'])
-  const scale = useTransform(scrollYProgress, [0, 0.5], [1.25, 1])
-  const imgY = useTransform(scrollYProgress, [0, 1], ['-8%', '8%'])
-  const textY = useTransform(scrollYProgress, [0.2, 0.6], [40, 0])
-  const textO = useTransform(scrollYProgress, [0.25, 0.55], [0, 1])
-
-  return (
-    <section ref={ref} className="relative py-20 px-6">
-      <div className="relative max-w-7xl mx-auto h-[80vh] min-h-[520px]">
-        <motion.div style={{ clipPath: clip }} className="absolute inset-0 overflow-hidden will-change-transform">
-          <motion.div style={{ scale, y: imgY }} className="absolute inset-0">
-            <Image src="https://images.unsplash.com/photo-1450778869180-41d0601e046e?w=1600&h=1000&fit=crop" alt="A person and their dog" fill className="object-cover" sizes="100vw" priority />
-          </motion.div>
-          <div className="absolute inset-0 bg-gradient-to-t from-[#0D0A14] via-[#0D0A14]/30 to-[#0D0A14]/20" />
-          <div className="absolute inset-0 bg-gradient-to-r from-[#0D0A14]/60 to-transparent" />
-          <motion.div style={{ y: textY, opacity: textO }} className="absolute inset-0 flex flex-col justify-end p-8 md:p-16">
-            <p className="text-xs uppercase tracking-[0.3em] text-[#FFAE6D] mb-5">Why we built PetPal</p>
-            <h2 className="text-4xl md:text-7xl font-semibold leading-[1.0] max-w-3xl mb-5" style={{ fontFamily: 'var(--font-display)' }}>
-              They give you their <span style={{ fontFamily: 'var(--font-serif)' }} className="italic text-[#FFAE6D]">whole</span> world.
-            </h2>
-            <p className="text-lg md:text-xl text-zinc-200 max-w-xl leading-relaxed">
-              The least we can do is make sure they&rsquo;re fed right, kept safe, and never one tap away from help.
-            </p>
-          </motion.div>
-        </motion.div>
+    <section className="relative py-28 lg:py-36 px-6">
+      <div className="max-w-6xl mx-auto">
+        <Reveal className="mb-12">
+          <Eyebrow>Questions</Eyebrow>
+          <SectionHeading lead="Good questions," accent="honest answers." />
+        </Reveal>
+        <Reveal delay={0.1}>
+          <div className="grid md:grid-cols-2 gap-x-14">
+            <div>{FAQS.slice(0, mid).map((f, i) => <FaqRow key={f.q} {...f} idx={i} />)}</div>
+            <div>{FAQS.slice(mid).map((f, i) => <FaqRow key={f.q} {...f} idx={i + mid} />)}</div>
+          </div>
+        </Reveal>
       </div>
     </section>
   )
 }
 
-// ═══════════ 3D Coverflow Slider — five ways PetPal has your back ═══════════
-const SHOWCASE = [
-  { tag: 'Nutrition', title: 'Feed them exactly right', desc: 'Precise calories, grams and meals — calculated like a vet would.', img: 'https://images.unsplash.com/photo-1601758228041-f3b2795255f1?w=900&h=1100&fit=crop', href: '/nutrition' },
-  { tag: 'Safety', title: 'Know what’s safe', desc: 'Check any food or plant against our toxicity database in a tap.', img: 'https://images.unsplash.com/photo-1425082661705-1834bfd09dca?w=900&h=1100&fit=crop', href: '/food-safety' },
-  { tag: 'Vets', title: 'Help, right nearby', desc: 'A live map of trusted vets the moment you need one.', img: 'https://images.unsplash.com/photo-1576201836106-db1758fd1c97?w=900&h=1100&fit=crop', href: '/vet-finder' },
-  { tag: 'Wellness', title: 'A happier, healthier pet', desc: 'Track weight, mood and milestones — and never miss a date.', img: 'https://images.unsplash.com/photo-1518717758536-85ae29035b6d?w=900&h=1100&fit=crop', href: '/wellness' },
-  { tag: 'Community', title: 'Never parent alone', desc: 'Swap stories and advice with thousands of fellow pet parents.', img: 'https://images.unsplash.com/photo-1583337130417-3346a1be7dee?w=900&h=1100&fit=crop', href: '/wall' },
-]
+/* ═══════════════════════════════════════════════════════════════════════════
+   Close
+   ═══════════════════════════════════════════════════════════════════════════ */
 
-function Slider3D() {
-  const [active, setActive] = useState(0)
-  const [vw, setVw] = useState(1200)
-  const n = SHOWCASE.length
-
-  useEffect(() => {
-    const onResize = () => setVw(window.innerWidth)
-    onResize()
-    window.addEventListener('resize', onResize)
-    const id = setInterval(() => setActive(a => (a + 1) % n), 4500)
-    return () => { clearInterval(id); window.removeEventListener('resize', onResize) }
-  }, [n])
-
-  const isMobile = vw < 640
-  const spread = isMobile ? 140 : 280
-
-  function offsetOf(i: number) {
-    let d = i - active
-    if (d > n / 2) d -= n
-    if (d < -n / 2) d += n
-    return d
-  }
-
+function ClosingCta() {
   return (
-    <section className="relative py-28 overflow-hidden">
-      <div className="absolute inset-0 bg-mesh-soft" aria-hidden="true" />
-      <div className="relative max-w-7xl mx-auto px-6">
-        <motion.div initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-14">
-          <Badge className="mb-5 bg-[#FFAE6D]/10 text-[#FFAE6D] border-[#FFAE6D]/30 font-mono"><PawPrint className="w-3 h-3 mr-1.5" /> HOW IT HELPS</Badge>
-          <h2 className="text-4xl md:text-6xl font-semibold leading-[1.05]" style={{ fontFamily: 'var(--font-display)' }}>
-            <span className="text-gradient-soft">Five ways PetPal</span> <span className="text-gradient-aurora">has your back.</span>
-          </h2>
-        </motion.div>
-
-        {/* 3D stage */}
-        <div className="relative h-[460px] sm:h-[560px] [perspective:1800px]" aria-roledescription="carousel">
-          <div className="absolute inset-0 [transform-style:preserve-3d]">
-            {SHOWCASE.map((s, i) => {
-              const off = offsetOf(i)
-              const abs = Math.abs(off)
-              const isCenter = off === 0
-              return (
-                <motion.div
-                  key={i}
-                  className="absolute top-1/2 left-1/2 w-[260px] h-[380px] sm:w-[340px] sm:h-[460px] -ml-[130px] -mt-[190px] sm:-ml-[170px] sm:-mt-[230px] rounded-[2rem] overflow-hidden border border-white/10 cursor-pointer"
-                  animate={{
-                    x: off * spread,
-                    scale: isCenter ? 1 : 0.82 - abs * 0.05,
-                    rotateY: off * -32,
-                    z: -abs * 240,
-                    opacity: abs > 2 ? 0 : 1 - abs * 0.18,
-                    zIndex: 20 - abs,
-                    filter: isCenter ? 'brightness(1)' : 'brightness(0.55)',
-                  }}
-                  transition={{ type: 'spring', stiffness: 110, damping: 20 }}
-                  onClick={() => setActive(i)}
-                  style={{ pointerEvents: abs > 2 ? 'none' : 'auto' }}
-                >
-                  <Image src={s.img} alt={s.title} fill className="object-cover" sizes="360px" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#0D0A14] via-[#0D0A14]/20 to-transparent" />
-                  <div className="absolute top-5 left-6 text-5xl font-semibold text-white/15 tabular-nums" style={{ fontFamily: 'var(--font-display)' }}>0{i + 1}</div>
-                  <AnimatePresence>
-                    {isCenter && (
-                      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="absolute bottom-0 left-0 right-0 p-7">
-                        <Badge className="mb-3 bg-[#FFAE6D]/15 text-[#FFAE6D] border-[#FFAE6D]/30 font-mono text-[10px]">{s.tag}</Badge>
-                        <h3 className="text-2xl font-semibold mb-1.5" style={{ fontFamily: 'var(--font-display)' }}>{s.title}</h3>
-                        <p className="text-zinc-300 text-sm leading-relaxed mb-4">{s.desc}</p>
-                        <Link href={s.href} className="inline-flex items-center gap-1.5 text-sm text-[#FFAE6D] font-medium" onClick={e => e.stopPropagation()}>Explore <ArrowUpRight className="w-4 h-4" /></Link>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </motion.div>
-              )
-            })}
-          </div>
-        </div>
-
-        {/* Controls */}
-        <div className="flex items-center justify-center gap-5 mt-10">
-          <button onClick={() => setActive(a => (a - 1 + n) % n)} className="w-11 h-11 rounded-full glass-card flex items-center justify-center hover:border-[#FFAE6D]/40 transition-colors" aria-label="Previous"><ChevronLeft className="w-5 h-5" /></button>
-          <div className="flex items-center gap-2">
-            {SHOWCASE.map((_, i) => (
-              <button key={i} onClick={() => setActive(i)} aria-label={`Go to slide ${i + 1}`}
-                className={`h-2 rounded-full transition-all ${i === active ? 'w-8 bg-[#FFAE6D]' : 'w-2 bg-white/15 hover:bg-white/30'}`} />
-            ))}
-          </div>
-          <button onClick={() => setActive(a => (a + 1) % n)} className="w-11 h-11 rounded-full glass-card flex items-center justify-center hover:border-[#FFAE6D]/40 transition-colors" aria-label="Next"><ChevronRight className="w-5 h-5" /></button>
-        </div>
-      </div>
-    </section>
-  )
-}
-
-// ═══════════ Exploding Stats — burst-to-reveal ═══════════
-const EXPLODE = [
-  { icon: Apple, label: 'Nutrition plans', value: '2.4M', x: -240, y: -120, c: '#FFAE6D' },
-  { icon: ShieldCheck, label: 'Foods checked', value: '890k', x: 240, y: -130, c: '#8E8BF5' },
-  { icon: MapPin, label: 'Vets mapped', value: '12k', x: -270, y: 90, c: '#FFD98E' },
-  { icon: Heart, label: 'Wellness checks', value: '640k', x: 250, y: 110, c: '#FFAE6D' },
-  { icon: Activity, label: 'Weigh-ins logged', value: '5.1M', x: -120, y: 180, c: '#8E8BF5' },
-  { icon: Stethoscope, label: 'Vet bookings', value: '210k', x: 130, y: 190, c: '#FFD98E' },
-]
-
-function ExplodeStats() {
-  // `cycle` increments to remount the chips → reliably re-runs the explosion every tap.
-  const [cycle, setCycle] = useState(0)
-  const [armed, setArmed] = useState(false)
-  const [vw, setVw] = useState(1200)
-
-  useEffect(() => {
-    const onResize = () => setVw(window.innerWidth)
-    onResize()
-    window.addEventListener('resize', onResize)
-    return () => window.removeEventListener('resize', onResize)
-  }, [])
-
-  const f = vw < 480 ? 0.46 : vw < 768 ? 0.66 : 1 // responsive explosion radius
-
-  return (
-    <section className="relative py-24 sm:py-32 overflow-hidden">
-      <div className="absolute inset-0 bg-mesh-soft" aria-hidden="true" />
-      <div className="relative max-w-5xl mx-auto px-6">
-        <motion.div
-          onViewportEnter={() => setArmed(true)}
-          viewport={{ once: true, amount: 0.4 }}
-          className="relative h-[400px] sm:h-[520px] flex items-center justify-center"
-        >
-          {/* Pulsing rings */}
-          <div className="absolute w-32 h-32 sm:w-40 sm:h-40 rounded-full border border-[#FFAE6D]/20 animate-pulse-ring" />
-          <div className="absolute w-32 h-32 sm:w-40 sm:h-40 rounded-full border border-[#FFAE6D]/20 animate-pulse-ring" style={{ animationDelay: '0.8s' }} />
-
-          {/* Core paw — click to re-explode */}
-          <motion.button
-            onClick={() => setCycle(c => c + 1)}
-            whileTap={{ scale: 0.9 }}
-            animate={{ rotate: cycle * 360 }}
-            transition={{ type: 'spring', stiffness: 140, damping: 12 }}
-            className="relative z-10 w-24 h-24 sm:w-28 sm:h-28 rounded-[1.75rem] bg-gradient-to-br from-[#FFBE8C] to-[#E0682F] flex items-center justify-center shadow-[0_12px_50px_rgba(255,174,109,0.5)] hover:scale-105 transition-transform"
-            aria-label="Replay animation"
-          >
-            <Logo size={vw < 640 ? 52 : 64} />
-          </motion.button>
-
-          {/* Exploding info chips — keyed on cycle so each tap replays */}
-          {armed && EXPLODE.map((e, i) => (
-            <motion.div
-              key={`${cycle}-${i}`}
-              initial={{ x: 0, y: 0, scale: 0, opacity: 0, rotate: -25 }}
-              animate={{ x: e.x * f, y: e.y * f, scale: 1, opacity: 1, rotate: 0 }}
-              transition={{ type: 'spring', stiffness: 120, damping: 14, delay: 0.05 + i * 0.07 }}
-              className="absolute z-20 glass-card rounded-xl sm:rounded-2xl px-3 py-2 sm:px-4 sm:py-3 flex items-center gap-2 sm:gap-3 shadow-2xl"
+    <section className="relative py-28 lg:py-36 px-6">
+      <Reveal>
+        <div className="relative max-w-4xl mx-auto text-center px-6 py-16 md:py-20 rounded-[2rem] border border-white/[0.09] bg-[var(--card)]/88 backdrop-blur-xl overflow-hidden">
+          <div
+            className="pointer-events-none absolute inset-0 opacity-70"
+            style={{ background: 'radial-gradient(60% 60% at 50% 0%, rgba(255,174,109,0.16), transparent 70%)' }}
+            aria-hidden="true"
+          />
+          <div className="relative">
+            <div className="flex justify-center mb-8">
+              <Logo size={64} glow />
+            </div>
+            <h2
+              className="text-4xl md:text-6xl font-semibold mb-5 leading-[1.05] tracking-[-0.03em]"
+              style={{ fontFamily: 'var(--font-display)' }}
             >
-              <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl flex items-center justify-center shrink-0" style={{ background: `${e.c}1F`, border: `1px solid ${e.c}40` }}>
-                <e.icon className="w-4 h-4 sm:w-4.5 sm:h-4.5" style={{ color: e.c }} />
-              </div>
-              <div>
-                <div className="text-sm sm:text-lg font-semibold tabular-nums leading-none" style={{ fontFamily: 'var(--font-display)' }}>{e.value}</div>
-                <div className="text-[10px] sm:text-[11px] text-zinc-400 mt-0.5 whitespace-nowrap">{e.label}</div>
-              </div>
-            </motion.div>
-          ))}
-        </motion.div>
-
-        <div className="text-center mt-2 sm:-mt-4">
-          <h2 className="text-3xl md:text-5xl font-semibold leading-[1.05]" style={{ fontFamily: 'var(--font-display)' }}>
-            <span className="text-gradient-soft">A whole platform,</span> <span className="text-gradient-aurora">working for them.</span>
-          </h2>
-          <p className="text-zinc-500 text-sm mt-3">Tap the paw to replay</p>
-        </div>
-      </div>
-    </section>
-  )
-}
-
-// ─────────── MAIN ───────────
-export default function LandingPage() {
-  return (
-    <div className="relative min-h-screen text-zinc-100 overflow-x-hidden">
-      {/* Fixed 3D layer behind every section — morphs dog -> cat -> bird ->
-          rabbit -> fish across the length of the page. */}
-      <AnimalField />
-      <div className="relative z-10">
-      <Navbar />
-
-      {/* ─── HERO ─── */}
-      <Hero />
-
-      {/* ─── STATS ─── */}
-      <section className="relative py-24 border-y border-white/5">
-        <div className="absolute inset-0 bg-mesh-soft" aria-hidden="true" />
-        <div className="relative max-w-7xl mx-auto px-6">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
-            {STATS.map((s, i) => (
-              <motion.div key={s.label} initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1, duration: 0.6 }}
-                className="glass-card rounded-2xl p-5 surface-hover">
-                <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-4 bg-[#FFAE6D]/12 border border-[#FFAE6D]/20">
-                  <s.icon className="w-4 h-4 text-[#FFAE6D]" />
-                </div>
-                <div className="text-4xl lg:text-5xl font-semibold mb-1 tabular-nums text-[#FFAE6D]" style={{ fontFamily: 'var(--font-display)' }}>
-                  <Counter to={s.value} suffix={s.suffix} />
-                </div>
-                <p className="text-zinc-300 text-sm mb-1">{s.label}</p>
-                <p className="text-zinc-500 text-xs">{s.sub}</p>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ─── SPECIES TICKER ─── */}
-      <div className="border-b border-white/5 py-5 overflow-hidden bg-[#130F1C]">
-        <div className="animate-marquee-x">
-          {[...SPECIES_TICKER, ...SPECIES_TICKER].map((s, i) => (
-            <div key={i} className="mx-6 flex items-center gap-2 whitespace-nowrap text-sm text-zinc-400">
-              <PawPrint className="w-3.5 h-3.5 text-[#FFAE6D]" /> {s}
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* ─── IMMERSIVE REVEAL ─── */}
-      <ImmersiveReveal />
-
-      {/* ─── 3D SLIDER ─── */}
-      <Slider3D />
-
-      {/* ─── EXPLODING STATS ─── */}
-      <ExplodeStats />
-
-      {/* ─── BENTO FEATURES ─── */}
-      <section className="py-32 px-6 max-w-7xl mx-auto">
-        <motion.div initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="max-w-3xl mb-16">
-          <Badge className="mb-5 bg-[#FFAE6D]/10 text-[#FFAE6D] border-[#FFAE6D]/30 font-mono">
-            <PawPrint className="w-3 h-3 mr-1.5" /> THE PLATFORM
-          </Badge>
-          <h2 className="text-5xl md:text-6xl font-semibold mb-6 leading-[1.05] tracking-tight" style={{ fontFamily: 'var(--font-display)' }}>
-            <span className="text-gradient-soft">One app for every</span><br />
-            <span className="text-gradient-aurora">wag, purr and paw.</span>
-          </h2>
-          <p className="text-zinc-400 text-lg leading-relaxed">
-            From the first meal to the next vet visit — everything a pet parent needs, beautifully organised.
-          </p>
-        </motion.div>
-
-        <div className="grid lg:grid-cols-3 gap-5">
-          {FEATURES_BENTO.map((f, i) => (
-            <motion.div key={f.title} initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.08, duration: 0.5 }}
-              className={f.span}>
-              <Tilt className="group relative h-full p-7 rounded-3xl glass-card surface-hover overflow-hidden">
-                <div className="absolute -top-24 -right-24 w-64 h-64 rounded-full opacity-[0.12] group-hover:opacity-30 transition-opacity duration-500" style={{ background: 'radial-gradient(circle, #FFAE6D, transparent 70%)' }} />
-                <div className="relative" style={{ transform: 'translateZ(40px)' }}>
-                  <div className="flex items-center gap-3 mb-5">
-                    <div className="w-11 h-11 rounded-xl flex items-center justify-center backdrop-blur-sm bg-[#FFAE6D]/12 border border-[#FFAE6D]/20">
-                      <f.icon className="w-5 h-5 text-[#FFAE6D]" />
-                    </div>
-                    <Badge className="text-[10px] font-mono uppercase bg-[#FFAE6D]/10 text-[#FFAE6D] border-[#FFAE6D]/25">{f.tag}</Badge>
-                  </div>
-                  <h3 className="text-xl font-semibold mb-2.5 tracking-tight" style={{ fontFamily: 'var(--font-display)' }}>{f.title}</h3>
-                  <p className="text-zinc-400 text-sm leading-relaxed">{f.desc}</p>
-                </div>
-              </Tilt>
-            </motion.div>
-          ))}
-        </div>
-      </section>
-
-      {/* ─── NUTRITION PLANNER DEMO ─── */}
-      <section className="relative py-32 border-y border-white/5 overflow-hidden">
-        <div className="absolute inset-0 bg-mesh-soft" aria-hidden="true" />
-        <div className="relative max-w-7xl mx-auto px-6 grid lg:grid-cols-2 gap-16 items-start">
-          <motion.div initial={{ opacity: 0, x: -16 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }}>
-            <Badge className="mb-5 bg-[#FFAE6D]/10 text-[#FFAE6D] border-[#FFAE6D]/30 font-mono">
-              <Apple className="w-3 h-3 mr-1.5" /> NUTRITION PLANNER
-            </Badge>
-            <h2 className="text-5xl md:text-6xl font-semibold mb-6 leading-[1.05]" style={{ fontFamily: 'var(--font-display)' }}>
-              Feed them<br /><span className="text-gradient-aurora">exactly right.</span>
+              <span className="text-gradient-soft">They give you everything.</span>
+              <br />
+              <span style={{ fontFamily: 'var(--font-serif)' }} className="italic font-normal text-[var(--apricot)]">
+                Give them this.
+              </span>
             </h2>
-            <p className="text-zinc-400 text-lg mb-8 leading-relaxed">
-              Over half of pets are overweight — almost always from guesswork at the food bowl.
-              PetPal calculates your pet&rsquo;s precise daily calories, food weight, and meal schedule
-              using the same energy formulas vets use.
-            </p>
-            <ul className="space-y-3 mb-10">
-              {['Vet-grade RER/MER calorie math', 'Adjusts for breed, life stage & activity', 'Exact grams, cups and meals per day', 'Re-plans automatically as they grow'].map(t => (
-                <li key={t} className="flex items-center gap-3 text-sm text-zinc-300">
-                  <CheckCircle2 className="w-5 h-5 text-[#FFAE6D] shrink-0" /> {t}
-                </li>
-              ))}
-            </ul>
-            <Link href="/nutrition">
-              <Button size="lg" className="btn-glass-primary gap-2 rounded-2xl px-7">Open the full planner <ArrowUpRight className="w-4 h-4" /></Button>
-            </Link>
-          </motion.div>
-
-          <motion.div initial={{ opacity: 0, x: 16 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} className="lg:sticky lg:top-32">
-            <div className="relative p-7 rounded-3xl border-gradient glass-card shadow-2xl">
-              <div className="absolute -top-3 -right-3 w-12 h-12 rounded-full bg-gradient-to-br from-[#FFAE6D] to-[#8E8BF5] flex items-center justify-center shadow-[0_8px_30px_rgba(255,174,109,0.5)]">
-                <Apple className="w-5 h-5 text-[#2A1A08]" />
-              </div>
-              <div className="flex items-center justify-between mb-5">
-                <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Live Demo</span>
-                <div className="flex items-center gap-1.5 text-[10px] text-[#FFAE6D]"><span className="w-1.5 h-1.5 rounded-full bg-[#FFAE6D] animate-pulse" /> Calculating</div>
-              </div>
-              <NutritionDemo />
-            </div>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* ─── HEALTH TRACKING ─── */}
-      <section className="py-32 px-6 max-w-7xl mx-auto grid lg:grid-cols-2 gap-12 items-center">
-        <motion.div initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
-          <Badge className="mb-5 bg-[#FFAE6D]/10 text-[#FFAE6D] border-[#FFAE6D]/30 font-mono">
-            <Activity className="w-3 h-3 mr-1.5" /> HEALTH TRACKING
-          </Badge>
-          <h2 className="text-5xl font-semibold mb-5 leading-[1.05]" style={{ fontFamily: 'var(--font-display)' }}>
-            Every milestone,<br /><span className="text-gradient-aurora">remembered.</span>
-          </h2>
-          <p className="text-zinc-400 text-lg leading-relaxed mb-8">
-            Weight trends, vaccine dates, medications and vet visits — all in one timeline,
-            with gentle reminders so nothing slips.
-          </p>
-          <div className="grid grid-cols-3 gap-4">
-            {[{ icon: Syringe, label: 'Vaccines', v: 'On track' }, { icon: Bell, label: 'Reminders', v: '3 upcoming' }, { icon: Scale, label: 'Weight', v: '−1.4 kg' }].map(s => (
-              <div key={s.label} className="glass-card rounded-xl p-4">
-                <s.icon className="w-4 h-4 text-[#FFAE6D] mb-2" />
-                <div className="text-lg font-semibold tabular-nums" style={{ fontFamily: 'var(--font-display)' }}>{s.v}</div>
-                <div className="text-[11px] text-zinc-500">{s.label}</div>
-              </div>
-            ))}
-          </div>
-        </motion.div>
-
-        <motion.div initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="glass-card rounded-3xl p-6">
-          <div className="flex items-center justify-between mb-4">
-            <span className="text-sm font-semibold flex items-center gap-2"><Dog className="w-4 h-4 text-[#FFAE6D]" /> Biscuit · weight (kg)</span>
-            <Badge className="bg-[#FFAE6D]/10 text-[#FFAE6D] border-[#FFAE6D]/30 text-xs">Healthy trend</Badge>
-          </div>
-          <ResponsiveContainer width="100%" height={260}>
-            <AreaChart data={TREND_DATA}>
-              <defs>
-                <linearGradient id="wgrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#FFAE6D" stopOpacity={0.5} />
-                  <stop offset="100%" stopColor="#FFAE6D" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
-              <XAxis dataKey="week" tick={{ fill: '#A79CBF', fontSize: 11 }} axisLine={false} tickLine={false} />
-              <YAxis domain={['dataMin - 0.5', 'dataMax + 0.5']} tick={{ fill: '#A79CBF', fontSize: 11 }} axisLine={false} tickLine={false} />
-              <Tooltip contentStyle={{ background: '#1C1630', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, fontSize: 12 }} />
-              <Area type="monotone" dataKey="weight" stroke="#FFAE6D" strokeWidth={2.5} fill="url(#wgrad)" />
-            </AreaChart>
-          </ResponsiveContainer>
-        </motion.div>
-      </section>
-
-      {/* ─── TESTIMONIALS ─── */}
-      <section className="relative py-32 border-y border-white/5">
-        <div className="absolute inset-0 bg-mesh-soft" aria-hidden="true" />
-        <div className="relative max-w-7xl mx-auto px-6">
-          <motion.div initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-16">
-            <Badge className="mb-5 bg-[#FFAE6D]/10 text-[#FFAE6D] border-[#FFAE6D]/30 font-mono">
-              <Heart className="w-3 h-3 mr-1.5" /> HAPPY TAILS
-            </Badge>
-            <h2 className="text-5xl md:text-6xl font-semibold mb-5 leading-[1.05]" style={{ fontFamily: 'var(--font-display)' }}>
-              <span className="text-gradient-soft">Pet parents</span><br /><span className="text-gradient-aurora">who rest easier.</span>
-            </h2>
-          </motion.div>
-          <div className="grid md:grid-cols-3 gap-5">
-            {TESTIMONIALS.map((t, i) => (
-              <motion.div key={t.name} initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }}>
-                <TestimonialCard t={t} />
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ─── FAQ ─── */}
-      <section className="py-32 px-6 max-w-3xl mx-auto">
-        <motion.div initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-12">
-          <Badge className="mb-5 bg-white/[0.06] text-zinc-300 border-white/10 font-mono">FAQ</Badge>
-          <h2 className="text-5xl font-semibold leading-[1.05]" style={{ fontFamily: 'var(--font-display)' }}>
-            Good questions, <span className="text-gradient-aurora">honest answers.</span>
-          </h2>
-        </motion.div>
-        <div className="space-y-3">
-          {FAQS.map((f, i) => <FaqItem key={f.q} q={f.q} a={f.a} idx={i} />)}
-        </div>
-      </section>
-
-      {/* ─── CTA ─── */}
-      <section className="relative py-32 px-6 overflow-hidden">
-        <div className="absolute inset-0 bg-mesh" aria-hidden="true" />
-        <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
-          className="relative max-w-3xl mx-auto text-center p-12 rounded-3xl border-gradient glass-card">
-          <div className="absolute -top-12 left-1/2 -translate-x-1/2 animate-float-medium"><Logo size={80} glow /></div>
-          <div className="pt-10">
-            <h2 className="text-5xl md:text-6xl font-semibold mb-6 leading-[1.05]" style={{ fontFamily: 'var(--font-display)' }}>
-              <span className="text-gradient-soft">They give you everything.</span><br />
-              <span className="text-gradient-aurora">Give them PetPal.</span>
-            </h2>
-            <p className="text-zinc-400 text-lg max-w-md mx-auto mb-8 leading-relaxed">
-              Set up your pet&rsquo;s profile in under a minute. Free forever, for every pet you love.
+            <p className="text-zinc-400 text-base md:text-lg max-w-md mx-auto mb-9 leading-relaxed">
+              Set up a profile in under a minute. Free, for every pet you love.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-              <Link href="/auth/signup"><Button size="lg" className="btn-glass-primary gap-2 rounded-2xl px-7">Add Your Pet <ArrowUpRight className="w-4 h-4" /></Button></Link>
-              <Link href="/wellness"><Button size="lg" className="btn-glass text-white gap-2 rounded-2xl px-7">Try the Wellness Check</Button></Link>
+              <Link href="/auth/signup">
+                <Button size="lg" className="btn-glass-primary gap-2 rounded-2xl px-8 py-6 text-base w-full sm:w-auto">
+                  Add Your Pet <ArrowUpRight className="w-4 h-4" />
+                </Button>
+              </Link>
+              <Link href="/food-safety">
+                <Button size="lg" className="btn-glass text-white gap-2 rounded-2xl px-8 py-6 text-base w-full sm:w-auto">
+                  Check a food first <ArrowRight className="w-4 h-4" />
+                </Button>
+              </Link>
             </div>
           </div>
-        </motion.div>
-      </section>
+        </div>
+      </Reveal>
+    </section>
+  )
+}
 
-      {/* ─── FOOTER ─── */}
-      <footer className="border-t border-white/5 py-16 px-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-10 mb-12">
-            <div className="md:col-span-2">
-              <Link href="/" className="flex items-center gap-2.5 mb-4">
-                <Logo size={36} />
-                <span className="text-lg font-bold" style={{ fontFamily: 'var(--font-display)' }}>Pet<span className="text-[#FFAE6D]">Pal</span></span>
-              </Link>
-              <p className="text-zinc-400 text-sm leading-relaxed max-w-sm">
-                The all-in-one companion for pet owners — nutrition, health, safety and care, beautifully in one place.
-              </p>
-            </div>
-            <div>
-              <h4 className="text-xs font-semibold uppercase tracking-widest text-zinc-500 mb-4">Tools</h4>
+function Footer() {
+  const cols = [
+    { title: 'Tools', links: [['Nutrition Planner', '/nutrition'], ['Food Safety', '/food-safety'], ['Find a Vet', '/vet-finder'], ['Wellness Check', '/wellness'], ['Care Plan', '/care-plan'], ['Care Guides', '/resources']] },
+    { title: 'Account', links: [['Sign In', '/auth/login'], ['Create Account', '/auth/signup'], ['Dashboard', '/dashboard'], ['Setup Check', '/setup']] },
+  ]
+  return (
+    <footer className="border-t border-white/[0.07] py-16 px-6">
+      <div className="max-w-7xl mx-auto">
+        <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-10 mb-14">
+          <div className="md:col-span-2">
+            <Link href="/" className="flex items-center gap-2.5 mb-4">
+              <Logo size={34} />
+              <span className="text-lg font-bold" style={{ fontFamily: 'var(--font-display)' }}>
+                Pet<span className="text-[var(--apricot)]">Pal</span>
+              </span>
+            </Link>
+            <p className="text-zinc-400 text-sm leading-relaxed max-w-sm">
+              Feeding, safety, health and vets — for dogs, cats, rabbits, birds, reptiles and every small creature in
+              between.
+            </p>
+          </div>
+          {cols.map(col => (
+            <div key={col.title}>
+              <h3 className="text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-500 mb-4">{col.title}</h3>
               <ul className="space-y-2.5 text-sm text-zinc-400">
-                {[['Nutrition Planner', '/nutrition'], ['Food Safety', '/food-safety'], ['Find a Vet', '/vet-finder'], ['Wellness Check', '/wellness'], ['Care Guides', '/resources']].map(([l, h]) => (
-                  <li key={l}><Link href={h} className="hover:text-white transition-colors">{l}</Link></li>
+                {col.links.map(([l, h]) => (
+                  <li key={l}>
+                    <Link href={h} className="hover:text-white transition-colors">{l}</Link>
+                  </li>
                 ))}
               </ul>
             </div>
-            <div>
-              <h4 className="text-xs font-semibold uppercase tracking-widest text-zinc-500 mb-4">Account</h4>
-              <ul className="space-y-2.5 text-sm text-zinc-400">
-                <li><Link href="/auth/login" className="hover:text-white transition-colors">Sign In</Link></li>
-                <li><Link href="/auth/signup" className="hover:text-white transition-colors">Create Account</Link></li>
-                <li><Link href="/dashboard" className="hover:text-white transition-colors">Dashboard</Link></li>
-              </ul>
-            </div>
-          </div>
-          <div className="pt-8 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-zinc-500">
-            <p>&copy; 2026 PetPal · Made for the ones who never let you down.</p>
-            <div className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-[#FFAE6D] animate-pulse" /> All systems operational</div>
-          </div>
+          ))}
         </div>
-      </footer>
+        <div className="pt-8 border-t border-white/[0.07] flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-zinc-500">
+          <p>&copy; 2026 PetPal · Made for the ones who never let you down.</p>
+          <p className="text-zinc-600">Guidance only — never a substitute for your vet.</p>
+        </div>
+      </div>
+    </footer>
+  )
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+export default function LandingPage() {
+  return (
+    <div className="relative min-h-screen text-zinc-100 overflow-x-hidden">
+      {/* Fixed 3D layer behind every section — morphs dog → cat → bird →
+          rabbit → fish across the length of the page. */}
+      <AnimalField />
+
+      <div className="relative z-10">
+        <Navbar />
+        <Hero />
+        <TrustBar />
+        <EditorialReveal />
+        <Bento />
+        <NutritionSection />
+        <Testimonials />
+        <Faq />
+        <ClosingCta />
+        <Footer />
       </div>
     </div>
   )

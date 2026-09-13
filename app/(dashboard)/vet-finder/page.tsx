@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import PageHeader from '@/components/layout/PageHeader'
 import { fetchNearbyVets, type Vet } from '@/lib/vets'
 import { useClientValue } from '@/lib/use-client-value'
 
@@ -100,17 +101,15 @@ export default function VetFinderPage() {
 
   return (
     <div className="relative min-h-screen">
-      <div className="absolute inset-0 bg-mesh-soft pointer-events-none" />
-      <div className="relative p-6 lg:p-8 max-w-7xl mx-auto">
-        <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
-          <Badge className="mb-4 bg-[#FFAE6D]/10 text-[#FFAE6D] border-[#FFAE6D]/30 font-mono text-[10px]">
-            <MapPin className="w-3 h-3 mr-1.5" /> LIVE MAP
-          </Badge>
-          <h1 className="text-4xl lg:text-5xl font-semibold tracking-tight mb-2" style={{ fontFamily: 'var(--font-display)' }}>
-            Find a <span className="text-[#FFAE6D]">Vet</span> near you
-          </h1>
-          <p className="text-zinc-400 max-w-xl" role="status" aria-live="polite">{statusLine}</p>
-        </motion.div>
+      <PageHeader
+        eyebrow="Live map"
+        icon={MapPin}
+        title="Find a"
+        accent="vet near you"
+        sub={statusLine}
+        species="bird"
+      />
+      <div className="relative px-6 lg:px-8 py-10 max-w-7xl mx-auto">
 
         {locState === 'denied' && (
           <div className="glass-card rounded-xl p-3 mb-4 flex items-center gap-2.5 text-xs text-zinc-400">

@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { Check, Circle, Home, Syringe, GraduationCap, Heart, Trophy, PawPrint, Dog, Cat } from 'lucide-react'
-import { Badge } from '@/components/ui/badge'
+import PageHeader from '@/components/layout/PageHeader'
 import { toast } from 'sonner'
 import { readRaw, writeJSON, KEYS } from '@/lib/storage'
 import { useClientValue } from '@/lib/use-client-value'
@@ -145,15 +145,15 @@ export default function CarePlanPage() {
 
   return (
     <div className="relative min-h-screen">
-      <div className="absolute inset-0 bg-mesh-soft pointer-events-none" />
-      <div className="relative p-6 lg:p-8 max-w-4xl mx-auto">
-        <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
-          <Badge className="mb-4 bg-[#FFAE6D]/10 text-[#FFAE6D] border-[#FFAE6D]/30 font-mono text-[10px]"><PawPrint className="w-3 h-3 mr-1.5" /> ROADMAP</Badge>
-          <h1 className="text-4xl lg:text-5xl font-semibold tracking-tight mb-2" style={{ fontFamily: 'var(--font-display)' }}>
-            New Pet <span className="text-[#FFAE6D]">Care Plan</span>
-          </h1>
-          <p className="text-zinc-400 max-w-xl">A gentle, week-by-week guide for your new arrival&rsquo;s first month.</p>
-        </motion.div>
+      <PageHeader
+        eyebrow="Roadmap"
+        icon={PawPrint}
+        title="New pet"
+        accent="care plan"
+        sub="A gentle, week-by-week guide through your new arrival's first month — with separate puppy and kitten tracks."
+        species="rabbit"
+      />
+      <div className="relative px-6 lg:px-8 py-10 max-w-4xl mx-auto">
 
         <div className="flex items-center justify-between gap-4 mb-8 flex-wrap">
           <div className="flex gap-2">
