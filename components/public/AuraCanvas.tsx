@@ -31,10 +31,12 @@ const VERTEX = /* glsl */ `
   attribute vec3  aNormalIn;
   attribute vec3  aScatter;
   attribute float aSeed;
+  attribute float aTone;
 
   varying vec3  vNormal;
   varying float vDepth;
   varying float vBlend;
+  varying float vTone;
 
   void main() {
     float e = uIntro * uIntro * (3.0 - 2.0 * uIntro);
@@ -57,6 +59,7 @@ const VERTEX = /* glsl */ `
     gl_Position = projectionMatrix * mv;
     vDepth = -mv.z;
     vBlend = clamp((aShape.y + 2.4) / 4.8, 0.0, 1.0);
+    vTone = aTone;
 
     gl_PointSize = uSize * (0.6 + aSeed * 0.8) * uPixelRatio * (14.0 / max(vDepth, 0.001));
   }
@@ -71,6 +74,7 @@ const FRAGMENT = /* glsl */ `
   varying vec3  vNormal;
   varying float vDepth;
   varying float vBlend;
+  varying float vTone;
 
   void main() {
     vec2 c = gl_PointCoord - 0.5;
@@ -80,13 +84,20 @@ const FRAGMENT = /* glsl */ `
 
     vec3 base = mix(uColorA, uColorB, pow(vBlend, 1.6));
 
+    // Coat markings. Light markings wash towards a warm white; dark ones drop
+    // towards a deep plum rather than to black, because true black on a dark
+    // background is a hole in the animal, not a marking.
+    base = mix(base, vec3(1.0, 0.96, 0.90), max(vTone, 0.0) * 0.88);
+    base = mix(base, vec3(0.20, 0.13, 0.24), max(-vTone, 0.0) * 0.80);
+
     vec3 N = normalize(vNormal);
     vec3 V = vec3(0.0, 0.0, 1.0);
     vec3 L = normalize(vec3(-0.4, 0.7, 0.8));
     float diff = max(dot(N, L), 0.0);
     float rim  = pow(1.0 - max(dot(N, V), 0.0), 2.2);
 
-    vec3 lit = base * (0.5 + diff * 1.1) + uAccent * rim * 0.4;
+    // Dark markings keep their rim light so the silhouette survives them.
+    vec3 lit = base * (0.5 + diff * 1.1) + uAccent * rim * (0.4 + max(-vTone, 0.0) * 0.5);
 
     float fog = smoothstep(16.0, 2.0, vDepth);
     gl_FragColor = vec4(lit, alpha * uOpacity * fog);
@@ -155,6 +166,7 @@ export default function AuraCanvas({
     geometry.setAttribute('aNormalIn', new THREE.BufferAttribute(shape.normals, 3))
     geometry.setAttribute('aScatter', new THREE.BufferAttribute(scatter, 3))
     geometry.setAttribute('aSeed', new THREE.BufferAttribute(seeds, 1))
+    geometry.setAttribute('aTone', new THREE.BufferAttribute(shape.tones, 1))
     geometry.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 18)
 
     const uniforms = {

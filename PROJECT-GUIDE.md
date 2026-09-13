@@ -887,7 +887,7 @@ Five specific breeds, not generic animals — a generic dog is nobody’s dog:
 | Cat | **Maine Coon** | Rectangular body, neck ruff, tufted ears, very long bushy tail |
 | Bird | **Cockatiel** | Swept-back crest, round head, slim body, long pointed tail |
 | Rabbit | **Holland Lop** | Compact cobby body, flat face, ears hanging beside the head |
-| Fish | **Betta splendens** | Deep body with an enormous flowing caudal, dorsal and anal fin |
+| Fish | **Ocellaris clownfish** | Deep oval body, blunt head, notched dorsal fin, rounded tail fan |
 
 Two of these are named in the app’s own copy (Biscuit the beagle, Luna the
 Maine Coon), so the 3D matches the story the site tells.

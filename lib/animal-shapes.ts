@@ -25,7 +25,7 @@
  *   Maine Coon       rectangular body, neck ruff, ear tufts, huge bushy tail
  *   Cockatiel        swept-back crest, round head, slim body, long pointed tail
  *   Dutch Rabbit     upright sitting pose, heavy haunches, tall upright ears
- *   Betta splendens  deep body with enormous flowing caudal, dorsal and anal fins
+ *   Ocellaris Clown  deep oval body, blunt head, notched dorsal, rounded tail fan
  *
  * Two of these are already named in the app's own copy — Biscuit the beagle and
  * Luna the Maine Coon — so the 3D matches the story the site tells.
@@ -38,6 +38,22 @@ export type AnimalKey = 'dog' | 'cat' | 'bird' | 'rabbit' | 'fish' | 'orb'
 export interface ShapeData {
   positions: Float32Array
   normals: Float32Array
+  /**
+   * Coat markings, one signed value per point.
+   *
+   *   −1  darkest marking (a beagle's saddle, a clownfish's bar edging)
+   *    0  the base coat
+   *   +1  lightest marking (white blaze, white bar, white chest)
+   *
+   * This exists because geometry alone hit a ceiling. A point cloud can't
+   * render fur or scales, so shape was carrying the entire burden of making an
+   * animal recognisable — and shape is not actually how people recognise most
+   * of these. A beagle is a tricolour dog, a Dutch rabbit is *defined* by the
+   * white band round its shoulders, and a clownfish is three white bars. Those
+   * markings are the identifying feature, and unlike fur they cost nothing to
+   * render: one float per point, read straight into the fragment shader.
+   */
+  tones: Float32Array
 }
 
 type Vec3 = [number, number, number]
@@ -58,7 +74,7 @@ interface Ellipsoid {
    * Sampling weight multiplier.
    *
    * Points are distributed by surface AREA, which starves thin flat features:
-   * a betta’s caudal fin is a sheet 0.03 units thick, so by area it deserves
+   * a fish’s caudal fin is a sheet 0.05 units thick, so by area it deserves
    * almost no particles — and the fish rendered as a body with no fins. Ears,
    * crests and fins boost this so the features that actually identify the
    * animal get the density they need to read.
@@ -232,46 +248,227 @@ const BUILDERS: Record<Exclude<AnimalKey, 'orb'>, () => Part[]> = {
   ],
 
   /**
-   * BETTA SPLENDENS (halfmoon), swimming.
+   * OCELLARIS CLOWNFISH, swimming.
    *
-   * The critical fix here is LATERAL COMPRESSION. The previous body was almost
-   * as thick as it was tall, so from any angle it read as a blob with flaps.
-   * A real fish is a blade: deep top-to-bottom, thin side-to-side. The body is
-   * now a third of its previous depth in Z and the fins are near-flat sheets,
-   * which is what makes the silhouette read as a fish at all.
+   * ── Why this is no longer a betta ──────────────────────────────────────────
+   * A halfmoon betta is roughly seventy percent fin, and what makes one
+   * beautiful is colour and translucency — a red body glowing through a veil
+   * of tail. A particle cloud has neither. Rendered as points, those fins stop
+   * being veils and become mass: three huge opaque sails with a small body
+   * hidden somewhere inside them. Every attempt at it read as a blob, because
+   * the blob was an accurate rendering of a betta minus the two properties
+   * that make a betta look like a fish.
    *
-   * A halfmoon betta is mostly fin — the caudal spreads to a full semicircle
-   * wider than the body is long. Fins carry a tight blend radius so their
-   * edges stay crisp instead of melting into the body.
+   * A clownfish is the opposite trade. Its recognisability lives entirely in
+   * the OUTLINE — deep oval body, blunt rounded head, notched dorsal, rounded
+   * tail fan — and outline is the one thing a point cloud renders well. The
+   * fins are proportionate rather than dominant, so the body survives them.
+   *
+   * ── Proportions ────────────────────────────────────────────────────────────
+   * Taken from the species rather than invented: body depth is about half the
+   * standard length, the back arches highest just behind the head, the snout
+   * is blunt and the eye large and set well forward, the caudal peduncle
+   * narrows sharply, and the tail is a rounded fan — not forked.
+   *
+   * The dorsal is deliberately TWO fins with a gap between them. That notch
+   * between the spiny and soft portions is the detail that says "clownfish"
+   * more than anything else in the outline, so the blend radius there is far
+   * smaller than the gap, letting the body dip visibly between them.
    */
   fish: () => [
-    // Body — deep and narrow, tapering to a pointed snout.
-    E([-0.18, 0, 0], [0.80, 0.64, 0.21]),                      // deep flank
-    E([-0.88, 0.06, 0], [0.44, 0.46, 0.18]),                   // head
-    E([-1.24, -0.02, 0], [0.20, 0.24, 0.13]),                  // pointed snout
-    E([-1.42, -0.04, 0], [0.09, 0.11, 0.08], 0, 0.04),         // mouth
-    E([0.46, 0, 0], [0.30, 0.30, 0.13]),                       // caudal peduncle
+    /**
+     * ── Body ──
+     * A deep blade: thin in Z, deep in Y, arched over the shoulder and then
+     * tapering hard into a narrow waist. The taper is doing most of the work.
+     * Without a visible caudal peduncle the tail looks welded to the body and
+     * the whole thing reads as a leaf, which is exactly what went wrong first
+     * time — the soft dorsal and anal fins ran all the way back over the
+     * waist and filled it in.
+     */
+    E([-0.55, 0.00, 0], [0.80, 0.58, 0.26]),                   // flank
+    E([-0.72, 0.22, 0], [0.55, 0.40, 0.22]),                   // arched shoulder
+    E([-0.66, -0.18, 0], [0.62, 0.44, 0.23]),                  // full belly
+    E([-1.22, 0.00, 0], [0.42, 0.46, 0.24]),                   // deep rounded head
+    E([-1.55, -0.12, 0], [0.18, 0.24, 0.15]),                  // blunt snout
+    E([-1.66, -0.22, 0], [0.09, 0.10, 0.09], 0, 0.05),         // lip
+    E([0.18, 0.00, 0], [0.42, 0.34, 0.16]),                    // rear taper
+    /**
+     * The caudal peduncle. Narrow enough to read as a waist, but no narrower —
+     * at [0.26, 0.17] it was so small that area-weighted sampling gave it
+     * almost no particles, and the tail fan visibly detached and floated away
+     * from the body like a balloon on a string. The weight boost is what keeps
+     * the join populated.
+     */
+    E([0.62, 0.00, 0], [0.30, 0.20, 0.115], 0, undefined, 2.2),
 
-    ...pair(E([-0.60, -0.06, 0.17], [0.20, 0.30, 0.05], 0, 0.05, 1.6)),  // gill plate
-    ...pair(E([-0.96, 0.20, 0.15], [0.11, 0.11, 0.05], 0, 0.04)),   // eye
+    // Gill cover — a shallow plate, not a lump, so it reads as a seam.
+    ...pair(E([-1.08, -0.06, 0.20], [0.24, 0.34, 0.05], 0, 0.05)),
 
-    // HALFMOON CAUDAL — four thin lobes fanning to a near-semicircle.
-    E([1.16, 0.62, 0], [0.56, 0.40, 0.030], -40, 0.05, 6.0),
-    E([1.38, 0.20, 0], [0.74, 0.30, 0.030], -12, 0.05, 6.0),
-    E([1.38, -0.20, 0], [0.74, 0.30, 0.030], 12, 0.05, 6.0),
-    E([1.16, -0.62, 0], [0.56, 0.40, 0.030], 40, 0.05, 6.0),
+    // Large eye, set high and well forward.
+    ...pair(E([-1.30, 0.16, 0.19], [0.12, 0.12, 0.065], 0, 0.025, 1.4)),
 
-    // Tall dorsal sail sweeping back.
-    E([0.02, 0.92, 0], [0.60, 0.48, 0.028], -8, 0.05, 5.5),
-    E([0.46, 0.78, 0], [0.36, 0.36, 0.028], -20, 0.05, 5.5),
+    /**
+     * ── Fins ──
+     * One thin sheet each, blended at a radius well under the sheet's own
+     * thickness. Blending thin sheets at a radius LARGER than their thickness
+     * inflates them and fuses neighbours into fat lumps — that is what turned
+     * the previous fish into a cluster of blobs.
+     *
+     * The weights are modest on purpose. They were 5–7 before, which handed
+     * the fins roughly eighty percent of the particles and left the body a
+     * transparent ghost suspended between two solid sails.
+     *
+     * Every fin is positioned to overlap the body by a little, so it grows out
+     * of the flank, and to stop short of the peduncle, so the waist stays open.
+     */
 
-    // Long anal fin running most of the underside.
-    E([-0.06, -0.88, 0], [0.76, 0.42, 0.028], 5, 0.05, 5.5),
-    E([0.48, -0.80, 0], [0.38, 0.34, 0.028], 16, 0.05, 5.5),
+    // Dorsal, spiny portion — tall, forward, stopping short of the notch.
+    E([-0.80, 0.74, 0], [0.48, 0.25, 0.05], -3, 0.015, 2.2),
 
-    // Trailing ventral filaments, a betta signature.
-    ...pair(C([-0.76, -0.46, 0.07], 0.07, [-0.66, -1.34, 0.11], 0.02, 0.04, 2.5)),
+    // Dorsal, soft portion — lower and rounded, starting after the notch.
+    // The gap between these two is the clearest clownfish cue in the outline.
+    E([0.12, 0.54, 0], [0.32, 0.18, 0.05], 4, 0.015, 2.0),
+
+    // Anal fin, mirroring the soft dorsal along the underside.
+    E([0.10, -0.56, 0], [0.34, 0.20, 0.05], -5, 0.015, 2.0),
+
+    /**
+     * Caudal fin — a rounded fan, truncate rather than forked, and TALLER than
+     * it is long. Drawn as a narrow base wedge plus the fan so it grows out of
+     * the peduncle instead of hanging off it: a single round ellipsoid here
+     * read as a detached ball.
+     */
+    E([1.02, 0.00, 0], [0.22, 0.26, 0.05], 0, 0.03, 1.2),      // fin base
+    E([1.30, 0.00, 0], [0.38, 0.48, 0.05], 0, 0.02, 2.8),      // the fan
+
+    // Pectorals — rounded paddles, held out clear of the flank.
+    ...pair(E([-0.90, -0.14, 0.25], [0.24, 0.28, 0.045], -28, 0.02, 1.6)),
+
+    // Pelvics — prominent on this species, angled down and back.
+    ...pair(E([-1.00, -0.66, 0.10], [0.11, 0.26, 0.045], 12, 0.02, 1.4)),
   ],
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+   Markings
+
+   One function per species, evaluated at each sampled point, returning a tone
+   in [−1, 1]. See ShapeData.tones for why these matter as much as the geometry.
+
+   Each is written from the actual breed standard rather than invented, because
+   a half-remembered marking looks worse than none at all.
+   ──────────────────────────────────────────────────────────────────────────── */
+
+type Marking = (x: number, y: number, z: number) => number
+
+const MARKINGS: Record<Exclude<AnimalKey, 'orb'>, Marking> = {
+  /**
+   * BEAGLE — tricolour, the classic hound pattern: a black saddle over the
+   * back, tan head and flanks, and white on the muzzle, blaze, chest, feet and
+   * the very tip of the tail. The white tail tip is not decoration; beagles
+   * were bred with it so a handler could see the dog in long grass.
+   */
+  dog: (x, y, z) => {
+    if (y < -1.34) return 1                                     // white feet
+    if (x > 1.95 && y > 0.72) return 1                          // white tail tip
+    if (x < -1.05 && y > 0.66 && y < 1.12) return 0.95          // white muzzle
+    // Tan ears and cheeks. Checked before the blaze so the pale stripe stays a
+    // narrow centre line rather than washing the whole head out.
+    if (Math.abs(z) > 0.22 && x < -0.5 && y > 0.4 && y < 1.45) return -0.3
+    if (x > -0.95 && x < -0.55 && y > 1.2 && Math.abs(z) < 0.16) return 0.9  // blaze
+    if (x < 0.45 && y > -0.75 && y < 0.55 && Math.abs(z) < 0.4) return 0.85  // chest
+    if (x > -0.1 && x < 1.75 && y > 0.05) return -0.85          // black saddle
+    return 0
+  },
+
+  /**
+   * MAINE COON — brown classic tabby, the breed's most common coat: dark
+   * mackerel striping over the body, bold rings down the tail, and a white
+   * chin and chest. The tail rings are the strongest read, because the tail is
+   * nearly as long as the cat.
+   */
+  cat: (x, y, z) => {
+    if (x > 1.55) return Math.sin(x * 5.5 + y * 4.5) > 0.0 ? -0.85 : 0.35  // tail rings
+    if (x < -0.95 && y > 0.85) return 0.9                        // white chin
+    if (x > -0.35 && x < 0.5 && y > -0.55 && y < 0.6 && Math.abs(z) < 0.32) return 0.8  // chest
+    if (y > 1.45) return Math.abs(z) > 0.18 ? -0.6 : 0.2         // dark ears, pale tufts
+    if (x > -0.3) return Math.sin(x * 6.5 + y * 1.4) > 0.25 ? -0.75 : 0.15  // mackerel stripes
+    return 0
+  },
+
+  /**
+   * COCKATIEL — normal grey, the wild-type colour: slate grey body, a bright
+   * lemon face and crest, and a round orange cheek patch. Adult males show the
+   * strongest yellow, so that is what is modelled. The white wing bar along
+   * the leading edge of the folded wing is the other giveaway.
+   */
+  bird: (x, y, z) => {
+    // The orange cheek patch is left at the base coat, which in this palette is
+    // already a warm orange — so it reads as an orange disc set into the pale
+    // face rather than needing a colour channel of its own.
+    if (Math.abs(z) > 0.26 && x > -0.85 && x < -0.45 && y > 0.6 && y < 0.92) return -0.05
+    if (y > 1.1) return 0.95                                      // lemon crest
+    if (x < -0.34 && y > 0.55) return 0.9                          // lemon face
+    if (x > 1.5) return -0.35                                      // grey tail
+    if (Math.abs(z) > 0.36 && x > -0.2 && x < 0.8) {
+      // A narrow white bar along the lower edge of the folded wing, not the
+      // whole wing — washing the entire wing white buried the bird's shape.
+      return y < -0.28 ? 0.9 : -0.4
+    }
+    return -0.1                                                    // slate body
+  },
+
+  /**
+   * DUTCH RABBIT — the Dutch pattern IS the breed, and it is strict: a white
+   * wedge (the "blaze") up the face between the eyes, coloured cheeks and
+   * ears, a clean white band round the shoulders and chest, coloured
+   * hindquarters, and white on the hind feet. The saddle line where colour
+   * meets white is meant to be sharp, so this uses a hard cut rather than a
+   * gradient.
+   */
+  rabbit: (x, y, z) => {
+    if (y > 1.15) return Math.abs(z) > 0.13 ? -0.7 : 0.9          // coloured ears, white between
+    if (x < -0.62 && y > 0.55) return 0.95                         // white muzzle
+    if (Math.abs(z) < 0.12 && x < -0.2 && y > 0.7) return 1        // the blaze
+    if (x < -0.3 && y > 0.62) return -0.65                         // coloured cheeks
+    if (y < -1.1) return 0.9                                       // white feet
+    if (x < 0.34) return 1                                         // white front, sharp saddle line
+    return -0.6                                                    // coloured hindquarters
+  },
+
+  /**
+   * OCELLARIS CLOWNFISH — three white bars on an orange body, each bar edged
+   * in black, and black margins on the fins. The bars lean forward towards the
+   * top and the middle one carries a forward-pointing wedge, which is what
+   * distinguishes ocellaris from the similar percula.
+   */
+  fish: (x, y) => {
+    // Bars lean forward at the top rather than standing vertical.
+    const sx = x + y * 0.18
+
+    const bar = (centre: number, half: number) => {
+      const d = Math.abs(sx - centre)
+      if (d < half) return 1
+      if (d < half + 0.08) return -1     // the black edging on each bar
+      return 0
+    }
+
+    // Head bar, sitting just behind the eye.
+    const head = bar(-1.04, 0.13)
+    if (head !== 0) return head
+
+    // Middle bar, widening upward into its forward-pointing wedge.
+    const mid = bar(-0.28, 0.17 + Math.max(0, y) * 0.12)
+    if (mid !== 0) return mid
+
+    // Tail bar, across the peduncle.
+    const tail = bar(0.56, 0.13)
+    if (tail !== 0) return tail
+
+    // Dark margins on the trailing edges of the fins.
+    if (Math.abs(y) > 0.62 || x > 1.5) return -0.55
+    return 0
+  },
 }
 
 /* ────────────────────────────────────────────────────────────────────────────
@@ -461,6 +658,7 @@ export function sampleAnimal(key: AnimalKey, count: number, seed = 1): ShapeData
   const rand = mulberry32(seed)
   const positions = new Float32Array(count * 3)
   const normals = new Float32Array(count * 3)
+  const tones = new Float32Array(count)
 
   if (key === 'orb') {
     const golden = Math.PI * (3 - Math.sqrt(5))
@@ -472,10 +670,11 @@ export function sampleAnimal(key: AnimalKey, count: number, seed = 1): ShapeData
       positions[i * 3] = nx * 2; positions[i * 3 + 1] = ny * 2; positions[i * 3 + 2] = nz * 2
       normals[i * 3] = nx; normals[i * 3 + 1] = ny; normals[i * 3 + 2] = nz
     }
-    return { positions, normals }
+    return { positions, normals, tones }
   }
 
   const parts = BUILDERS[key]()
+  const marking = MARKINGS[key]
   const { field, gradient } = makeField(parts)
 
   const areas = parts.map(areaOf)
@@ -484,7 +683,7 @@ export function sampleAnimal(key: AnimalKey, count: number, seed = 1): ShapeData
   let acc = 0
   for (const a of areas) { acc += a / total; cdf.push(acc) }
 
-  interface P { x: number; y: number; z: number; nx: number; ny: number; nz: number; ang: number; rad: number }
+  interface P { x: number; y: number; z: number; nx: number; ny: number; nz: number; tone: number; ang: number; rad: number }
   const pts: P[] = []
 
   const PROJECT_STEPS = 4
@@ -517,7 +716,8 @@ export function sampleAnimal(key: AnimalKey, count: number, seed = 1): ShapeData
     if (Math.abs(d) > TOLERANCE) continue
 
     const [nx, ny, nz] = gradient(x, y, z)
-    pts.push({ x, y, z, nx, ny, nz, ang: Math.atan2(y, x), rad: Math.hypot(x, y) })
+    const tone = Math.max(-1, Math.min(1, marking(x, y, z)))
+    pts.push({ x, y, z, nx, ny, nz, tone, ang: Math.atan2(y, x), rad: Math.hypot(x, y) })
   }
 
   // Top up by duplicating with a tiny jitter if convergence was unusually poor,
@@ -537,9 +737,10 @@ export function sampleAnimal(key: AnimalKey, count: number, seed = 1): ShapeData
     normals[i * 3] = p.nx
     normals[i * 3 + 1] = p.ny
     normals[i * 3 + 2] = p.nz
+    tones[i] = p.tone
   }
 
-  return { positions, normals }
+  return { positions, normals, tones }
 }
 
 export const MORPH_SEQUENCE: AnimalKey[] = ['dog', 'cat', 'bird', 'rabbit', 'fish']
@@ -550,7 +751,7 @@ export const ANIMAL_LABELS: Record<AnimalKey, string> = {
   cat: 'Maine Coon',
   bird: 'Cockatiel',
   rabbit: 'Dutch Rabbit',
-  fish: 'Betta',
+  fish: 'Clownfish',
   orb: 'Every pet',
 }
 
@@ -560,12 +761,12 @@ export const ANIMAL_LABELS: Record<AnimalKey, string> = {
  * Every animal is modelled facing −X. A pure side-on view reads as a diagram,
  * so each is turned to the angle that best shows its defining feature: enough
  * three-quarter on the beagle to see both drop ears, nearly side-on for the
- * betta so the fins spread across the frame.
+ * nearly side-on for the clownfish, whose whole identity is its outline.
  */
 /**
  * Display scale per species, so each fills its frame similarly.
  *
- * The betta is wide and short while the rabbit is tall and narrow; a single
+ * The clownfish is wide and short while the rabbit is tall and narrow; a single
  * scale left the fish reading as a small blob in a page header. These even out
  * the apparent size rather than the literal bounding box.
  */
@@ -574,7 +775,7 @@ export const REST_SCALE: Record<AnimalKey, number> = {
   cat: 0.95,
   bird: 1.05,
   rabbit: 1.0,
-  fish: 1.18,
+  fish: 1.24,
   orb: 1.0,
 }
 

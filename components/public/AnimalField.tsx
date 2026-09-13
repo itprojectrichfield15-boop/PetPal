@@ -54,12 +54,15 @@ const VERTEX = /* glsl */ `
   attribute vec3  aNormalTo;
   attribute vec3  aScatter;
   attribute float aSeed;
+  attribute float aToneFrom;
+  attribute float aToneTo;
 
   varying float vDepth;
   varying float vBlend;
   varying float vSeed;
   varying vec3  vNormal;
   varying float vFlight;
+  varying float vTone;
 
   float hash(vec3 p) {
     return fract(sin(dot(p, vec3(12.9898, 78.233, 37.719))) * 43758.5453);
@@ -75,6 +78,9 @@ const VERTEX = /* glsl */ `
 
     vec3 shape  = mix(aFrom, aTo, m);
     vec3 normal = normalize(mix(aNormalFrom, aNormalTo, m) + 1e-5);
+    // Markings cross-fade with the shape, so a beagle's saddle becomes a Maine
+    // Coon's stripes over the same transition rather than popping at the end.
+    vTone = mix(aToneFrom, aToneTo, m);
 
     // 0 when settled, 1 at the midpoint of a transition.
     float flight = sin(m * 3.14159265);
@@ -142,6 +148,7 @@ const FRAGMENT = /* glsl */ `
   varying float vSeed;
   varying vec3  vNormal;
   varying float vFlight;
+  varying float vTone;
 
   void main() {
     // Round the square point sprite into a soft dot with a hot core.
@@ -160,6 +167,13 @@ const FRAGMENT = /* glsl */ `
       ? mix(uColorA, uColorB, g / 0.62)
       : mix(uColorB, uColorC, (g - 0.62) / 0.38);
 
+    // ── Coat markings ──────────────────────────────────────────────────────
+    // Light markings wash towards a warm white; dark ones drop towards a deep
+    // plum rather than to black, because true black against a dark background
+    // reads as a hole punched in the animal rather than as a marking.
+    base = mix(base, vec3(1.0, 0.96, 0.90), max(vTone, 0.0) * 0.88);
+    base = mix(base, vec3(0.20, 0.13, 0.24), max(-vTone, 0.0) * 0.80);
+
     // ── Lighting ───────────────────────────────────────────────────────────
     vec3 N = normalize(vNormal);
     vec3 V = vec3(0.0, 0.0, 1.0);                 // camera looks down -Z
@@ -174,7 +188,7 @@ const FRAGMENT = /* glsl */ `
     vec3 lit =
         base * (0.52 + diff * 1.25 + fill)   // ambient + key + fill
       + uKeyLight * spec                      // specular glint
-      + uRimLight * rim * 0.42;               // rim separates the silhouette
+      + uRimLight * rim * (0.42 + max(-vTone, 0.0) * 0.5);  // rim separates the silhouette
 
     // Points in flight glow hotter, so a morph reads as energy.
     lit += uKeyLight * vFlight * 0.35;
@@ -260,6 +274,8 @@ export default function AnimalField() {
     const aTo = new Float32Array(first.positions)
     const aNormalFrom = new Float32Array(first.normals)
     const aNormalTo = new Float32Array(first.normals)
+    const aToneFrom = new Float32Array(first.tones)
+    const aToneTo = new Float32Array(first.tones)
     const scatter = new Float32Array(PARTICLE_COUNT * 3)
     const seeds = new Float32Array(PARTICLE_COUNT)
 
@@ -277,6 +293,8 @@ export default function AnimalField() {
     const toAttr = new THREE.BufferAttribute(aTo, 3)
     const nFromAttr = new THREE.BufferAttribute(aNormalFrom, 3)
     const nToAttr = new THREE.BufferAttribute(aNormalTo, 3)
+    const tFromAttr = new THREE.BufferAttribute(aToneFrom, 1)
+    const tToAttr = new THREE.BufferAttribute(aToneTo, 1)
 
     geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(PARTICLE_COUNT * 3), 3))
     geometry.setAttribute('aFrom', fromAttr)
@@ -285,6 +303,8 @@ export default function AnimalField() {
     geometry.setAttribute('aNormalTo', nToAttr)
     geometry.setAttribute('aScatter', new THREE.BufferAttribute(scatter, 3))
     geometry.setAttribute('aSeed', new THREE.BufferAttribute(seeds, 1))
+    geometry.setAttribute('aToneFrom', tFromAttr)
+    geometry.setAttribute('aToneTo', tToAttr)
     geometry.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 26)
 
     const uniforms = {
@@ -328,12 +348,14 @@ export default function AnimalField() {
       const b = shapes[Math.min(i + 1, shapes.length - 1)] ?? a
 
       pairIndex = i
-      aFrom.set(a.positions); aNormalFrom.set(a.normals)
-      aTo.set(b.positions); aNormalTo.set(b.normals)
+      aFrom.set(a.positions); aNormalFrom.set(a.normals); aToneFrom.set(a.tones)
+      aTo.set(b.positions); aNormalTo.set(b.normals); aToneTo.set(b.tones)
       fromAttr.needsUpdate = true
       toAttr.needsUpdate = true
       nFromAttr.needsUpdate = true
       nToAttr.needsUpdate = true
+      tFromAttr.needsUpdate = true
+      tToAttr.needsUpdate = true
     }
     setPair(0)
 
@@ -384,7 +406,14 @@ export default function AnimalField() {
       uniforms.uBreath.value = Math.sin(elapsed * 1.5)
 
       const span = SEQ.length - 1
-      const pos = scrollEased * span
+      // Finish the sequence before the page bottom rather than exactly at it.
+      // Mapping the morph across the full scroll meant the last species — the
+      // fish — only completed on the final pixel, and with the eased follow
+      // below it never actually got there: every visit ended on a half-built
+      // shape that read as a blob. Landing the last transition at 88% gives
+      // each animal, the fish included, a stretch where it is simply itself.
+      const progress = Math.min(1, scrollEased / 0.88)
+      const pos = progress * span
       const idx = Math.min(span - 1, Math.floor(pos))
       setPair(idx)
       uniforms.uMix.value = pos - idx
@@ -398,14 +427,20 @@ export default function AnimalField() {
       uniforms.uSpin.value = rest + Math.sin(elapsed * 0.22) * 0.16 + scrollEased * 0.35
       // Framing: sit the subject clear of the headline on the right, whole and
       // uncropped. A complete readable animal beats a larger cropped one — at
-      // 1.10 scale the beagle’s head collided with the first line of copy.
-      points.position.x = 2.55 - scrollEased * 4.7
-      points.position.y = -0.10 + Math.sin(scrollEased * Math.PI * 2) * 0.45
+      // 1.10 scale the beagle’s head collided with the first line of copy, so
+      // the subject is pushed further right as it grows to keep that clearance.
+      points.position.x = 2.68 - scrollEased * 4.7
+      // The closing lift. At the foot of the page the subject would otherwise
+      // land squarely on the footer's first column; this raises it into the
+      // open band between the closing card and the footer, so the last species
+      // in the sequence gets a clear moment instead of sitting on top of text.
+      const closingLift = Math.max(0, scrollEased - 0.80) * 3.6
+      points.position.y = -0.10 + Math.sin(scrollEased * Math.PI * 2) * 0.45 + closingLift
       // Blend the per-species display scale through the morph too.
       const scaleA = REST_SCALE[SEQ[Math.min(idx, SEQ.length - 1)]]
       const scaleB = REST_SCALE[SEQ[Math.min(idx + 1, SEQ.length - 1)]]
       const speciesScale = scaleA + (scaleB - scaleA) * uniforms.uMix.value
-      const s = (0.88 - scrollEased * 0.16) * speciesScale
+      const s = (1.0 - scrollEased * 0.18) * speciesScale
       points.scale.setScalar(s)
 
       renderer.render(scene, camera)
