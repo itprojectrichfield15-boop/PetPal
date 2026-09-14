@@ -268,7 +268,7 @@ create policy "vet edits own answer" on answers for update using (auth.uid() = v
 
 -- Keep questions.answer_count in step without a round trip from the client.
 create or replace function bump_answer_count()
-returns trigger language plpgsql security definer set search_path = public as $
+returns trigger language plpgsql security definer set search_path = public as $$
 begin
   if tg_op = 'INSERT' then
     update questions set answer_count = answer_count + 1 where id = new.question_id;
@@ -277,7 +277,7 @@ begin
   end if;
   return null;
 end;
-$;
+$$;
 
 drop trigger if exists answers_count_trigger on answers;
 create trigger answers_count_trigger
