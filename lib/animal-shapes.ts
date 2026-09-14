@@ -112,42 +112,71 @@ const BLEND = 0.16
 
 const BUILDERS: Record<Exclude<AnimalKey, 'orb'>, () => Part[]> = {
   /**
-   * BEAGLE, sitting. Distinguishing features modelled deliberately:
-   * long drop ears reaching the jawline, a square blocky muzzle, a domed
-   * skull with a defined stop, a stocky barrel chest, short sturdy legs, and
-   * the characteristic upright tail.
+   * BEAGLE, standing square in the breed-standard pose.
+   *
+   * ── What was wrong before ──────────────────────────────────────────────────
+   * The old beagle read as a barrel with a lump on one end, and the two causes
+   * are worth naming because they apply to every mammal here.
+   *
+   * FIRST, it had no face. No eyes, no nose, no chin — and a creature without
+   * eyes does not read as alive no matter how good its outline is. Eyes are now
+   * modelled as geometry AND marked near-black, which is what makes them read
+   * at a glance.
+   *
+   * SECOND, everything was blended at the default 0.16. That radius is right
+   * for fusing a ribcage into a loin, but applied to a muzzle it dissolves the
+   * stop, and applied to a shoulder it swallows the leg. The head and legs now
+   * carry their own much tighter blends, so the muzzle stays square, the
+   * cheeks stay separate from the skull, and each leg reads as a limb rather
+   * than as a taper off the body.
+   *
+   * ── Breed features, deliberately ───────────────────────────────────────────
+   * Square blunt muzzle roughly the length of the skull; domed skull with a
+   * defined stop; large round eyes set well apart for the pleading expression;
+   * long low-set round-tipped ears that reach past the muzzle; a level topline;
+   * a chest dropping to the elbow with legs the same length again; and the
+   * "stern" — the tail carried high with a slight forward curve and a white tip.
    */
   dog: () => [
-    // torso: chest deeper than loin, croup rising to the tail
-    E([0.16, 0.02, 0], [0.80, 0.82, 0.66]),                    // barrel chest
-    E([0.72, -0.10, 0], [0.66, 0.70, 0.58]),                   // ribcage
-    E([1.18, -0.30, 0], [0.60, 0.62, 0.52]),                   // loin
-    E([1.52, -0.18, 0], [0.46, 0.48, 0.44]),                   // croup
-    ...pair(E([1.28, -0.72, 0.36], [0.46, 0.50, 0.28])),       // haunches
+    // ── Torso: level topline, deep chest, slight tuck-up at the loin ──
+    E([-0.15, 0.20, 0], [0.60, 0.60, 0.46]),                   // withers
+    E([-0.18, -0.08, 0], [0.68, 0.62, 0.45]),                  // deep chest to the elbow
+    E([0.50, 0.02, 0], [0.62, 0.58, 0.45]),                    // ribcage
+    E([1.05, 0.04, 0], [0.48, 0.48, 0.38]),                    // loin, tucked
+    E([1.45, 0.08, 0], [0.42, 0.44, 0.38]),                    // croup
 
-    // neck: thick, set low — a beagle carries its head forward
-    C([-0.30, 0.72, 0], 0.30, [0.22, 0.18, 0], 0.46),
+    // Neck: medium, slightly arched, flowing into the shoulder.
+    C([-0.62, 0.86, 0], 0.30, [-0.12, 0.36, 0], 0.44, 0.13),
 
-    // head: domed skull, pronounced stop, square muzzle
-    E([-0.66, 1.14, 0], [0.42, 0.42, 0.40]),                   // cranium
-    E([-0.90, 1.02, 0], [0.30, 0.28, 0.32]),                   // stop / cheeks
-    E([-1.30, 0.92, 0], [0.40, 0.26, 0.26]),                   // square muzzle
-    E([-1.66, 0.94, 0], [0.13, 0.12, 0.13], 0, 0.05),          // nose leather
+    // ── Head. Tight blends throughout so the stop and muzzle survive. ──
+    E([-0.98, 1.12, 0], [0.32, 0.31, 0.30], 0, 0.09),          // domed skull
+    E([-1.18, 1.00, 0], [0.23, 0.23, 0.25], 0, 0.07),          // stop and cheeks
+    E([-1.48, 0.92, 0], [0.28, 0.185, 0.195], 0, 0.06),        // square muzzle
+    E([-1.45, 0.79, 0], [0.24, 0.12, 0.17], 0, 0.05),          // flews / lower jaw
+    E([-1.76, 0.94, 0], [0.11, 0.11, 0.12], 0, 0.035),         // nose leather
 
-    // the beagle signature: long drop ears hanging to the jawline
-    ...pair(E([-0.74, 0.92, 0.34], [0.20, 0.44, 0.10], 8, 0.07, 2.6)),
-    ...pair(E([-0.80, 0.52, 0.30], [0.17, 0.24, 0.08], 4, 0.07, 2.6)), // rounded ear tip
+    // Eyes. Small geometry, but marked near-black — see MARKINGS.dog. Set
+    // forward of the ear so the ear leather never covers them at any yaw.
+    ...pair(E([-1.26, 1.10, 0.19], [0.105, 0.105, 0.085], 0, 0.02, 2.2)),
 
-    // short sturdy legs, upper and lower so the elbow and hock read
-    ...pair(C([-0.02, -0.34, 0.34], 0.21, [-0.12, -1.02, 0.36], 0.15)),
-    ...pair(C([-0.12, -1.02, 0.36], 0.15, [-0.16, -1.56, 0.36], 0.12)),
-    ...pair(E([-0.24, -1.66, 0.36], [0.24, 0.12, 0.18], 0, 0.08)),
-    ...pair(C([1.24, -1.02, 0.40], 0.18, [1.06, -1.56, 0.42], 0.12)),
-    ...pair(E([0.98, -1.66, 0.42], [0.26, 0.12, 0.19], 0, 0.08)),
+    // The beagle signature: long low-set ears hanging past the muzzle line.
+    // Set back onto the side of the skull, not over the cheek.
+    ...pair(E([-0.94, 0.82, 0.29], [0.17, 0.42, 0.085], 6, 0.05, 3.0)),
+    ...pair(E([-1.02, 0.36, 0.27], [0.16, 0.24, 0.075], 3, 0.04, 3.0)),  // round tip
 
-    // tail carried high, white tip
-    C([1.80, 0.02, 0], 0.15, [2.06, 0.62, 0], 0.11),
-    C([2.06, 0.62, 0], 0.11, [2.10, 1.06, 0], 0.08),
+    // ── Legs. Two segments each plus a paw, so elbow, stifle and hock read. ──
+    ...pair(C([-0.22, -0.30, 0.30], 0.19, [-0.14, -0.95, 0.32], 0.135, 0.09)),
+    ...pair(C([-0.14, -0.95, 0.32], 0.135, [-0.12, -1.62, 0.32], 0.105, 0.06)),
+    ...pair(E([-0.18, -1.70, 0.32], [0.20, 0.10, 0.15], 0, 0.05)),
+
+    ...pair(E([1.34, -0.42, 0.30], [0.38, 0.44, 0.26], 0, 0.11)),        // thigh
+    ...pair(C([1.30, -0.78, 0.30], 0.19, [1.46, -1.30, 0.31], 0.115, 0.08)),
+    ...pair(C([1.46, -1.30, 0.31], 0.115, [1.30, -1.64, 0.31], 0.10, 0.06)),
+    ...pair(E([1.24, -1.70, 0.31], [0.20, 0.10, 0.15], 0, 0.05)),
+
+    // The stern: carried high with a slight forward curve, white at the tip.
+    C([1.78, 0.36, 0], 0.15, [2.02, 0.92, 0], 0.11, 0.09),
+    C([2.02, 0.92, 0], 0.11, [2.00, 1.32, 0], 0.075, 0.06),
   ],
 
   /**
@@ -156,60 +185,102 @@ const BUILDERS: Record<Exclude<AnimalKey, 'orb'>, () => Part[]> = {
    * breed's most obvious feature — an enormous bushy tail.
    */
   cat: () => [
-    E([0.22, -0.06, 0], [0.66, 0.80, 0.54]),                   // chest, upright
-    E([0.78, -0.30, 0], [0.62, 0.68, 0.54]),                   // long rectangular body
-    E([1.24, -0.52, 0], [0.58, 0.60, 0.50]),                   // rear
-    ...pair(E([1.16, -0.92, 0.34], [0.44, 0.44, 0.26])),       // haunches
+    // ── Sitting upright: haunches on the ground, chest stacked above. ──
+    E([0.85, -1.10, 0], [0.72, 0.60, 0.52]),                   // rear on the ground
+    ...pair(E([0.62, -0.95, 0.40], [0.52, 0.46, 0.26], 0, 0.13)), // britches
+    E([0.34, -0.62, 0], [0.52, 0.60, 0.44]),                   // belly
+    E([-0.02, 0.10, 0], [0.46, 0.66, 0.42]),                   // upright chest
+    E([-0.10, 0.62, 0], [0.44, 0.40, 0.42], 0, 0.13),          // shoulders
 
-    C([-0.16, 0.74, 0], 0.26, [0.20, 0.10, 0], 0.40),          // neck
-    E([-0.20, 0.60, 0], [0.50, 0.36, 0.46], 0, 0.22),          // RUFF — breed marker
+    // THE RUFF — the breed marker. A broad soft collar, blended wide on
+    // purpose: this is the one place where melting into the neighbours is
+    // the correct look.
+    E([-0.28, 0.78, 0], [0.52, 0.34, 0.50], 0, 0.20),
 
-    E([-0.60, 1.24, 0], [0.46, 0.44, 0.44]),                   // large square skull
-    E([-0.88, 1.10, 0], [0.30, 0.26, 0.30]),                   // high cheekbones
-    E([-1.10, 1.02, 0], [0.24, 0.19, 0.21]),                   // squared muzzle
-    E([-1.28, 1.06, 0], [0.08, 0.07, 0.08], 0, 0.04),          // nose
+    C([-0.44, 1.12, 0], 0.26, [-0.14, 0.72, 0], 0.36, 0.12),   // heavy neck
 
-    // tall wide-set ears with lynx tufts
-    ...pair(C([-0.62, 1.56, 0.26], 0.20, [-0.72, 2.10, 0.34], 0.05, 0.08, 1.8)),
-    ...pair(C([-0.72, 2.10, 0.34], 0.05, [-0.80, 2.34, 0.38], 0.015, 0.03, 4.0)), // tuft
+    // ── Head. Square and substantial, with every part kept distinct. ──
+    E([-0.64, 1.46, 0], [0.42, 0.39, 0.40], 0, 0.10),          // large square skull
+    ...pair(E([-0.78, 1.30, 0.24], [0.28, 0.25, 0.21], 0, 0.09)), // high cheekbones
+    E([-1.04, 1.24, 0], [0.26, 0.20, 0.23], 0, 0.07),          // squared muzzle
+    E([-1.08, 1.09, 0], [0.16, 0.115, 0.15], 0, 0.05),         // strong chin
+    E([-1.26, 1.26, 0], [0.08, 0.075, 0.085], 0, 0.03),        // nose
 
-    ...pair(C([-0.02, -0.46, 0.26], 0.16, [-0.10, -1.54, 0.28], 0.12)),
-    ...pair(E([-0.20, -1.64, 0.28], [0.22, 0.11, 0.17], 0, 0.08)),
-    ...pair(E([1.14, -1.58, 0.36], [0.28, 0.12, 0.20], 0, 0.08)),
+    // Eyes. Large and set wide — see MARKINGS.cat, which darkens them.
+    ...pair(E([-0.90, 1.50, 0.25], [0.105, 0.10, 0.085], 0, 0.02, 2.2)),
 
-    // the tail: as long as the body and very thick with fur
-    C([1.70, -0.66, 0], 0.26, [2.12, 0.10, 0], 0.30),
-    C([2.12, 0.10, 0], 0.30, [2.02, 0.84, 0], 0.26),
-    C([2.02, 0.84, 0], 0.26, [1.66, 1.32, 0], 0.18),
+    // Ears: large, wide at the base, tall, set high — with the lynx tufts that
+    // are the other half of the breed's signature.
+    ...pair(C([-0.54, 1.74, 0.26], 0.24, [-0.64, 2.32, 0.36], 0.055, 0.05, 2.2)),
+    ...pair(C([-0.64, 2.32, 0.36], 0.05, [-0.74, 2.62, 0.42], 0.015, 0.025, 4.5)),
+
+    // Forelegs straight down at the FRONT of the chest. They used to sit under
+    // the belly, where the torso simply swallowed them and the cat's front
+    // read as a featureless wall.
+    ...pair(C([-0.36, -0.30, 0.24], 0.16, [-0.42, -1.22, 0.26], 0.13, 0.07)),
+    ...pair(C([-0.42, -1.22, 0.26], 0.13, [-0.44, -1.62, 0.26], 0.12, 0.06)),
+    ...pair(E([-0.52, -1.70, 0.26], [0.20, 0.10, 0.16], 0, 0.05)),
+    ...pair(E([0.62, -1.66, 0.42], [0.26, 0.11, 0.17], 0, 0.06)),  // hind paws
+
+    // THE TAIL — as long as the cat and heavily plumed, sweeping round the
+    // haunches and up. Drawn as a curve of four segments rather than a cone,
+    // because a straight tail on a sitting cat looks like a stick.
+    C([1.30, -1.42, 0.10], 0.19, [1.80, -1.14, 0.15], 0.23, 0.10),
+    C([1.80, -1.14, 0.15], 0.23, [1.96, -0.34, 0.13], 0.25, 0.10),
+    C([1.96, -0.34, 0.13], 0.25, [1.84, 0.46, 0.09], 0.21, 0.10),
+    C([1.84, 0.46, 0.09], 0.21, [1.54, 0.98, 0.06], 0.135, 0.08),
   ],
 
   /**
-   * COCKATIEL, perched. The crest is the whole silhouette — a slim swept-back
-   * plume that no other common pet bird has. Slim body, long pointed tail,
-   * round cheeks.
+   * COCKATIEL, perched.
+   *
+   * The previous bird was two overlapping spheres and read as a beach ball
+   * with a stub on the back. Two things were wrong, and both are proportion
+   * rather than detail.
+   *
+   * The BODY was as deep as it was long. A cockatiel is a slim bird — the body
+   * is an elongated egg tilted back from the shoulders, not a sphere — so it is
+   * now built from four smaller sections along that axis instead of two big
+   * round ones.
+   *
+   * The TAIL was far too short. A cockatiel's tail is close to half the bird's
+   * total length, long and sharply pointed, and it is the second thing after
+   * the crest that identifies the species. It now runs nearly as long as the
+   * body it hangs off.
    */
   bird: () => [
-    E([0.18, -0.06, 0], [0.62, 0.66, 0.52], -10),              // slim body
-    E([0.58, 0.16, 0], [0.46, 0.46, 0.42]),                    // shoulders
-    ...pair(E([0.34, -0.04, 0.44], [0.58, 0.40, 0.10], -14, 0.08, 1.8)), // folded wings
+    // ── Body: an elongated egg along the perching axis. ──
+    E([-0.18, -0.18, 0], [0.40, 0.46, 0.38], 0, 0.13),         // breast
+    E([0.24, -0.02, 0], [0.44, 0.44, 0.38], 0, 0.13),          // mid body
+    E([0.68, 0.10, 0], [0.38, 0.36, 0.33], 0, 0.12),           // back and rump
+    E([1.02, 0.02, 0], [0.26, 0.24, 0.22], 0, 0.10),           // vent, tail base
 
-    // long tapering pointed tail
-    C([0.92, -0.02, 0], 0.24, [1.72, -0.34, 0], 0.14),
-    C([1.72, -0.34, 0], 0.14, [2.30, -0.62, 0], 0.05, 0.06, 2.2),
+    // Folded wings: long narrow sheets down the flanks, tips at the tail base.
+    ...pair(E([0.30, 0.00, 0.34], [0.62, 0.30, 0.075], -12, 0.05, 2.4)),
 
-    C([-0.28, 0.48, 0], 0.20, [0.04, 0.18, 0], 0.30),          // slim neck
-    E([-0.56, 0.86, 0], [0.38, 0.38, 0.36]),                   // round head
-    ...pair(E([-0.66, 0.74, 0.30], [0.13, 0.13, 0.05], 0, 0.05)), // cheek patch
-    E([-0.88, 0.74, 0], [0.17, 0.14, 0.13]),                   // small curved beak
-    E([-1.00, 0.70, 0], [0.08, 0.09, 0.07], 20, 0.04),
+    // THE TAIL — long and sharply pointed, angled down and back.
+    C([1.16, -0.04, 0], 0.17, [1.90, -0.42, 0], 0.10, 0.07, 2.0),
+    C([1.90, -0.42, 0], 0.10, [2.58, -0.78, 0], 0.035, 0.05, 3.0),
 
-    // THE CREST — three swept plumes of decreasing size
-    C([-0.58, 1.18, 0], 0.11, [-0.34, 1.86, 0], 0.035, 0.05, 3.4),
-    C([-0.46, 1.16, 0.07], 0.09, [-0.14, 1.72, 0.10], 0.03, 0.05, 3.4),
-    C([-0.46, 1.16, -0.07], 0.09, [-0.14, 1.72, -0.10], 0.03, 0.05, 3.4),
+    C([-0.42, 0.46, 0], 0.19, [-0.16, 0.10, 0], 0.28, 0.10),   // slim neck
+    E([-0.58, 0.80, 0], [0.31, 0.30, 0.29], 0, 0.09),          // round head
+    ...pair(E([-0.68, 0.70, 0.24], [0.115, 0.115, 0.045], 0, 0.04, 1.4)), // cheek patch
+    E([-0.84, 0.68, 0], [0.14, 0.13, 0.12], 0, 0.05),          // small curved beak
+    E([-0.94, 0.60, 0], [0.07, 0.08, 0.065], 25, 0.03),
+    // Eye. A cockatiel's is large and dark against the lemon face, which is
+    // most of what gives the bird an expression at this scale.
+    ...pair(E([-0.72, 0.90, 0.22], [0.075, 0.075, 0.06], 0, 0.02, 2.2)),
 
-    ...pair(C([0.14, -0.62, 0.16], 0.07, [0.10, -1.28, 0.18], 0.05, 0.05)),
-    ...pair(E([0.04, -1.36, 0.18], [0.18, 0.05, 0.12], 0, 0.05)),
+    // THE CREST — swept-back plumes, the one feature no other common pet bird
+    // has. Heavily weighted because they are thin and would otherwise vanish.
+    C([-0.74, 1.00, 0], 0.07, [-0.56, 1.46, 0], 0.022, 0.04, 3.6),
+    C([-0.66, 1.06, 0], 0.10, [-0.30, 1.82, 0], 0.030, 0.045, 3.6),
+    C([-0.56, 1.06, 0.07], 0.085, [-0.12, 1.66, 0.09], 0.026, 0.045, 3.6),
+    C([-0.56, 1.06, -0.07], 0.085, [-0.12, 1.66, -0.09], 0.026, 0.045, 3.6),
+
+    // Perching legs and toes.
+    ...pair(C([0.08, -0.58, 0.14], 0.065, [0.02, -1.06, 0.16], 0.05, 0.04, 1.8)),
+    ...pair(E([-0.04, -1.12, 0.16], [0.16, 0.045, 0.10], 0, 0.04, 2.2)),
   ],
 
   /**
@@ -232,9 +303,11 @@ const BUILDERS: Record<Exclude<AnimalKey, 'orb'>, () => Part[]> = {
     E([1.46, -0.46, 0], [0.22, 0.22, 0.20], 0, 0.10),          // cotton tail
 
     C([-0.14, 0.52, 0], 0.24, [0.12, 0.24, 0], 0.34),          // short neck
-    E([-0.46, 0.96, 0], [0.42, 0.40, 0.38]),                   // head
-    E([-0.78, 0.84, 0], [0.25, 0.23, 0.25]),                   // muzzle
+    E([-0.46, 0.96, 0], [0.42, 0.40, 0.38], 0, 0.11),          // head
+    E([-0.78, 0.84, 0], [0.25, 0.23, 0.25], 0, 0.07),          // muzzle
     E([-0.94, 0.82, 0], [0.10, 0.09, 0.11], 0, 0.05),          // nose
+    // Eye, set high and to the side the way a prey animal's is.
+    ...pair(E([-0.62, 1.06, 0.30], [0.085, 0.085, 0.07], 0, 0.02, 2.0)),
 
     // THE EARS — tall, upright, slightly splayed, and flattened front-to-back
     // like a real ear rather than modelled as tubes.
@@ -361,6 +434,30 @@ const BUILDERS: Record<Exclude<AnimalKey, 'orb'>, () => Part[]> = {
 
 type Marking = (x: number, y: number, z: number) => number
 
+/**
+ * Eye centres, given as (x, y, |z|) — the absolute z matches both of a mirrored
+ * pair at once. Each species' marking function tests these first.
+ *
+ * Eyes get their own mechanism because they are the single highest-value
+ * marking on the whole model. A dog without eyes is a shape; the same dog with
+ * two dark dots is a dog looking at you. They are modelled as geometry too, but
+ * geometry alone is invisible here — an eye is only an eye because it is dark.
+ */
+const EYES: Partial<Record<Exclude<AnimalKey, 'orb'>, { c: Vec3; r: number }>> = {
+  dog: { c: [-1.26, 1.10, 0.19], r: 0.150 },
+  cat: { c: [-0.90, 1.50, 0.25], r: 0.150 },
+  bird: { c: [-0.72, 0.90, 0.22], r: 0.105 },
+  rabbit: { c: [-0.62, 1.06, 0.30], r: 0.120 },
+  fish: { c: [-1.30, 0.16, 0.19], r: 0.150 },
+}
+
+function isEye(key: Exclude<AnimalKey, 'orb'>, x: number, y: number, z: number): boolean {
+  const e = EYES[key]
+  if (!e) return false
+  const dx = x - e.c[0], dy = y - e.c[1], dz = Math.abs(z) - e.c[2]
+  return dx * dx + dy * dy + dz * dz < e.r * e.r
+}
+
 const MARKINGS: Record<Exclude<AnimalKey, 'orb'>, Marking> = {
   /**
    * BEAGLE — tricolour, the classic hound pattern: a black saddle over the
@@ -369,15 +466,17 @@ const MARKINGS: Record<Exclude<AnimalKey, 'orb'>, Marking> = {
    * were bred with it so a handler could see the dog in long grass.
    */
   dog: (x, y, z) => {
-    if (y < -1.34) return 1                                     // white feet
-    if (x > 1.95 && y > 0.72) return 1                          // white tail tip
-    if (x < -1.05 && y > 0.66 && y < 1.12) return 0.95          // white muzzle
-    // Tan ears and cheeks. Checked before the blaze so the pale stripe stays a
-    // narrow centre line rather than washing the whole head out.
-    if (Math.abs(z) > 0.22 && x < -0.5 && y > 0.4 && y < 1.45) return -0.3
-    if (x > -0.95 && x < -0.55 && y > 1.2 && Math.abs(z) < 0.16) return 0.9  // blaze
-    if (x < 0.45 && y > -0.75 && y < 0.55 && Math.abs(z) < 0.4) return 0.85  // chest
-    if (x > -0.1 && x < 1.75 && y > 0.05) return -0.85          // black saddle
+    if (isEye('dog', x, y, z)) return -1
+    if (x < -1.70 && y > 0.78 && y < 1.10) return -1          // black nose leather
+    if (y < -1.45) return 1                                    // white feet
+    if (x > 1.88 && y > 1.05) return 1                         // white tail tip
+    if (x < -1.28 && y > 0.62 && y < 1.12) return 0.95         // white muzzle
+    // Tan ears and cheeks, checked before the blaze so the pale stripe stays a
+    // narrow centre line instead of washing the whole head out.
+    if (Math.abs(z) > 0.19 && x < -0.72 && y > 0.05 && y < 1.32) return -0.3
+    if (Math.abs(z) < 0.11 && x > -1.42 && x < -0.86 && y > 0.98) return 0.9   // blaze
+    if (x < -0.05 && y > -0.78 && y < 0.34 && Math.abs(z) < 0.34) return 0.85  // chest
+    if (x > -0.5 && x < 1.55 && y > 0.18) return -0.85         // black saddle
     return 0
   },
 
@@ -388,11 +487,16 @@ const MARKINGS: Record<Exclude<AnimalKey, 'orb'>, Marking> = {
    * nearly as long as the cat.
    */
   cat: (x, y, z) => {
-    if (x > 1.55) return Math.sin(x * 5.5 + y * 4.5) > 0.0 ? -0.85 : 0.35  // tail rings
-    if (x < -0.95 && y > 0.85) return 0.9                        // white chin
-    if (x > -0.35 && x < 0.5 && y > -0.55 && y < 0.6 && Math.abs(z) < 0.32) return 0.8  // chest
-    if (y > 1.45) return Math.abs(z) > 0.18 ? -0.6 : 0.2         // dark ears, pale tufts
-    if (x > -0.3) return Math.sin(x * 6.5 + y * 1.4) > 0.25 ? -0.75 : 0.15  // mackerel stripes
+    if (isEye('cat', x, y, z)) return -1
+    if (x < -1.20 && y > 1.18 && y < 1.36) return -1           // nose
+    // The tail: bold rings along its length, which on a plumed tail this size
+    // is the most legible marking the cat has.
+    if (x > 1.15 && y < 1.12) return Math.sin(x * 3.4 + y * 4.4) > 0.0 ? -0.85 : 0.35
+    if (y > 1.68) return Math.abs(z) > 0.2 ? -0.6 : 0.25       // dark ears, pale tufts
+    if (x < -0.94 && y > 1.0 && y < 1.26) return 0.9           // white chin
+    if (y < -1.5) return 0.85                                   // white paws
+    if (x < 0.2 && y > -1.2 && y < 0.85 && Math.abs(z) < 0.32) return 0.8  // white chest
+    if (y > -1.45) return Math.sin(x * 3.4 + y * 5.6) > 0.3 ? -0.75 : 0.12 // mackerel
     return 0
   },
 
@@ -403,17 +507,18 @@ const MARKINGS: Record<Exclude<AnimalKey, 'orb'>, Marking> = {
    * the leading edge of the folded wing is the other giveaway.
    */
   bird: (x, y, z) => {
+    if (isEye('bird', x, y, z)) return -1
     // The orange cheek patch is left at the base coat, which in this palette is
     // already a warm orange — so it reads as an orange disc set into the pale
     // face rather than needing a colour channel of its own.
-    if (Math.abs(z) > 0.26 && x > -0.85 && x < -0.45 && y > 0.6 && y < 0.92) return -0.05
-    if (y > 1.1) return 0.95                                      // lemon crest
-    if (x < -0.34 && y > 0.55) return 0.9                          // lemon face
-    if (x > 1.5) return -0.35                                      // grey tail
-    if (Math.abs(z) > 0.36 && x > -0.2 && x < 0.8) {
+    if (Math.abs(z) > 0.20 && x > -0.85 && x < -0.52 && y > 0.55 && y < 0.86) return -0.05
+    if (y > 1.0) return 0.95                                       // lemon crest
+    if (x < -0.40 && y > 0.48) return 0.9                          // lemon face
+    if (x > 1.25) return -0.35                                     // grey tail
+    if (Math.abs(z) > 0.28 && x > -0.3 && x < 0.95) {
       // A narrow white bar along the lower edge of the folded wing, not the
       // whole wing — washing the entire wing white buried the bird's shape.
-      return y < -0.28 ? 0.9 : -0.4
+      return y < -0.2 ? 0.9 : -0.4
     }
     return -0.1                                                    // slate body
   },
@@ -427,13 +532,15 @@ const MARKINGS: Record<Exclude<AnimalKey, 'orb'>, Marking> = {
    * gradient.
    */
   rabbit: (x, y, z) => {
-    if (y > 1.15) return Math.abs(z) > 0.13 ? -0.7 : 0.9          // coloured ears, white between
-    if (x < -0.62 && y > 0.55) return 0.95                         // white muzzle
-    if (Math.abs(z) < 0.12 && x < -0.2 && y > 0.7) return 1        // the blaze
-    if (x < -0.3 && y > 0.62) return -0.65                         // coloured cheeks
-    if (y < -1.1) return 0.9                                       // white feet
-    if (x < 0.34) return 1                                         // white front, sharp saddle line
-    return -0.6                                                    // coloured hindquarters
+    if (isEye('rabbit', x, y, z)) return -1
+    if (x < -0.9 && y > 0.74 && y < 0.9) return -1                 // nose
+    if (y > 1.15) return Math.abs(z) > 0.13 ? -0.7 : 0.9           // coloured ears
+    if (x < -0.62 && y > 0.55) return 0.95                          // white muzzle
+    if (Math.abs(z) < 0.12 && x < -0.2 && y > 0.7) return 1         // the blaze
+    if (x < -0.3 && y > 0.62) return -0.65                          // coloured cheeks
+    if (y < -1.1) return 0.9                                        // white feet
+    if (x < 0.34) return 1                                          // white front
+    return -0.6                                                     // coloured rear
   },
 
   /**
@@ -442,7 +549,9 @@ const MARKINGS: Record<Exclude<AnimalKey, 'orb'>, Marking> = {
    * top and the middle one carries a forward-pointing wedge, which is what
    * distinguishes ocellaris from the similar percula.
    */
-  fish: (x, y) => {
+  fish: (x, y, z) => {
+    if (isEye('fish', x, y, z)) return -1
+
     // Bars lean forward at the top rather than standing vertical.
     const sx = x + y * 0.18
 
@@ -766,16 +875,18 @@ export const ANIMAL_LABELS: Record<AnimalKey, string> = {
 /**
  * Display scale per species, so each fills its frame similarly.
  *
- * The clownfish is wide and short while the rabbit is tall and narrow; a single
- * scale left the fish reading as a small blob in a page header. These even out
- * the apparent size rather than the literal bounding box.
+ * The clownfish is wide and short while the sitting cat is tall and narrow, so
+ * a single scale made the cat tower over the dog and the fish read as a small
+ * blob. These are set from the measured on-screen half-extent AFTER the resting
+ * yaw, so every species is drawn at roughly the same apparent size and the
+ * scroll doesn't lurch between a huge cat and a small dog.
  */
 export const REST_SCALE: Record<AnimalKey, number> = {
-  dog: 1.0,
-  cat: 0.95,
-  bird: 1.05,
-  rabbit: 1.0,
-  fish: 1.24,
+  dog: 1.08,
+  cat: 0.78,
+  bird: 1.03,
+  rabbit: 0.83,
+  fish: 1.22,
   orb: 1.0,
 }
 

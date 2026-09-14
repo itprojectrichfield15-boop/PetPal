@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react'
 import * as THREE from 'three'
 import { useClientValue } from '@/lib/use-client-value'
 import { sampleAnimal, MORPH_SEQUENCE, REST_YAW, REST_SCALE, type AnimalKey, type ShapeData } from '@/lib/animal-shapes'
+import type { ShapeResponse } from './shape-worker'
 
 /**
  * The site's 3D layer: a fixed, full-viewport particle field behind every
@@ -239,43 +240,82 @@ export default function AnimalField() {
 
     // ── Shapes ────────────────────────────────────────────────────────────
     let pairIndex = -1
-    // Sampling projects every point onto a blended distance field, which costs
-    // roughly 150ms per animal. Building all five up front froze the page for
-    // most of a second on mount, so only the opening shape is built
-    // synchronously and the rest are queued onto idle time. Scrolling far
-    // enough to need the next animal takes far longer than filling the queue.
-    const shapes: (ShapeData | undefined)[] = new Array(SEQ.length)
-    shapes[0] = sampleAnimal(SEQ[0], PARTICLE_COUNT, 11)
-
-    const idle: (cb: () => void) => void =
-      typeof window.requestIdleCallback === 'function'
-        ? cb => window.requestIdleCallback(() => cb(), { timeout: 900 })
-        : cb => window.setTimeout(cb, 32)
-
-    let queued = 1
     let disposed = false
-    function buildNext() {
-      if (disposed || queued >= SEQ.length) return
-      const i = queued++
-      shapes[i] = sampleAnimal(SEQ[i], PARTICLE_COUNT, 11 + i)
-      // A shape arriving after `setPair` already wanted it means the buffers
-      // are stale; force the next frame to re-upload them.
-      if (i === pairIndex + 1) pairIndex = -1
-      idle(buildNext)
+    // 0 until the first shape lands. The intro is timed from that moment.
+    let introStarted = 0
+    const shapes: (ShapeData | undefined)[] = new Array(SEQ.length)
+
+    /**
+     * Sampling projects every point onto a blended distance field, which costs
+     * roughly a quarter of a second per animal. It runs in a worker, so the
+     * main thread pays nothing for it.
+     *
+     * The previous arrangement built the opening shape synchronously on mount
+     * and queued the other four onto `requestIdleCallback`. Idle callbacks are
+     * not preemptible: once one starts it runs to completion, so each of those
+     * four builds froze the page for 200–300ms, and they landed while the intro
+     * animation was still playing. That is what made the opening stutter.
+     */
+    function accept(i: number, shape: ShapeData) {
+      if (disposed) return
+      shapes[i] = shape
+      // A shape arriving after `setPair` already asked for it means the GPU
+      // buffers are stale; force the next frame to re-upload them.
+      if (i === pairIndex || i === pairIndex + 1) pairIndex = -1
+      // The intro is timed from the first shape landing rather than from mount,
+      // so the assemble always plays in full instead of starting against an
+      // empty buffer.
+      if (introStarted === 0) introStarted = performance.now()
     }
-    idle(buildNext)
+
+    let worker: Worker | null = null
+    try {
+      worker = new Worker(new URL('./shape-worker.ts', import.meta.url), { type: 'module' })
+      worker.onmessage = (event: MessageEvent<ShapeResponse>) => {
+        const { index, positions, normals, tones } = event.data
+        accept(index, { positions, normals, tones })
+      }
+      // A worker that fails at runtime must not leave the field permanently
+      // empty — fall back to building on the main thread.
+      worker.onerror = () => {
+        worker?.terminate()
+        worker = null
+        buildOnMainThread()
+      }
+      SEQ.forEach((key, i) => {
+        worker!.postMessage({ index: i, key, count: PARTICLE_COUNT, seed: 11 + i })
+      })
+    } catch {
+      worker = null
+      buildOnMainThread()
+    }
+
+    /** Fallback only: no worker support, or the worker failed to start. */
+    function buildOnMainThread() {
+      const idle: (cb: () => void) => void =
+        typeof window.requestIdleCallback === 'function'
+          ? cb => window.requestIdleCallback(() => cb(), { timeout: 900 })
+          : cb => window.setTimeout(cb, 32)
+      let queued = 0
+      const step = () => {
+        if (disposed || queued >= SEQ.length) return
+        const i = queued++
+        accept(i, sampleAnimal(SEQ[i], PARTICLE_COUNT, 11 + i))
+        idle(step)
+      }
+      step()
+    }
 
     const geometry = new THREE.BufferGeometry()
-    // Only shape 0 exists at this point; the rest arrive on idle time. Both
-    // buffers start as the opening shape, which simply means the morph holds
-    // still until its destination is ready.
-    const first = shapes[0]!
-    const aFrom = new Float32Array(first.positions)
-    const aTo = new Float32Array(first.positions)
-    const aNormalFrom = new Float32Array(first.normals)
-    const aNormalTo = new Float32Array(first.normals)
-    const aToneFrom = new Float32Array(first.tones)
-    const aToneTo = new Float32Array(first.tones)
+    // No shape exists yet — they all arrive from the worker. The buffers start
+    // zeroed, which is invisible: `uIntro` is held at 0 until the first shape
+    // lands, so every point is still sitting out at its scatter position.
+    const aFrom = new Float32Array(PARTICLE_COUNT * 3)
+    const aTo = new Float32Array(PARTICLE_COUNT * 3)
+    const aNormalFrom = new Float32Array(PARTICLE_COUNT * 3)
+    const aNormalTo = new Float32Array(PARTICLE_COUNT * 3)
+    const aToneFrom = new Float32Array(PARTICLE_COUNT)
+    const aToneTo = new Float32Array(PARTICLE_COUNT)
     const scatter = new Float32Array(PARTICLE_COUNT * 3)
     const seeds = new Float32Array(PARTICLE_COUNT)
 
@@ -365,7 +405,6 @@ export default function AnimalField() {
     let raf = 0
     let running = false
     const clock = new THREE.Clock()
-    const started = performance.now()
 
     function readScroll() {
       const max = document.documentElement.scrollHeight - window.innerHeight
@@ -387,11 +426,14 @@ export default function AnimalField() {
 
       if (reduceMotion) {
         uniforms.uSpin.value = 0.45
+        // Nothing to show until the worker delivers the opening shape.
+        uniforms.uIntro.value = introStarted === 0 ? 0 : 1
+        uniforms.uOpacity.value = introStarted === 0 ? 0 : 1
         renderer.render(scene, camera)
         return
       }
 
-      const intro = Math.min(1, (performance.now() - started) / 2600)
+      const intro = introStarted === 0 ? 0 : Math.min(1, (performance.now() - introStarted) / 2600)
       uniforms.uIntro.value = intro
       // Full strength across the hero, then settle to an ambient presence so it
       // sits behind card content instead of reading through it.
@@ -484,6 +526,7 @@ export default function AnimalField() {
 
     return () => {
       disposed = true
+      worker?.terminate()
       stop()
       ro.disconnect()
       window.removeEventListener('scroll', readScroll)
