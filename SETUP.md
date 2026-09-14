@@ -102,27 +102,42 @@ To check: click **Table Editor** in the sidebar. You should now see six tables:
 
 You need two values from Supabase. Keep this tab open.
 
+The quickest route is the **Connect** button in the top bar of your project —
+it shows the Project URL and the key together. If you would rather find them in
+the settings pages:
+
 1. In Supabase, click the **gear icon** (Project Settings) at the bottom left.
-2. Click **Data API**.
-3. Copy the **Project URL**. It looks like:
+2. Click **Data API**. Copy the **Project URL**. It looks like:
    ```
    https://abcdefghijklmnop.supabase.co
    ```
-4. Now click **API Keys** in the same settings menu.
-5. Copy the **anon** key (also labelled **public** or **publishable**). It is a
-   very long string starting with `eyJ...`.
+3. Click **API Keys** in the same settings menu.
+4. Copy the **publishable** key — see the table below for which one that is.
 
 ### Which key is which — this matters
 
-| Key | Safe to put in the website? | Use it here? |
-|---|---|---|
-| **anon / public** | ✅ Yes — it is designed to be public and is limited by database rules | ✅ **Yes, this is the one** |
-| **service_role / secret** | ❌ **NEVER** — it bypasses every security rule | ❌ No |
+Supabase changed its key system, so a new project may show you either naming.
+**Both work.** What you need is the low-privilege one, whichever it is called:
 
-> 🚨 **Never** put the `service_role` key into a variable whose name starts with
-> `NEXT_PUBLIC_`. Anything with that prefix is downloaded by every visitor's
-> browser. Publishing the service_role key gives strangers full read and write
-> access to your entire database.
+| What you may see | Looks like | Use it here? |
+|---|---|---|
+| **Publishable key** (current) | `sb_publishable_...` — a short string | ✅ **Yes** |
+| **anon** / **public** (legacy) | `eyJ...` — a very long string | ✅ Yes, if that is what your project shows |
+| **Secret key** (current) | `sb_secret_...` | ❌ **Never** |
+| **service_role** (legacy) | `eyJ...` — a very long string | ❌ **Never** |
+
+A brand-new project will usually show you the `sb_publishable_...` form. Older
+projects show the long `eyJ...` anon key. The variable is still named
+`NEXT_PUBLIC_SUPABASE_ANON_KEY` either way — the app does not care about the
+format, only that the key is the low-privilege one.
+
+> 🚨 **Never** put a secret or `service_role` key into a variable whose name
+> starts with `NEXT_PUBLIC_`. Anything with that prefix is downloaded by every
+> visitor's browser. Publishing it gives strangers full read and write access to
+> your entire database, bypassing every security rule in the schema.
+
+> The two safe keys are safe *because* Row Level Security limits them. That is
+> what `supabase/schema.sql` sets up, which is why Step 3 comes first.
 
 ---
 
@@ -137,7 +152,7 @@ You need two values from Supabase. Keep this tab open.
 | Name | Value |
 |---|---|
 | `NEXT_PUBLIC_SUPABASE_URL` | the Project URL from Step 4 |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | the anon key from Step 4 |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | the publishable / anon key from Step 4 |
 
 Copy-paste these names rather than typing them:
 
@@ -154,7 +169,10 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY
 
 - **Pasting the URL with a trailing slash or extra path.** It must be exactly
   `https://something.supabase.co` and nothing more.
-- **Pasting the wrong key.** The anon key is long (hundreds of characters).
+- **Pasting the wrong key.** Check it against the table in Step 4. A current
+  publishable key starts `sb_publishable_`; a legacy anon key starts `eyJ`.
+  Anything starting `sb_secret_` or any key labelled service_role is the wrong
+  one and must never go here.
 - **A space at the start or end.** Vercel keeps it. Delete and re-paste.
 
 ---
@@ -175,7 +193,7 @@ Work down the list until all of them are green.
 | Variable not set | Go back to Step 5. Add it, then **redeploy** (below). |
 | URL doesn't look like a Supabase URL | Re-copy it from Step 4. No trailing slash. |
 | Project does not respond | The project is paused or deleted. Open Supabase and Restore it. |
-| Anon key rejected | You copied the wrong key. Get the **anon** one. |
+| Anon key rejected | You copied the wrong key. Get the **publishable** (or legacy **anon**) one — see Step 4. |
 | Table not found | You skipped Step 3. Run `supabase/schema.sql`. |
 
 Then create an account on your site to confirm sign-up works.
@@ -206,7 +224,7 @@ You only need this if you want to edit the code.
 
 ```
 NEXT_PUBLIC_SUPABASE_URL=https://yourproject.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOi...your-long-key...
+NEXT_PUBLIC_SUPABASE_ANON_KEY=sb_publishable_...your-key...
 ```
 
 4. Then run:
@@ -288,7 +306,7 @@ anything:
 | `NEXT_PUBLIC_SUPABASE_URL` | ✅ **Required** | Where the database is |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | ✅ **Required** | Lets the app talk to it |
 | `NEXT_PUBLIC_SITE_URL` | ❌ Not used | Left over. Harmless, but no code reads it. |
-| `SUPABASE_SERVICE_ROLE_KEY` | ❌ Not used | Left over. No code reads it. **Never** rename it to start with `NEXT_PUBLIC_`. |
+| `SUPABASE_SERVICE_ROLE_KEY` | ❌ Not used | Left over. No code reads it. **Never** rename it to start with `NEXT_PUBLIC_`. The same goes for a current-style `sb_secret_...` key. |
 
 You can safely delete the bottom two.
 
