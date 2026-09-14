@@ -300,7 +300,14 @@ const BUILDERS: Record<Exclude<AnimalKey, 'orb'>, () => Part[]> = {
     E([0.14, 0.14, 0], [0.48, 0.56, 0.42]),                    // chest, held high
     E([0.74, -0.44, 0], [0.78, 0.72, 0.60]),                   // heavy round rear
     ...pair(E([0.66, -0.88, 0.42], [0.56, 0.44, 0.28])),       // powerful haunches
-    E([1.46, -0.46, 0], [0.22, 0.22, 0.20], 0, 0.10),          // cotton tail
+    /**
+      * THE COTTON TAIL. It was previously centred at x = 1.46 — inside a rump
+      * that reaches 1.52 — so only 0.06 units of it were ever outside the body
+      * and the default blend absorbed even that. The rabbit had a tail in the
+      * model and none on the screen. It now sits proud of the rump at the top
+      * of the haunches, with a tight blend so it stays a distinct puff.
+      */
+    E([1.60, -0.20, 0], [0.27, 0.27, 0.25], 0, 0.05, 2.2),
 
     C([-0.14, 0.52, 0], 0.24, [0.12, 0.24, 0], 0.34),          // short neck
     E([-0.46, 0.96, 0], [0.42, 0.40, 0.38], 0, 0.11),          // head
@@ -539,6 +546,11 @@ const MARKINGS: Record<Exclude<AnimalKey, 'orb'>, Marking> = {
     if (Math.abs(z) < 0.12 && x < -0.2 && y > 0.7) return 1         // the blaze
     if (x < -0.3 && y > 0.62) return -0.65                          // coloured cheeks
     if (y < -1.1) return 0.9                                        // white feet
+    // The cotton tail, pale so it reads against the coloured rump. A Dutch's
+    // tail is coloured on top, but it is the pale underside that faces you
+    // when the rabbit is sitting up like this — and a dark puff on a dark
+    // rump is no tail at all.
+    if (x > 1.3 && y > -0.5 && y < 0.16) return 0.9
     if (x < 0.34) return 1                                          // white front
     return -0.6                                                     // coloured rear
   },
