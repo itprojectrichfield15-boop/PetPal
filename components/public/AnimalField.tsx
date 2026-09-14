@@ -30,13 +30,38 @@ import type { ShapeResponse } from './shape-worker'
  *     cloud behaves like a swarm reorganising into the next animal.
  *
  * ── Performance ────────────────────────────────────────────────────────────
- * One draw call. Two shapes on the GPU at a time; buffers swap only when the
- * scroll crosses into a new pair. DPR capped at 2. Loop stops when the tab is
- * hidden. `prefers-reduced-motion` draws one static frame. Everything disposed
- * on unmount.
+ * Shapes are sampled in a worker, so the main thread never blocks building
+ * them. One draw call. Two shapes on the GPU at a time; buffers swap only when
+ * the scroll crosses into a new pair. DPR capped at 2 and the particle budget
+ * scales with viewport width, so a phone draws the same on-screen density as a
+ * desktop rather than several times more. Loop stops when the tab is hidden.
+ * `prefers-reduced-motion` draws one static frame. Everything disposed on
+ * unmount.
+ *
+ * ── Mobile ─────────────────────────────────────────────────────────────────
+ * Portrait gets its own composition. The desktop layout sits the subject to
+ * the right of the headline, which on a phone puts it off the edge of the
+ * screen entirely; portrait centres it below the copy instead. The layer is
+ * also pinned to the large viewport so the URL bar appearing and disappearing
+ * cannot resize the drawing buffer while the page is scrolling.
  */
 
-const PARTICLE_COUNT = 22000
+/**
+ * Particle budget, chosen from the viewport width.
+ *
+ * A constant 22,000 was wrong on a phone in both directions. The subject is
+ * drawn into far fewer pixels there, so the same count is packed several times
+ * denser than on a desktop — it does not look better, it looks like mush — and
+ * a phone GPU pays for every one of those overlapping additive sprites. Scaling
+ * the budget to the area the animal actually occupies keeps the ON-SCREEN
+ * density, and therefore the apparent quality, the same everywhere.
+ */
+function particleBudget(width: number): number {
+  if (width < 700) return 12000
+  if (width < 1100) return 17000
+  return 22000
+}
+
 const SEQ: AnimalKey[] = MORPH_SEQUENCE
 
 const VERTEX = /* glsl */ `
@@ -226,6 +251,7 @@ export default function AnimalField() {
       return
     }
 
+    const PARTICLE_COUNT = particleBudget(host.clientWidth || window.innerWidth)
     const dpr = Math.min(window.devicePixelRatio || 1, 2)
     renderer.setPixelRatio(dpr)
     renderer.setSize(host.clientWidth, host.clientHeight, false)
@@ -406,18 +432,90 @@ export default function AnimalField() {
     let running = false
     const clock = new THREE.Clock()
 
-    function readScroll() {
-      const max = document.documentElement.scrollHeight - window.innerHeight
-      scrollTarget = max > 0 ? Math.min(1, Math.max(0, window.scrollY / max)) : 0
+    /**
+     * Cached so the scroll fraction does not depend on a fresh `innerHeight`
+     * read every frame. On a phone `innerHeight` changes as the URL bar hides,
+     * which would make the morph position jump mid-scroll for no reason.
+     */
+    let scrollMax = 1
+    function measureScrollRange() {
+      scrollMax = Math.max(1, document.documentElement.scrollHeight - window.innerHeight)
     }
 
+    function readScroll() {
+      scrollTarget = Math.min(1, Math.max(0, window.scrollY / scrollMax))
+    }
+
+    /**
+     * Framing, recomputed on resize.
+     *
+     * The desktop composition sits the subject to the RIGHT of the headline and
+     * sweeps it left as the page scrolls. On a portrait phone there is no right
+     * hand side: the copy runs full width, the visible half-width is only about
+     * 2.2 world units, and a subject centred at x = 2.68 is entirely off screen.
+     * That is why the animal was barely visible on a phone. Portrait therefore
+     * gets its own composition — centred horizontally, sitting below the copy,
+     * with only a small drift instead of a full sweep.
+     */
+    let homeX = 2.68
+    let homeY = -0.10
+    let travelX = 4.7
+    let fitScale = 1
+    /**
+     * How bright the subject is allowed to be over the hero.
+     *
+     * On a wide screen it sits BESIDE the headline, so it can run at full
+     * strength. Stacked on a phone it sits BEHIND the copy, where full strength
+     * competes with the text for the same pixels — so portrait holds it back to
+     * a backdrop. It is still the first thing you see; it just stops fighting
+     * the words.
+     */
+    let heroOpacity = 1
+
+    let lastW = 0
+    let lastH = 0
     function resize() {
       const w = host!.clientWidth
       const h = Math.max(host!.clientHeight, 1)
-      renderer.setSize(w, h, false)
-      camera.aspect = w / h
+
+      // Guard against the URL-bar resize storm. `setSize` reallocates the
+      // drawing buffer, so it must not run for a 60px nudge mid-scroll; the
+      // projection update below is cheap and always runs.
+      const widthChanged = w !== lastW
+      const heightJump = Math.abs(h - lastH) / Math.max(lastH, 1)
+      if (widthChanged || heightJump > 0.2) {
+        renderer.setSize(w, h, false)
+        lastW = w
+        lastH = h
+      }
+
+      const aspect = w / h
+      camera.aspect = aspect
       camera.updateProjectionMatrix()
       camera.position.z = w < 700 ? 11.5 : w < 1100 ? 9.6 : 8.4
+
+      const portrait = aspect < 0.95
+      if (portrait) {
+        const halfTan = Math.tan((camera.fov * Math.PI) / 360)
+        const halfW = camera.position.z * halfTan * aspect
+        homeX = 0
+        // Sit low, clear of the stacked hero copy above it.
+        homeY = -2.5
+        travelX = 0.9
+        // The widest species is drawn about 2.2 half-units across; hold it
+        // inside the frame with a margin rather than letting it clip.
+        fitScale = Math.min(1, (halfW * 0.92) / 2.2)
+        heroOpacity = 0.68
+      } else {
+        homeX = 2.68
+        homeY = -0.10
+        travelX = 4.7
+        fitScale = 1
+        heroOpacity = 1
+      }
+
+      measureScrollRange()
+      readScroll()
     }
 
     function frame() {
@@ -437,9 +535,14 @@ export default function AnimalField() {
       uniforms.uIntro.value = intro
       // Full strength across the hero, then settle to an ambient presence so it
       // sits behind card content instead of reading through it.
-      const ambient = 1.0 - Math.min(1, scrollEased / 0.18) * 0.62
+      const ambient = heroOpacity - Math.min(1, scrollEased / 0.18) * (heroOpacity * 0.62)
       uniforms.uOpacity.value = Math.min(1, intro * 1.5) * ambient
 
+      // Read the scroll position every frame rather than trusting the scroll
+      // event. Mobile browsers batch and throttle that event during momentum
+      // scrolling, so listener-driven values arrive in bursts and the morph
+      // moves in steps; `scrollY` read here is always current.
+      readScroll()
       // Eased scroll — the morph should lag the wheel slightly, not snap to it.
       scrollEased += (scrollTarget - scrollEased) * 0.055
       uniforms.uMouse.value.x += (mouseTarget.x - uniforms.uMouse.value.x) * 0.05
@@ -471,18 +574,18 @@ export default function AnimalField() {
       // uncropped. A complete readable animal beats a larger cropped one — at
       // 1.10 scale the beagle’s head collided with the first line of copy, so
       // the subject is pushed further right as it grows to keep that clearance.
-      points.position.x = 2.68 - scrollEased * 4.7
+      points.position.x = homeX - scrollEased * travelX
       // The closing lift. At the foot of the page the subject would otherwise
       // land squarely on the footer's first column; this raises it into the
       // open band between the closing card and the footer, so the last species
       // in the sequence gets a clear moment instead of sitting on top of text.
       const closingLift = Math.max(0, scrollEased - 0.80) * 3.6
-      points.position.y = -0.10 + Math.sin(scrollEased * Math.PI * 2) * 0.45 + closingLift
+      points.position.y = homeY + Math.sin(scrollEased * Math.PI * 2) * 0.45 + closingLift
       // Blend the per-species display scale through the morph too.
       const scaleA = REST_SCALE[SEQ[Math.min(idx, SEQ.length - 1)]]
       const scaleB = REST_SCALE[SEQ[Math.min(idx + 1, SEQ.length - 1)]]
       const speciesScale = scaleA + (scaleB - scaleA) * uniforms.uMix.value
-      const s = (1.0 - scrollEased * 0.18) * speciesScale
+      const s = (1.0 - scrollEased * 0.18) * speciesScale * fitScale
       points.scale.setScalar(s)
 
       renderer.render(scene, camera)
@@ -502,6 +605,10 @@ export default function AnimalField() {
     }
 
     function onPointerMove(e: PointerEvent) {
+      // Touch and pen are ignored. On a phone every scroll drags a pointer
+      // across the screen, which swung the subject around as you scrolled and
+      // was a large part of why the motion felt unsteady.
+      if (e.pointerType !== 'mouse') return
       mouseTarget.x = (e.clientX / window.innerWidth) * 2 - 1
       mouseTarget.y = -((e.clientY / window.innerHeight) * 2 - 1)
     }
@@ -513,7 +620,8 @@ export default function AnimalField() {
     const ro = new ResizeObserver(resize)
     ro.observe(host)
     window.addEventListener('scroll', readScroll, { passive: true })
-    window.addEventListener('resize', readScroll, { passive: true })
+    window.addEventListener('resize', resize, { passive: true })
+    window.addEventListener('orientationchange', resize)
     window.addEventListener('pointermove', onPointerMove, { passive: true })
     document.addEventListener('visibilitychange', onVisibility)
 
@@ -530,7 +638,8 @@ export default function AnimalField() {
       stop()
       ro.disconnect()
       window.removeEventListener('scroll', readScroll)
-      window.removeEventListener('resize', readScroll)
+      window.removeEventListener('resize', resize)
+      window.removeEventListener('orientationchange', resize)
       window.removeEventListener('pointermove', onPointerMove)
       document.removeEventListener('visibilitychange', onVisibility)
       geometry.dispose()
@@ -542,7 +651,22 @@ export default function AnimalField() {
   }, [webglSupported])
 
   return (
-    <div className="fixed inset-0 z-0 pointer-events-none" aria-hidden="true">
+    /**
+     * Height is pinned to the LARGE viewport (`lvh`), not `inset-0`.
+     *
+     * On a phone the viewport grows and shrinks by the height of the URL bar
+     * as you scroll. A full-bleed fixed layer sized to that viewport therefore
+     * changes size mid-scroll, which fires the ResizeObserver and reallocates
+     * the WebGL drawing buffer — expensive, and it flashes. `100lvh` is the
+     * height with the browser chrome retracted, so it does not move at all
+     * while scrolling; the bottom strip simply sits behind the URL bar when
+     * that is showing, which for a background layer is exactly right.
+     * `h-screen` is the fallback where `lvh` is unsupported.
+     */
+    <div
+      className="fixed inset-x-0 top-0 h-screen [height:100lvh] z-0 pointer-events-none"
+      aria-hidden="true"
+    >
       {/* Stage lighting behind the subject — also the fallback when WebGL is
           unavailable, so this layer is never an empty rectangle. */}
       <div

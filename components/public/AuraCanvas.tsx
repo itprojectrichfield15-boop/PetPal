@@ -17,7 +17,14 @@ import { sampleAnimal, REST_YAW, REST_SCALE, type AnimalKey } from '@/lib/animal
  * screen to screen instead of every tool wearing the same banner.
  */
 
-const PARTICLE_COUNT = 4200
+/**
+ * Particle budget. The header pane is much smaller on a phone, so the same
+ * count would be packed denser there than on a desktop while a weaker GPU paid
+ * for it — and sampling this many points is a main-thread cost on page load.
+ */
+function particleBudget(width: number): number {
+  return width < 700 ? 2600 : 4200
+}
 
 const VERTEX = /* glsl */ `
   uniform float uTime;
@@ -135,6 +142,7 @@ export default function AuraCanvas({
       return
     }
 
+    const PARTICLE_COUNT = particleBudget(window.innerWidth)
     const dpr = Math.min(window.devicePixelRatio || 1, 2)
     renderer.setPixelRatio(dpr)
     renderer.setSize(host.clientWidth, host.clientHeight, false)
@@ -202,10 +210,20 @@ export default function AuraCanvas({
     const clock = new THREE.Clock()
     const started = performance.now()
 
+    let lastW = 0
+    let lastH = 0
     function resize() {
       const w = host!.clientWidth
       const h = Math.max(host!.clientHeight, 1)
-      renderer.setSize(w, h, false)
+      // Mobile browsers resize the viewport as the URL bar hides and shows,
+      // which fires this observer mid-scroll. `setSize` reallocates the drawing
+      // buffer, so it is skipped for small height-only changes; the projection
+      // below is cheap and always runs.
+      if (w !== lastW || Math.abs(h - lastH) / Math.max(lastH, 1) > 0.2) {
+        renderer.setSize(w, h, false)
+        lastW = w
+        lastH = h
+      }
       camera.aspect = w / h
       camera.updateProjectionMatrix()
       // Frame by fitting the subject, not by an arbitrary width threshold.
@@ -244,6 +262,9 @@ export default function AuraCanvas({
     }
 
     function onPointerMove(e: PointerEvent) {
+      // Mouse only. On a phone every scroll drags a pointer across the screen,
+      // which swung the subject about while the page was moving.
+      if (e.pointerType !== 'mouse') return
       mouseTarget.x = (e.clientX / window.innerWidth) * 2 - 1
       mouseTarget.y = -((e.clientY / window.innerHeight) * 2 - 1)
     }
