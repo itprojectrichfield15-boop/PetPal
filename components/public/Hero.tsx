@@ -126,8 +126,17 @@ export default function Hero() {
           <MapPin className="w-4 h-4 text-[#8E8BF5]" aria-hidden="true" />
         </div>
         <div>
+          {/*
+            * No star rating here, deliberately. The vet finder states in its own
+            * footnote that PetPal does not rank, rate or endorse individual
+            * practices — it shows OpenStreetMap records and omits anything OSM
+            * does not know rather than inventing it. A decorative card promising
+            * "★ 4.9" contradicted the product's own position and advertised a
+            * feature that does not exist. Distance and opening hours are real
+            * things the finder does show.
+            */}
           <div className="text-sm font-semibold leading-tight">Vet 1.2km away</div>
-          <div className="text-[11px] text-zinc-400">Open now · ★ 4.9</div>
+          <div className="text-[11px] text-zinc-400">Opening hours listed</div>
         </div>
       </motion.div>
 

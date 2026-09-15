@@ -485,9 +485,20 @@ export default function AnimalField() {
      * shader. Both have to change together, and `needsUpdate` is required
      * because blending is a compiled material property, not a uniform.
      */
+    /*
+     * Ambient strength differs by theme, and by more than it looks.
+     *
+     * On the dark page the settled field is a faint glow that content sits
+     * comfortably on top of. The same nominal opacity in light mode is dark
+     * ink on white — far higher contrast — and it smudges across the cards
+     * instead of sitting behind them. Light therefore runs at roughly half.
+     */
+    let themeOpacity = 1
+
     function syncTheme() {
       const light = document.documentElement.getAttribute('data-theme') === 'light'
       uniforms.uLight.value = light ? 1 : 0
+      themeOpacity = light ? 0.5 : 1
       material.blending = light ? THREE.NormalBlending : THREE.AdditiveBlending
       material.needsUpdate = true
     }
@@ -605,7 +616,7 @@ export default function AnimalField() {
       // Full strength across the hero, then settle to an ambient presence so it
       // sits behind card content instead of reading through it.
       const ambient = heroOpacity - Math.min(1, scrollEased / 0.18) * (heroOpacity * 0.62)
-      uniforms.uOpacity.value = Math.min(1, intro * 1.5) * ambient
+      uniforms.uOpacity.value = Math.min(1, intro * 1.5) * ambient * themeOpacity
 
       // Read the scroll position every frame rather than trusting the scroll
       // event. Mobile browsers batch and throttle that event during momentum
