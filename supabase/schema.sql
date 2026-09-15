@@ -232,6 +232,14 @@ create policy "vet inserts own profile" on vet_profiles for insert with check (a
 drop policy if exists "vet updates own profile" on vet_profiles;
 create policy "vet updates own profile" on vet_profiles for update using (auth.uid() = id);
 
+-- An administrator is the only other party who may touch a vet's row, and the
+-- only reason is to grant or revoke `verified`. Without this policy the admin
+-- screen cannot verify anybody and the only way through was to run SQL by
+-- hand, which is not a workable handover.
+drop policy if exists "admin verifies vets" on vet_profiles;
+create policy "admin verifies vets" on vet_profiles for update
+  using (exists (select 1 from profiles p where p.id = auth.uid() and p.role = 'admin'));
+
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- 5. ASK A VET  ·  the two-sided feature

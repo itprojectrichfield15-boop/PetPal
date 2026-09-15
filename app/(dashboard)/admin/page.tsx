@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 import {
   Shield, Lock, Trash2, MessageSquare, PawPrint,
-  Stethoscope, Users, LayoutDashboard, Check, X, Star, TrendingUp, Search, Plus
+  Stethoscope, Users, LayoutDashboard, Check, Search
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -26,12 +26,27 @@ const SEED_POSTS: Post[] = [
   { id: '4', text: 'Any tips for a puppy that cries at night?', mood: 'help', hearts: 333, created_at: '2026-06-27' },
 ]
 
-const VETS = [
-  { id: 1, name: 'Greenpaw Veterinary Clinic', city: 'Johannesburg', rating: 4.9, status: 'verified' },
-  { id: 2, name: 'CityVet Animal Hospital', city: 'Cape Town', rating: 4.8, status: 'verified' },
-  { id: 3, name: 'New Leaf Pet Care', city: 'Durban', rating: 0, status: 'pending' },
-  { id: 4, name: 'Happy Paws Clinic', city: 'Pretoria', rating: 0, status: 'pending' },
-]
+/**
+ * Registered veterinary professionals, loaded from the database.
+ *
+ * This list used to be four invented clinics — Greenpaw, CityVet, New Leaf,
+ * Happy Paws — with invented star ratings, and the approve button only changed
+ * local React state and showed a success toast. An administrator could click
+ * "approve" on a vet who did not exist, be told it worked, and change nothing.
+ * The only real way to verify anyone was to run SQL by hand.
+ *
+ * There is no rating column and no rating anywhere in PetPal, so that column is
+ * gone rather than filled with a number we do not have.
+ */
+interface VetRow {
+  id: string
+  full_name: string
+  practice_name: string | null
+  city: string | null
+  registration_no: string | null
+  verified: boolean
+  created_at: string | null
+}
 
 const OWNERS = [
   { id: 1, name: 'Amara Okonkwo', pets: 1, joined: '2026-05-12', plan: 'Free' },
@@ -60,7 +75,9 @@ export default function AdminPage() {
   const [role, setRole] = useState<Role>('loading')
   const [tab, setTab] = useState('overview')
   const [posts, setPosts] = useState<Post[]>(SEED_POSTS)
-  const [vets, setVets] = useState(VETS)
+  const [vets, setVets] = useState<VetRow[]>([])
+  const [vetsLoaded, setVetsLoaded] = useState(false)
+  const [savingVet, setSavingVet] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [userEmail, setUserEmail] = useState('')
 
@@ -78,6 +95,13 @@ export default function AdminPage() {
         if (admin) {
           const { data } = await supabase.from('confessions').select('*').order('created_at', { ascending: false }).limit(100)
           if (data && data.length > 0) setPosts(data as Post[])
+
+          const { data: vetRows } = await supabase
+            .from('vet_profiles')
+            .select('id, full_name, practice_name, city, registration_no, verified, created_at')
+            .order('created_at', { ascending: false })
+          setVets((vetRows ?? []) as VetRow[])
+          setVetsLoaded(true)
         }
       } catch { setRole('forbidden') }
     }
@@ -94,9 +118,41 @@ export default function AdminPage() {
     } catch {}
   }
 
-  function setVetStatus(id: number, status: string) {
-    setVets(v => v.map(x => x.id === id ? { ...x, status } : x))
-    toast.success(status === 'verified' ? 'Vet approved' : 'Vet rejected')
+  /**
+   * Grant or revoke verification, in the database.
+   *
+   * The previous version only updated local state, so the toast was the entire
+   * effect. If the write fails now — most likely because the admin policy on
+   * vet_profiles has not been applied — the row is rolled back and the failure
+   * is reported, rather than the screen showing a success it did not achieve.
+   */
+  async function setVetVerified(id: string, verified: boolean) {
+    if (savingVet) return
+    setSavingVet(id)
+    const before = vets
+    setVets(v => v.map(x => (x.id === id ? { ...x, verified } : x)))
+    try {
+      const { createClient } = await import('@/lib/supabase/client')
+      const supabase = createClient()
+      const { error } = await supabase.from('vet_profiles').update({ verified }).eq('id', id)
+      if (error) {
+        setVets(before)
+        toast.error(verified ? 'Couldn’t verify that vet' : 'Couldn’t revoke verification', {
+          description: error.message,
+        })
+        return
+      }
+      toast.success(verified ? 'Vet verified' : 'Verification revoked', {
+        description: verified
+          ? 'They can now answer questions on Ask a Vet.'
+          : 'They can no longer answer questions.',
+      })
+    } catch {
+      setVets(before)
+      toast.error('Couldn’t reach the database')
+    } finally {
+      setSavingVet(null)
+    }
   }
 
   if (role === 'loading') return (
@@ -119,11 +175,23 @@ export default function AdminPage() {
     </div>
   )
 
+  /*
+   * Only counts we can actually take.
+   *
+   * This row used to read "12,431 pet owners", "18,940 pets tracked" and a
+   * change figure beside each one — +8.2%, +11%, +5.4%, +2 — none of which
+   * came from anywhere. There is no historical snapshot in the schema, so a
+   * change-since-last-period cannot be computed at all, and owner and pet
+   * counts are unavailable by design: row-level security restricts profiles
+   * and pets to their owner, so not even an administrator can count them from
+   * the browser. Showing a made-up number on an admin screen is worse than
+   * showing three real ones.
+   */
   const stats = [
-    { label: 'Pet owners', value: '12,431', change: '+8.2%', icon: Users },
-    { label: 'Pets tracked', value: '18,940', change: '+11%', icon: PawPrint },
-    { label: 'Community posts', value: posts.length, change: '+5.4%', icon: MessageSquare },
-    { label: 'Verified vets', value: vets.filter(v => v.status === 'verified').length, change: '+2', icon: Stethoscope },
+    { label: 'Community posts', value: posts.length, icon: MessageSquare },
+    { label: 'Registered professionals', value: vets.length, icon: Users },
+    { label: 'Verified vets', value: vets.filter(v => v.verified).length, icon: Stethoscope },
+    { label: 'Awaiting verification', value: vets.filter(v => !v.verified).length, icon: PawPrint },
   ]
 
   return (
@@ -163,9 +231,8 @@ export default function AdminPage() {
                 <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
                   {stats.map((s, i) => (
                     <motion.div key={s.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }} className="glass-card rounded-2xl p-5 surface-hover">
-                      <div className="flex items-center justify-between mb-3">
+                      <div className="mb-3">
                         <div className="w-9 h-9 rounded-lg bg-primary/12 border border-primary/20 flex items-center justify-center"><s.icon className="w-4 h-4 text-primary" /></div>
-                        <Badge className="bg-transparent border-0 text-[#8E8BF5] text-xs"><TrendingUp className="w-3 h-3 mr-1" />{s.change}</Badge>
                       </div>
                       <div className="text-3xl font-semibold tabular-nums" style={{ fontFamily: 'var(--font-display)' }}>{s.value}</div>
                       <div className="text-xs text-zinc-400">{s.label}</div>
@@ -235,39 +302,71 @@ export default function AdminPage() {
 
             {tab === 'vets' && (
               <div className="glass-card rounded-2xl overflow-hidden">
-                <div className="p-5 border-b border-white/8 flex items-center justify-between">
-                  <h2 className="font-semibold flex items-center gap-2"><Stethoscope className="w-4 h-4 text-primary" /> Vet listings</h2>
-                  <Button className="btn-glass-primary h-9 rounded-lg text-sm gap-1.5"><Plus className="w-3.5 h-3.5" /> Add vet</Button>
+                <div className="p-5 border-b border-white/8">
+                  <h2 className="font-semibold flex items-center gap-2">
+                    <Stethoscope className="w-4 h-4 text-primary" /> Registered professionals
+                  </h2>
+                  <p className="text-xs text-zinc-500 mt-1">
+                    Check the registration number against the register before verifying anyone. A
+                    verified vet can answer questions on Ask a Vet, and their answers carry a badge.
+                  </p>
                 </div>
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader><TableRow className="border-white/5 hover:bg-transparent">
-                      <TableHead className="text-zinc-500 text-xs uppercase tracking-wider">Clinic</TableHead>
-                      <TableHead className="text-zinc-500 text-xs uppercase tracking-wider">City</TableHead>
-                      <TableHead className="text-zinc-500 text-xs uppercase tracking-wider">Rating</TableHead>
-                      <TableHead className="text-zinc-500 text-xs uppercase tracking-wider">Status</TableHead>
-                      <TableHead className="text-zinc-500 text-xs uppercase tracking-wider text-right">Action</TableHead>
-                    </TableRow></TableHeader>
-                    <TableBody>
-                      {vets.map(v => (
-                        <TableRow key={v.id} className="border-white/5 hover:bg-white/[0.02]">
-                          <TableCell className="font-medium">{v.name}</TableCell>
-                          <TableCell className="text-zinc-400 text-sm">{v.city}</TableCell>
-                          <TableCell className="text-sm">{v.rating > 0 ? <span className="flex items-center gap-1 text-[#FFD98E]"><Star className="w-3.5 h-3.5 fill-[#FFD98E]" /> {v.rating}</span> : <span className="text-zinc-600">—</span>}</TableCell>
-                          <TableCell><Badge className={`text-[10px] capitalize ${v.status === 'verified' ? 'bg-[#8E8BF5]/15 text-[#8E8BF5] border-[#8E8BF5]/30' : 'bg-[#FFD98E]/15 text-[#FFD98E] border-[#FFD98E]/30'}`}>{v.status}</Badge></TableCell>
-                          <TableCell className="text-right">
-                            {v.status === 'pending' ? (
-                              <div className="flex items-center justify-end gap-1.5">
-                                <Button size="sm" onClick={() => setVetStatus(v.id, 'verified')} className="h-8 px-2 text-[#8E8BF5] hover:bg-[#8E8BF5]/10 bg-transparent border-0"><Check className="w-4 h-4" /></Button>
-                                <Button size="sm" onClick={() => setVetStatus(v.id, 'rejected')} className="h-8 px-2 text-[#FF6B81] hover:bg-[#FF6B81]/10 bg-transparent border-0"><X className="w-4 h-4" /></Button>
-                              </div>
-                            ) : <span className="text-xs text-zinc-600">Approved</span>}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
+
+                {vets.length === 0 ? (
+                  <div className="p-8 text-center text-sm text-zinc-400">
+                    {vetsLoaded
+                      ? 'Nobody has registered as a veterinary professional yet.'
+                      : 'Loading…'}
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader><TableRow className="border-white/5 hover:bg-transparent">
+                        <TableHead className="text-zinc-500 text-xs uppercase tracking-wider">Name</TableHead>
+                        <TableHead className="text-zinc-500 text-xs uppercase tracking-wider">Practice</TableHead>
+                        <TableHead className="text-zinc-500 text-xs uppercase tracking-wider">Registration</TableHead>
+                        <TableHead className="text-zinc-500 text-xs uppercase tracking-wider">Status</TableHead>
+                        <TableHead className="text-zinc-500 text-xs uppercase tracking-wider text-right">Action</TableHead>
+                      </TableRow></TableHeader>
+                      <TableBody>
+                        {vets.map(v => (
+                          <TableRow key={v.id} className="border-white/5 hover:bg-white/[0.02]">
+                            <TableCell className="font-medium">{v.full_name}</TableCell>
+                            <TableCell className="text-zinc-400 text-sm">
+                              {v.practice_name || <span className="text-zinc-600">Not given</span>}
+                              {v.city ? <span className="text-zinc-600"> · {v.city}</span> : null}
+                            </TableCell>
+                            <TableCell className="text-sm font-mono text-zinc-300">
+                              {v.registration_no || <span className="text-zinc-600 font-sans">Not given</span>}
+                            </TableCell>
+                            <TableCell>
+                              <Badge className={`text-[10px] ${v.verified
+                                ? 'bg-[#8E8BF5]/15 text-[#8E8BF5] border-[#8E8BF5]/30'
+                                : 'bg-[#FFD98E]/15 text-[#FFD98E] border-[#FFD98E]/30'}`}>
+                                {v.verified ? 'verified' : 'pending'}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {v.verified ? (
+                                <Button size="sm" disabled={savingVet === v.id}
+                                  onClick={() => setVetVerified(v.id, false)}
+                                  className="h-8 px-3 text-xs text-[#FF6B81] hover:bg-[#FF6B81]/10 bg-transparent border-0">
+                                  Revoke
+                                </Button>
+                              ) : (
+                                <Button size="sm" disabled={savingVet === v.id}
+                                  onClick={() => setVetVerified(v.id, true)}
+                                  className="h-8 px-3 text-xs gap-1.5 text-[#8E8BF5] hover:bg-[#8E8BF5]/10 bg-transparent border-0">
+                                  <Check className="w-3.5 h-3.5" /> Verify
+                                </Button>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
               </div>
             )}
 
