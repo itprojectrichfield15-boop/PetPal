@@ -79,7 +79,7 @@ export default function DashboardPage() {
   if (checking) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="w-12 h-12 rounded-full border-2 border-[#FFAE6D]/30 border-t-[#FFAE6D] animate-spin" />
+        <div className="w-12 h-12 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
       </div>
     )
   }
@@ -109,7 +109,7 @@ export default function DashboardPage() {
             <motion.div key={p.name + i} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }}
               className="glass-card rounded-2xl p-5 surface-hover">
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#FFAE6D] to-[#8E8BF5] flex items-center justify-center">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary to-[#8E8BF5] flex items-center justify-center">
                   <Icon className="w-6 h-6 text-[#2A1A08]" />
                 </div>
                 <div>
@@ -119,15 +119,15 @@ export default function DashboardPage() {
               </div>
               <div className="flex items-center justify-between text-xs">
                 <span className="text-zinc-400 flex items-center gap-1.5"><Scale className="w-3.5 h-3.5" /> {p.weight}</span>
-                <Badge className="bg-[#FFAE6D]/10 text-[#FFAE6D] border-[#FFAE6D]/25 text-[10px]">{p.next}</Badge>
+                <Badge className="bg-primary/10 text-primary border-primary/25 text-[10px]">{p.next}</Badge>
               </div>
             </motion.div>
             )
           })}
           <Link href="/add-pet">
             <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.16 }}
-              className="glass-card rounded-2xl p-5 h-full flex flex-col items-center justify-center text-center border-dashed border-white/15 hover:border-[#FFAE6D]/40 transition-all min-h-[120px] cursor-pointer">
-              <Plus className="w-6 h-6 text-[#FFAE6D] mb-2" />
+              className="glass-card rounded-2xl p-5 h-full flex flex-col items-center justify-center text-center border-dashed border-white/15 hover:border-primary/40 transition-all min-h-[120px] cursor-pointer">
+              <Plus className="w-6 h-6 text-primary mb-2" />
               <span className="text-sm text-zinc-300">Add another pet</span>
             </motion.div>
           </Link>
@@ -139,7 +139,7 @@ export default function DashboardPage() {
             className="lg:col-span-2 glass-card rounded-2xl p-5">
             <div className="flex items-center justify-between mb-6">
               <h2 className="font-semibold text-sm uppercase tracking-wider text-zinc-400">Biscuit · weight trend</h2>
-              <Badge className="bg-[#FFAE6D]/10 text-[#FFAE6D] border-[#FFAE6D]/25 text-xs">Healthy</Badge>
+              <Badge className="bg-primary/10 text-primary border-primary/25 text-xs">Healthy</Badge>
             </div>
             <ResponsiveContainer width="100%" height={220}>
               <AreaChart data={WEIGHT}>
@@ -155,7 +155,7 @@ export default function DashboardPage() {
 
           {/* Reminders */}
           <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="glass-card rounded-2xl p-5">
-            <h2 className="font-semibold text-sm uppercase tracking-wider text-zinc-400 mb-5 flex items-center gap-2"><Bell className="w-4 h-4 text-[#FFAE6D]" /> Upcoming</h2>
+            <h2 className="font-semibold text-sm uppercase tracking-wider text-zinc-400 mb-5 flex items-center gap-2"><Bell className="w-4 h-4 text-primary" /> Upcoming</h2>
             <div className="space-y-3">
               {REMINDERS.map((r, i) => (
                 <div key={i} className="flex items-center gap-3 py-2 border-b border-white/5 last:border-0">
@@ -177,7 +177,7 @@ export default function DashboardPage() {
           {QUICK.map(q => (
             <Link key={q.label} href={q.href}>
               <div className="glass-card rounded-2xl p-5 surface-hover flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-[#FFAE6D]/12 border border-[#FFAE6D]/20 flex items-center justify-center"><q.icon className="w-5 h-5 text-[#FFAE6D]" /></div>
+                <div className="w-10 h-10 rounded-xl bg-primary/12 border border-primary/20 flex items-center justify-center"><q.icon className="w-5 h-5 text-primary" /></div>
                 <span className="text-sm font-medium">{q.label}</span>
                 <ArrowUpRight className="w-4 h-4 text-zinc-500 ml-auto" />
               </div>

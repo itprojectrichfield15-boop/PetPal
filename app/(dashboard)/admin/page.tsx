@@ -100,7 +100,7 @@ export default function AdminPage() {
   }
 
   if (role === 'loading') return (
-    <div className="min-h-screen flex items-center justify-center"><div className="w-12 h-12 rounded-full border-2 border-[#FFAE6D]/30 border-t-[#FFAE6D] animate-spin" /></div>
+    <div className="min-h-screen flex items-center justify-center"><div className="w-12 h-12 rounded-full border-2 border-primary/30 border-t-primary animate-spin" /></div>
   )
 
   if (role === 'forbidden') return (
@@ -149,7 +149,7 @@ export default function AdminPage() {
         <div className="flex gap-1 mb-8 overflow-x-auto no-scrollbar">
           {TABS.map(t => (
             <button key={t.key} onClick={() => setTab(t.key)}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm whitespace-nowrap transition-all ${tab === t.key ? 'bg-[#FFAE6D]/12 text-[#FFAE6D] border border-[#FFAE6D]/20' : 'text-zinc-400 hover:text-white hover:bg-white/5 border border-transparent'}`}>
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm whitespace-nowrap transition-all ${tab === t.key ? 'bg-primary/12 text-primary border border-primary/20' : 'text-zinc-400 hover:text-white hover:bg-white/5 border border-transparent'}`}>
               <t.icon className="w-4 h-4" /> {t.label}
             </button>
           ))}
@@ -164,7 +164,7 @@ export default function AdminPage() {
                   {stats.map((s, i) => (
                     <motion.div key={s.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }} className="glass-card rounded-2xl p-5 surface-hover">
                       <div className="flex items-center justify-between mb-3">
-                        <div className="w-9 h-9 rounded-lg bg-[#FFAE6D]/12 border border-[#FFAE6D]/20 flex items-center justify-center"><s.icon className="w-4 h-4 text-[#FFAE6D]" /></div>
+                        <div className="w-9 h-9 rounded-lg bg-primary/12 border border-primary/20 flex items-center justify-center"><s.icon className="w-4 h-4 text-primary" /></div>
                         <Badge className="bg-transparent border-0 text-[#8E8BF5] text-xs"><TrendingUp className="w-3 h-3 mr-1" />{s.change}</Badge>
                       </div>
                       <div className="text-3xl font-semibold tabular-nums" style={{ fontFamily: 'var(--font-display)' }}>{s.value}</div>
@@ -204,7 +204,7 @@ export default function AdminPage() {
             {tab === 'community' && (
               <div className="glass-card rounded-2xl overflow-hidden">
                 <div className="p-5 border-b border-white/8 flex items-center justify-between gap-4">
-                  <h2 className="font-semibold flex items-center gap-2"><MessageSquare className="w-4 h-4 text-[#FFAE6D]" /> Community moderation</h2>
+                  <h2 className="font-semibold flex items-center gap-2"><MessageSquare className="w-4 h-4 text-primary" /> Community moderation</h2>
                   <div className="relative max-w-xs w-full">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
                     <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search posts…" className="pl-9 bg-[#1C1630] border-white/8 h-9 text-sm" />
@@ -236,7 +236,7 @@ export default function AdminPage() {
             {tab === 'vets' && (
               <div className="glass-card rounded-2xl overflow-hidden">
                 <div className="p-5 border-b border-white/8 flex items-center justify-between">
-                  <h2 className="font-semibold flex items-center gap-2"><Stethoscope className="w-4 h-4 text-[#FFAE6D]" /> Vet listings</h2>
+                  <h2 className="font-semibold flex items-center gap-2"><Stethoscope className="w-4 h-4 text-primary" /> Vet listings</h2>
                   <Button className="btn-glass-primary h-9 rounded-lg text-sm gap-1.5"><Plus className="w-3.5 h-3.5" /> Add vet</Button>
                 </div>
                 <div className="overflow-x-auto">
@@ -273,7 +273,7 @@ export default function AdminPage() {
 
             {tab === 'owners' && (
               <div className="glass-card rounded-2xl overflow-hidden">
-                <div className="p-5 border-b border-white/8"><h2 className="font-semibold flex items-center gap-2"><Users className="w-4 h-4 text-[#FFAE6D]" /> Pet owners</h2></div>
+                <div className="p-5 border-b border-white/8"><h2 className="font-semibold flex items-center gap-2"><Users className="w-4 h-4 text-primary" /> Pet owners</h2></div>
                 <div className="overflow-x-auto">
                   <Table>
                     <TableHeader><TableRow className="border-white/5 hover:bg-transparent">
@@ -288,7 +288,7 @@ export default function AdminPage() {
                           <TableCell className="font-medium">{o.name}</TableCell>
                           <TableCell className="text-sm"><span className="flex items-center gap-1.5 text-zinc-400"><PawPrint className="w-3.5 h-3.5" /> {o.pets}</span></TableCell>
                           <TableCell className="text-zinc-400 text-sm">{(() => { try { return formatRelative(o.joined) } catch { return o.joined } })()}</TableCell>
-                          <TableCell><Badge className="bg-[#FFAE6D]/10 text-[#FFAE6D] border-[#FFAE6D]/25 text-[10px]">{o.plan}</Badge></TableCell>
+                          <TableCell><Badge className="bg-primary/10 text-primary border-primary/25 text-[10px]">{o.plan}</Badge></TableCell>
                         </TableRow>
                       ))}
                     </TableBody>

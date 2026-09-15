@@ -204,7 +204,7 @@ export default function VetConsolePage() {
             <div className="glass-card rounded-2xl p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold">Unanswered questions</h2>
-                <Link href="/ask" className="text-sm text-[#FFAE6D] hover:underline inline-flex items-center gap-1">
+                <Link href="/ask" className="text-sm text-primary hover:underline inline-flex items-center gap-1">
                   Open Ask a Vet <ArrowRight size={14} />
                 </Link>
               </div>

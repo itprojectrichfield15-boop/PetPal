@@ -44,7 +44,7 @@ export default function FoodSafetyPage() {
               autoFocus
               enterKeyHint="search"
               aria-label="Food, plant or household item to check"
-              className="pl-12 pr-11 h-14 text-lg bg-[#130F1C] border-white/8 focus:border-[#FFAE6D]/40 rounded-xl"
+              className="pl-12 pr-11 h-14 text-lg bg-[#130F1C] border-white/8 focus:border-primary/40 rounded-xl"
             />
             {query && (
               <button
@@ -161,7 +161,7 @@ export default function FoodSafetyPage() {
                       <button
                         key={s}
                         onClick={() => setQuery(s)}
-                        className="px-3 py-1.5 rounded-full text-xs border border-white/10 text-zinc-300 hover:text-white hover:border-[#FFAE6D]/40 transition-all capitalize"
+                        className="px-3 py-1.5 rounded-full text-xs border border-white/10 text-zinc-300 hover:text-white hover:border-primary/40 transition-all capitalize"
                       >
                         {s}
                       </button>

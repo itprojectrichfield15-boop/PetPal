@@ -105,8 +105,8 @@ export default function SignupPage() {
           animate={{ opacity: 1, scale: 1 }}
           className="text-center max-w-md"
         >
-          <div className="w-16 h-16 rounded-full bg-[#FFAE6D]/10 border border-[#FFAE6D]/30 flex items-center justify-center mx-auto mb-6">
-            <PawPrint className="w-8 h-8 text-[#FFAE6D]" />
+          <div className="w-16 h-16 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center mx-auto mb-6">
+            <PawPrint className="w-8 h-8 text-primary" />
           </div>
           <h1 className="text-3xl font-black mb-4" style={{ fontFamily: 'var(--font-display)' }}>CHECK YOUR EMAIL</h1>
           <p className="text-[#A79CBF] leading-relaxed">
@@ -138,7 +138,7 @@ export default function SignupPage() {
         <div className="flex items-center justify-center gap-2.5 mb-10">
           <Logo size={38} glow />
           <span className="text-2xl font-bold" style={{ fontFamily: 'var(--font-display)' }}>
-            Pet<span className="text-[#FFAE6D]">Pal</span>
+            Pet<span className="text-primary">Pal</span>
           </span>
         </div>
 
@@ -172,12 +172,12 @@ export default function SignupPage() {
                 onClick={() => setKind(k)}
                 className={`text-left p-3.5 rounded-xl border transition-all ${
                   kind === k
-                    ? 'bg-[#FFAE6D]/12 border-[#FFAE6D]/40'
+                    ? 'bg-primary/12 border-primary/40'
                     : 'bg-white/[0.02] border-white/10 hover:border-white/25'
                 }`}
               >
-                <Icon className={`w-4 h-4 mb-2 ${kind === k ? 'text-[#FFAE6D]' : 'text-zinc-500'}`} aria-hidden="true" />
-                <div className={`text-[13px] font-semibold ${kind === k ? 'text-[#FFAE6D]' : 'text-zinc-300'}`}>{label}</div>
+                <Icon className={`w-4 h-4 mb-2 ${kind === k ? 'text-primary' : 'text-zinc-500'}`} aria-hidden="true" />
+                <div className={`text-[13px] font-semibold ${kind === k ? 'text-primary' : 'text-zinc-300'}`}>{label}</div>
                 <div className="text-[10.5px] text-zinc-500 leading-snug mt-0.5">{hint}</div>
               </button>
             ))}
@@ -194,7 +194,7 @@ export default function SignupPage() {
                   value={displayName}
                   onChange={e => setDisplayName(e.target.value)}
                   placeholder="e.g. Alex"
-                  className="pl-10 bg-[#0D0A14] border-white/10 focus:border-[#FFAE6D]/50"
+                  className="pl-10 bg-[#0D0A14] border-white/10 focus:border-primary/50"
                 />
               </div>
             </div>
@@ -209,7 +209,7 @@ export default function SignupPage() {
                       value={practice}
                       onChange={e => setPractice(e.target.value)}
                       placeholder="e.g. Greenside Animal Hospital"
-                      className="pl-10 bg-[#0D0A14] border-white/10 focus:border-[#FFAE6D]/50"
+                      className="pl-10 bg-[#0D0A14] border-white/10 focus:border-primary/50"
                     />
                   </div>
                 </div>
@@ -222,7 +222,7 @@ export default function SignupPage() {
                       value={registration}
                       onChange={e => setRegistration(e.target.value)}
                       placeholder="Your professional register number"
-                      className="pl-10 bg-[#0D0A14] border-white/10 focus:border-[#FFAE6D]/50"
+                      className="pl-10 bg-[#0D0A14] border-white/10 focus:border-primary/50"
                     />
                   </div>
                   <p className="text-[10.5px] text-zinc-500 leading-relaxed">
@@ -242,7 +242,7 @@ export default function SignupPage() {
                   value={email}
                   onChange={e => setEmail(e.target.value)}
                   placeholder="you@example.com"
-                  className="pl-10 bg-[#0D0A14] border-white/10 focus:border-[#FFAE6D]/50"
+                  className="pl-10 bg-[#0D0A14] border-white/10 focus:border-primary/50"
                 />
               </div>
             </div>
@@ -256,7 +256,7 @@ export default function SignupPage() {
                   value={password}
                   onChange={e => setPassword(e.target.value)}
                   placeholder="Min. 8 characters"
-                  className="pl-10 pr-10 bg-[#0D0A14] border-white/10 focus:border-[#FFAE6D]/50"
+                  className="pl-10 pr-10 bg-[#0D0A14] border-white/10 focus:border-primary/50"
                 />
                 <button
                   type="button"
@@ -280,7 +280,7 @@ export default function SignupPage() {
 
           <p className="text-center mt-6 text-sm text-[#A79CBF]">
             Already have an account?{' '}
-            <Link href="/auth/login" className="text-[#FFAE6D] hover:text-[#8E8BF5] transition-colors">Sign in</Link>
+            <Link href="/auth/login" className="text-primary hover:text-[#8E8BF5] transition-colors">Sign in</Link>
           </p>
         </div>
 

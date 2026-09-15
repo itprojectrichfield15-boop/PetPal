@@ -83,11 +83,11 @@ export default function WellnessPage() {
       <div className="relative z-10 w-full max-w-2xl mx-auto px-6 py-12">
         <div className="mb-8">
           <div className="flex items-center justify-between text-sm text-zinc-400 mb-2">
-            <span className="flex items-center gap-2"><Heart className="w-4 h-4 text-[#FFAE6D]" /> Pet Wellness Check</span>
+            <span className="flex items-center gap-2"><Heart className="w-4 h-4 text-primary" /> Pet Wellness Check</span>
             <span>{step + 1} / {QUESTIONS.length}</span>
           </div>
           <div className="h-1.5 bg-white/[0.06] rounded-full overflow-hidden">
-            <motion.div animate={{ width: `${((step + 1) / QUESTIONS.length) * 100}%` }} className="h-full rounded-full bg-[#FFAE6D]" />
+            <motion.div animate={{ width: `${((step + 1) / QUESTIONS.length) * 100}%` }} className="h-full rounded-full bg-primary" />
           </div>
         </div>
 
@@ -98,7 +98,7 @@ export default function WellnessPage() {
             <div className="space-y-3">
               {q.opts.map(([label, v]) => (
                 <button key={label as string} onClick={() => choose(v as number)}
-                  className={`w-full text-left px-4 py-3.5 rounded-xl border transition-all ${answers[step] === v ? 'bg-[#FFAE6D]/15 border-[#FFAE6D]/40 text-white' : 'bg-white/[0.03] border-white/8 text-zinc-300 hover:border-white/20'}`}>
+                  className={`w-full text-left px-4 py-3.5 rounded-xl border transition-all ${answers[step] === v ? 'bg-primary/15 border-primary/40 text-white' : 'bg-white/[0.03] border-white/8 text-zinc-300 hover:border-white/20'}`}>
                   {label}
                 </button>
               ))}

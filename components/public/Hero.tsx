@@ -49,7 +49,7 @@ export default function Hero() {
           >
             <span className="block text-gradient-soft">The whole world of</span>
             <span className="block">
-              <span style={{ fontFamily: 'var(--font-serif)' }} className="italic font-normal text-[#FFAE6D]">pet care</span>
+              <span style={{ fontFamily: 'var(--font-serif)' }} className="italic font-normal text-primary">pet care</span>
               <span className="text-gradient-soft">, in one app.</span>
             </span>
           </motion.h1>
@@ -109,8 +109,8 @@ export default function Hero() {
         initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.9, ease: EASE }}
         className="hidden xl:flex absolute right-[12%] top-[22%] z-10 glass-card rounded-2xl p-3.5 pr-5 items-center gap-3 shadow-2xl"
       >
-        <div className="w-9 h-9 rounded-xl bg-[#FFAE6D]/15 border border-[#FFAE6D]/25 flex items-center justify-center shrink-0">
-          <Apple className="w-4 h-4 text-[#FFAE6D]" aria-hidden="true" />
+        <div className="w-9 h-9 rounded-xl bg-primary/15 border border-primary/25 flex items-center justify-center shrink-0">
+          <Apple className="w-4 h-4 text-primary" aria-hidden="true" />
         </div>
         <div>
           <div className="text-sm font-semibold leading-tight">Biscuit&rsquo;s plan</div>
@@ -135,7 +135,7 @@ export default function Hero() {
         initial={{ opacity: 0, scale: 0.85 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 1.2, ease: EASE }}
         className="hidden xl:flex absolute right-[26%] bottom-[14%] z-10 glass-card rounded-full px-4 py-2 items-center gap-2 shadow-2xl"
       >
-        <ShieldCheck className="w-4 h-4 text-[#FFAE6D] shrink-0" aria-hidden="true" />
+        <ShieldCheck className="w-4 h-4 text-primary shrink-0" aria-hidden="true" />
         <span className="text-xs font-medium">Chocolate? <span className="text-[#FF6B81]">Toxic</span> — checked</span>
       </motion.div>
 

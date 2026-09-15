@@ -214,7 +214,7 @@ export default function WallPage() {
         </motion.div>
 
         <div className="flex items-center gap-2 text-xs text-zinc-500 mb-4">
-          <ShieldCheck className="w-3.5 h-3.5 text-[#FFAE6D]" />
+          <ShieldCheck className="w-3.5 h-3.5 text-primary" />
           Posts are anonymous. Be kind — we&rsquo;re all just trying to do right by our pets.
         </div>
 

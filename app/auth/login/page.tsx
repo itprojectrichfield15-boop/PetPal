@@ -84,7 +84,7 @@ export default function LoginPage() {
         <div className="flex items-center justify-center gap-2.5 mb-10">
           <Logo size={38} glow />
           <span className="text-2xl font-bold" style={{ fontFamily: 'var(--font-display)' }}>
-            Pet<span className="text-[#FFAE6D]">Pal</span>
+            Pet<span className="text-primary">Pal</span>
           </span>
         </div>
 
@@ -110,7 +110,7 @@ export default function LoginPage() {
                   value={email}
                   onChange={e => setEmail(e.target.value)}
                   placeholder="you@example.com"
-                  className="pl-10 bg-[#0D0A14] border-white/10 focus:border-[#FFAE6D]/50"
+                  className="pl-10 bg-[#0D0A14] border-white/10 focus:border-primary/50"
                 />
               </div>
             </div>
@@ -124,7 +124,7 @@ export default function LoginPage() {
                   value={password}
                   onChange={e => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="pl-10 pr-10 bg-[#0D0A14] border-white/10 focus:border-[#FFAE6D]/50"
+                  className="pl-10 pr-10 bg-[#0D0A14] border-white/10 focus:border-primary/50"
                 />
                 <button
                   type="button"
@@ -147,17 +147,17 @@ export default function LoginPage() {
           </form>
 
           <div className="mt-6 pt-6 border-t border-white/8 flex items-center justify-between text-sm">
-            <Link href="/auth/forgot-password" className="text-[#A79CBF] hover:text-[#FFAE6D] transition-colors">
+            <Link href="/auth/forgot-password" className="text-[#A79CBF] hover:text-primary transition-colors">
               Forgot password?
             </Link>
-            <Link href="/auth/signup" className="text-[#FFAE6D] hover:text-[#8E8BF5] transition-colors font-medium">
+            <Link href="/auth/signup" className="text-primary hover:text-[#8E8BF5] transition-colors font-medium">
               Create account
             </Link>
           </div>
         </div>
 
-        <div className="mt-6 flex items-start gap-3 p-4 rounded-xl bg-[#FFAE6D]/5 border border-[#FFAE6D]/20">
-          <PawPrint className="w-4 h-4 text-[#FFAE6D] mt-0.5 shrink-0" />
+        <div className="mt-6 flex items-start gap-3 p-4 rounded-xl bg-primary/5 border border-primary/20">
+          <PawPrint className="w-4 h-4 text-primary mt-0.5 shrink-0" />
           <p className="text-xs text-[#A79CBF] leading-relaxed">
             Your pets&rsquo; profiles, nutrition plans and reminders — all waiting for you.
             PetPal keeps everything in one safe place.

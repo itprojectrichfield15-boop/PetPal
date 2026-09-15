@@ -3,6 +3,7 @@ import { Space_Grotesk, Inter, Instrument_Serif } from "next/font/google"
 import "./globals.css"
 import { Toaster } from "sonner"
 import SiteEffects from "@/components/SiteEffects"
+import PreferencesProvider from "@/components/layout/PreferencesProvider"
 
 const spaceGrotesk = Space_Grotesk({
   subsets: ["latin"],
@@ -61,6 +62,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       className={`${spaceGrotesk.variable} ${inter.variable} ${instrumentSerif.variable} h-full antialiased dark`}
     >
       <body className="min-h-full flex flex-col bg-[#0D0A14] text-[#F4EFF7]">
+        {/* Applies the saved accent, reduce-motion and high-contrast settings. */}
+        <PreferencesProvider />
         <SiteEffects />
         {children}
         <Toaster

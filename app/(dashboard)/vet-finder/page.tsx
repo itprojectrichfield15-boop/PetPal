@@ -17,7 +17,7 @@ const VetMap = dynamic(() => import('@/components/VetMap'), {
   ssr: false,
   loading: () => (
     <div className="h-full w-full flex items-center justify-center bg-[#171226]">
-      <Loader2 className="w-6 h-6 text-[#FFAE6D] animate-spin" aria-label="Loading map" />
+      <Loader2 className="w-6 h-6 text-primary animate-spin" aria-label="Loading map" />
     </div>
   ),
 })
@@ -132,7 +132,7 @@ export default function VetFinderPage() {
           <div className="space-y-3 lg:h-[640px] lg:overflow-y-auto no-scrollbar pr-1">
             {vetState === 'loading' && (
               <div className="glass-card rounded-2xl p-8 flex flex-col items-center justify-center text-center">
-                <Loader2 className="w-6 h-6 text-[#FFAE6D] animate-spin mb-3" aria-hidden="true" />
+                <Loader2 className="w-6 h-6 text-primary animate-spin mb-3" aria-hidden="true" />
                 <p className="text-sm text-zinc-400">Searching the directory…</p>
               </div>
             )}
@@ -174,8 +174,8 @@ export default function VetFinderPage() {
               >
                 <div className="flex items-start justify-between gap-3 mb-2">
                   <div className="flex items-start gap-2.5 min-w-0">
-                    <div className="w-9 h-9 rounded-xl bg-[#FFAE6D]/12 border border-[#FFAE6D]/20 flex items-center justify-center shrink-0">
-                      <Stethoscope className="w-4 h-4 text-[#FFAE6D]" aria-hidden="true" />
+                    <div className="w-9 h-9 rounded-xl bg-primary/12 border border-primary/20 flex items-center justify-center shrink-0">
+                      <Stethoscope className="w-4 h-4 text-primary" aria-hidden="true" />
                     </div>
                     <div className="min-w-0">
                       <div className="font-semibold text-sm leading-tight">{v.name}</div>

@@ -19,7 +19,7 @@ export default function Logo({ className, size = 38, glow = false, variant = 'ma
       <div className={cn('flex items-center gap-2.5', className)}>
         <LogoMark size={size} glow={glow} />
         <span className="text-lg font-bold tracking-tight" style={{ fontFamily: 'var(--font-display)' }}>
-          Pet<span className="text-[#FFAE6D]">Pal</span>
+          Pet<span className="text-primary">Pal</span>
         </span>
       </div>
     )

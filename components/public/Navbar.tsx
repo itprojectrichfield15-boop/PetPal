@@ -48,7 +48,7 @@ export default function Navbar() {
           <Link href="/" className="flex items-center gap-2.5 group" aria-label="PetPal home">
             <Logo size={34} className="group-hover:scale-105 transition-transform duration-300" />
             <span className="text-base font-bold tracking-tight" style={{ fontFamily: 'var(--font-display)' }}>
-              Pet<span className="text-[#FFAE6D]">Pal</span>
+              Pet<span className="text-primary">Pal</span>
             </span>
           </Link>
 

@@ -100,7 +100,7 @@ export default function DashboardSidebar() {
                 className="text-lg font-black whitespace-nowrap"
                 style={{ fontFamily: 'var(--font-display)' }}
               >
-                Pet<span className="text-[#FFAE6D]">Pal</span>
+                Pet<span className="text-primary">Pal</span>
               </motion.span>
             )}
           </Link>
@@ -134,15 +134,15 @@ export default function DashboardSidebar() {
                 className={cn(
                   'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all duration-200',
                   active
-                    ? 'bg-[#FFAE6D]/12 text-[#FFAE6D] border border-[#FFAE6D]/20'
+                    ? 'bg-primary/12 text-primary border border-primary/20'
                     : 'text-zinc-400 hover:text-white hover:bg-white/5'
                 )}
                 aria-current={active ? 'page' : undefined}
               >
-                <item.icon className={cn('w-5 h-5 shrink-0', active && 'text-[#FFAE6D]')} />
+                <item.icon className={cn('w-5 h-5 shrink-0', active && 'text-primary')} />
                 {!collapsed && <span className="whitespace-nowrap font-medium">{item.label}</span>}
                 {active && !collapsed && (
-                  <div className="ml-auto w-1.5 h-1.5 rounded-full bg-[#FFAE6D]" />
+                  <div className="ml-auto w-1.5 h-1.5 rounded-full bg-primary" />
                 )}
               </Link>
             )
@@ -159,7 +159,7 @@ export default function DashboardSidebar() {
                 className={cn(
                   'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all duration-200',
                   pathname === '/vet'
-                    ? 'bg-[#FFAE6D]/12 text-[#FFAE6D] border border-[#FFAE6D]/20'
+                    ? 'bg-primary/12 text-primary border border-primary/20'
                     : 'text-zinc-400 hover:text-white hover:bg-white/5'
                 )}
               >
@@ -180,7 +180,7 @@ export default function DashboardSidebar() {
                 className={cn(
                   'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all duration-200',
                   pathname === '/admin'
-                    ? 'bg-[#FFAE6D]/12 text-[#FFAE6D] border border-[#FFAE6D]/20'
+                    ? 'bg-primary/12 text-primary border border-primary/20'
                     : 'text-zinc-400 hover:text-white hover:bg-white/5'
                 )}
               >
@@ -198,7 +198,7 @@ export default function DashboardSidebar() {
           </Link>
           <button
             onClick={handleSignOut}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-zinc-400 hover:text-[#FFAE6D] hover:bg-[#FFAE6D]/5 transition-all duration-200"
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-zinc-400 hover:text-primary hover:bg-primary/5 transition-all duration-200"
             aria-label="Sign out"
           >
             <LogOut className="w-5 h-5 shrink-0" />

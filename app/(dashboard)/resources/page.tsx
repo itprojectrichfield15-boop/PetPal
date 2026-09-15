@@ -247,7 +247,7 @@ export default function ResourcesPage() {
         <div className="flex gap-2 flex-wrap mb-8">
           {TAGS.map(t => (
             <button key={t} onClick={() => setFilter(t)}
-              className={`px-4 py-1.5 rounded-full text-sm border transition-all ${filter === t ? 'bg-[#FFAE6D]/15 border-[#FFAE6D]/40 text-[#FFAE6D]' : 'bg-[#171226] border-white/10 text-zinc-400 hover:text-white'}`}>
+              className={`px-4 py-1.5 rounded-full text-sm border transition-all ${filter === t ? 'bg-primary/15 border-primary/40 text-primary' : 'bg-[#171226] border-white/10 text-zinc-400 hover:text-white'}`}>
               {t}
             </button>
           ))}
@@ -260,14 +260,14 @@ export default function ResourcesPage() {
               onClick={() => setOpen(g)}
               className="glass-card rounded-2xl p-5 surface-hover group cursor-pointer text-left">
               <div className="flex items-start justify-between mb-4">
-                <div className="w-10 h-10 rounded-xl bg-[#FFAE6D]/12 border border-[#FFAE6D]/20 flex items-center justify-center"><g.icon className="w-5 h-5 text-[#FFAE6D]" /></div>
+                <div className="w-10 h-10 rounded-xl bg-primary/12 border border-primary/20 flex items-center justify-center"><g.icon className="w-5 h-5 text-primary" /></div>
                 <Badge className="bg-white/5 text-zinc-400 border-white/10 text-[10px]">{g.tag}</Badge>
               </div>
               <h3 className="font-semibold mb-2" style={{ fontFamily: 'var(--font-display)' }}>{g.title}</h3>
               <p className="text-zinc-400 text-sm leading-relaxed mb-4">{g.desc}</p>
               <div className="flex items-center justify-between text-xs">
                 <span className="text-zinc-500">{g.read} read</span>
-                <span className="flex items-center gap-1 text-[#FFAE6D] opacity-0 group-hover:opacity-100 transition-opacity">Read <ArrowUpRight className="w-3 h-3" /></span>
+                <span className="flex items-center gap-1 text-primary opacity-0 group-hover:opacity-100 transition-opacity">Read <ArrowUpRight className="w-3 h-3" /></span>
               </div>
             </motion.button>
           ))}
@@ -292,7 +292,7 @@ export default function ResourcesPage() {
                 <X className="w-4 h-4" />
               </button>
               <div className="flex items-center gap-2 mb-4">
-                <Badge className="bg-[#FFAE6D]/15 text-[#FFAE6D] border-[#FFAE6D]/30 text-[10px]">{open.tag}</Badge>
+                <Badge className="bg-primary/15 text-primary border-primary/30 text-[10px]">{open.tag}</Badge>
                 <span className="text-xs text-zinc-500 flex items-center gap-1"><Clock className="w-3 h-3" /> {open.read} read</span>
               </div>
               <h2 className="text-3xl font-semibold mb-5 pr-10" style={{ fontFamily: 'var(--font-display)' }}>{open.title}</h2>
@@ -301,8 +301,8 @@ export default function ResourcesPage() {
                   <p key={i} className="text-zinc-300 leading-relaxed">{p}</p>
                 ))}
               </div>
-              <div className="mt-7 p-4 rounded-xl bg-[#FFAE6D]/5 border border-[#FFAE6D]/20 flex items-start gap-3">
-                <Heart className="w-4 h-4 text-[#FFAE6D] mt-0.5 shrink-0" />
+              <div className="mt-7 p-4 rounded-xl bg-primary/5 border border-primary/20 flex items-start gap-3">
+                <Heart className="w-4 h-4 text-primary mt-0.5 shrink-0" />
                 <p className="text-xs text-zinc-400 leading-relaxed">General guidance for all pet owners. Always consult your vet for advice specific to your animal&rsquo;s species, breed and health.</p>
               </div>
             </motion.article>

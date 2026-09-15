@@ -37,7 +37,7 @@ export default function SiteEffects() {
       {/* Scroll progress */}
       <motion.div
         style={{ scaleX }}
-        className="fixed top-0 left-0 right-0 h-[3px] origin-left z-[60] bg-gradient-to-r from-[#FFAE6D] via-[#FFD98E] to-[#8E8BF5]"
+        className="fixed top-0 left-0 right-0 h-[3px] origin-left z-[60] bg-gradient-to-r from-primary via-[#FFD98E] to-[#8E8BF5]"
         aria-hidden="true"
       />
       {/* Cursor glow */}

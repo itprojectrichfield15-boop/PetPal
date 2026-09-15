@@ -177,7 +177,7 @@ export default function SetupPage() {
         <div className="flex items-center gap-2.5 mb-8">
           <Logo size={36} />
           <span className="text-xl font-bold" style={{ fontFamily: 'var(--font-display)' }}>
-            Pet<span className="text-[#FFAE6D]">Pal</span>
+            Pet<span className="text-primary">Pal</span>
           </span>
           <span className="text-xs text-zinc-500 ml-2 font-mono">setup check</span>
         </div>
@@ -187,7 +187,7 @@ export default function SetupPage() {
         </h1>
         <p className="text-sm text-zinc-400 mb-8 leading-relaxed">
           Every check below has to pass before sign-in and sign-up will work. Work down the list — each failure names
-          the exact thing to fix. Full instructions are in <code className="text-[#FFAE6D]">SETUP.md</code>.
+          the exact thing to fix. Full instructions are in <code className="text-primary">SETUP.md</code>.
         </p>
 
         {allOk && (
@@ -254,7 +254,7 @@ export default function SetupPage() {
             { icon: Table2, title: 'Tables', body: 'Run the whole script in SETUP.md once, in the Supabase SQL Editor.' },
           ].map(t => (
             <div key={t.title} className="glass-card rounded-xl p-3.5">
-              <t.icon className="w-4 h-4 text-[#FFAE6D] mb-2" />
+              <t.icon className="w-4 h-4 text-primary mb-2" />
               <div className="text-[11px] font-semibold uppercase tracking-wider text-zinc-300 mb-1">{t.title}</div>
               <p className="text-[11px] text-zinc-500 leading-relaxed">{t.body}</p>
             </div>

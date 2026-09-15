@@ -67,15 +67,15 @@ export default function ForgotPasswordPage() {
         <div className="flex items-center justify-center gap-2.5 mb-10">
           <Logo size={38} glow />
           <span className="text-2xl font-bold" style={{ fontFamily: 'var(--font-display)' }}>
-            Pet<span className="text-[#FFAE6D]">Pal</span>
+            Pet<span className="text-primary">Pal</span>
           </span>
         </div>
 
         <div className="p-8 glass-card rounded-2xl">
           {sent ? (
             <div className="text-center">
-              <div className="w-14 h-14 rounded-2xl bg-[#FFAE6D]/12 border border-[#FFAE6D]/25 flex items-center justify-center mx-auto mb-5">
-                <MailCheck className="w-7 h-7 text-[#FFAE6D]" />
+              <div className="w-14 h-14 rounded-2xl bg-primary/12 border border-primary/25 flex items-center justify-center mx-auto mb-5">
+                <MailCheck className="w-7 h-7 text-primary" />
               </div>
               <h1 className="text-2xl font-semibold mb-2" style={{ fontFamily: 'var(--font-display)' }}>
                 Check your inbox
@@ -111,7 +111,7 @@ export default function ForgotPasswordPage() {
                       value={email}
                       onChange={e => setEmail(e.target.value)}
                       placeholder="you@example.com"
-                      className="pl-10 bg-[#0D0A14] border-white/10 focus:border-[#FFAE6D]/50"
+                      className="pl-10 bg-[#0D0A14] border-white/10 focus:border-primary/50"
                     />
                   </div>
                 </div>
@@ -126,7 +126,7 @@ export default function ForgotPasswordPage() {
               </form>
 
               <div className="mt-6 pt-6 border-t border-white/8 text-sm text-center">
-                <Link href="/auth/login" className="text-[#A79CBF] hover:text-[#FFAE6D] transition-colors inline-flex items-center gap-1.5">
+                <Link href="/auth/login" className="text-[#A79CBF] hover:text-primary transition-colors inline-flex items-center gap-1.5">
                   <ArrowLeft className="w-3.5 h-3.5" /> Back to sign in
                 </Link>
               </div>
@@ -134,8 +134,8 @@ export default function ForgotPasswordPage() {
           )}
         </div>
 
-        <div className="mt-6 flex items-start gap-3 p-4 rounded-xl bg-[#FFAE6D]/5 border border-[#FFAE6D]/20">
-          <PawPrint className="w-4 h-4 text-[#FFAE6D] mt-0.5 shrink-0" />
+        <div className="mt-6 flex items-start gap-3 p-4 rounded-xl bg-primary/5 border border-primary/20">
+          <PawPrint className="w-4 h-4 text-primary mt-0.5 shrink-0" />
           <p className="text-xs text-[#A79CBF] leading-relaxed">
             Your pets&rsquo; profiles and reminders stay exactly where you left them.
           </p>
