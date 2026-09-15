@@ -583,7 +583,12 @@ html.high-contrast [class*="border-white/"] {
    one the top two thirds are simply not there, which left the headline looking
    half-erased. The light theme runs the same gradient in reverse ink. */
 :root[data-theme="light"] .text-gradient-soft {
-  background: linear-gradient(180deg, #24192E 0%, #2E2039 38%, #6B5F73 100%);
+  /* background-image, NOT the `background` shorthand. The shorthand resets
+     background-clip to border-box, which un-clips the gradient from the text
+     and paints it as a solid grey slab over the headline. */
+  background-image: linear-gradient(180deg, #24192E 0%, #2E2039 38%, #6B5F73 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
 }
 
 /* `hover:text-white` is the standard hover across the nav and sidebar. On a
