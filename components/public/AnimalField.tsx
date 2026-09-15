@@ -82,6 +82,8 @@ const VERTEX = /* glsl */ `
   attribute float aSeed;
   attribute float aToneFrom;
   attribute float aToneTo;
+  attribute float aAoFrom;
+  attribute float aAoTo;
 
   varying float vDepth;
   varying float vBlend;
@@ -89,6 +91,8 @@ const VERTEX = /* glsl */ `
   varying vec3  vNormal;
   varying float vFlight;
   varying float vTone;
+  varying float vAo;
+  varying float vFacing;
 
   float hash(vec3 p) {
     return fract(sin(dot(p, vec3(12.9898, 78.233, 37.719))) * 43758.5453);
@@ -107,6 +111,7 @@ const VERTEX = /* glsl */ `
     // Markings cross-fade with the shape, so a beagle's saddle becomes a Maine
     // Coon's stripes over the same transition rather than popping at the end.
     vTone = mix(aToneFrom, aToneTo, m);
+    vAo = mix(aAoFrom, aAoTo, m);
 
     // 0 when settled, 1 at the midpoint of a transition.
     float flight = sin(m * 3.14159265);
@@ -149,6 +154,11 @@ const VERTEX = /* glsl */ `
     mat3 rx = mat3(1.0, 0.0, 0.0, 0.0, cos(ax), sin(ax), 0.0, -sin(ax), cos(ax));
     pos = rx * ry * pos;
     vNormal = normalize(rx * ry * normal);
+    // How squarely this point faces the camera. Points on the FAR side of the
+    // body are the reason an additive cloud looks hollow — every one of them
+    // shines straight through the near surface. Carried to the fragment shader
+    // so they can be held back.
+    vFacing = dot(vNormal, vec3(0.0, 0.0, 1.0));
 
     vec4 mv = modelViewMatrix * vec4(pos, 1.0);
     gl_Position = projectionMatrix * mv;
@@ -175,6 +185,8 @@ const FRAGMENT = /* glsl */ `
   varying vec3  vNormal;
   varying float vFlight;
   varying float vTone;
+  varying float vAo;
+  varying float vFacing;
 
   void main() {
     // Round the square point sprite into a soft dot with a hot core.
@@ -211,10 +223,21 @@ const FRAGMENT = /* glsl */ `
     float rim  = pow(1.0 - max(dot(N, V), 0.0), 2.2);
     float spec = pow(max(dot(reflect(-L, N), V), 0.0), 18.0) * 0.5;
 
+    // Baked ambient occlusion. Creases, armpits and the inside of an ear stop
+    // glowing as brightly as an open flank, which is most of what gives the
+    // form volume rather than the flat glow of a lit point cloud.
+    float occ = mix(0.34, 1.0, vAo);
+
     vec3 lit =
-        base * (0.52 + diff * 1.25 + fill)   // ambient + key + fill
+        base * (0.52 * occ + diff * 1.25 * occ + fill * occ)   // ambient + key + fill
       + uKeyLight * spec                      // specular glint
       + uRimLight * rim * (0.42 + max(-vTone, 0.0) * 0.5);  // rim separates the silhouette
+
+    // Hold back the far side of the body. A real animal is opaque; without
+    // this every point behind the subject reads through the front of it and
+    // the whole thing looks like a hollow shell of dots.
+    float facingFade = smoothstep(-0.55, 0.12, vFacing);
+    alpha *= 0.12 + 0.88 * facingFade;
 
     // Points in flight glow hotter, so a morph reads as energy.
     lit += uKeyLight * vFlight * 0.35;
@@ -298,8 +321,8 @@ export default function AnimalField() {
     try {
       worker = new Worker(new URL('./shape-worker.ts', import.meta.url), { type: 'module' })
       worker.onmessage = (event: MessageEvent<ShapeResponse>) => {
-        const { index, positions, normals, tones } = event.data
-        accept(index, { positions, normals, tones })
+        const { index, positions, normals, tones, ao } = event.data
+        accept(index, { positions, normals, tones, ao })
       }
       // A worker that fails at runtime must not leave the field permanently
       // empty — fall back to building on the main thread.
@@ -342,6 +365,8 @@ export default function AnimalField() {
     const aNormalTo = new Float32Array(PARTICLE_COUNT * 3)
     const aToneFrom = new Float32Array(PARTICLE_COUNT)
     const aToneTo = new Float32Array(PARTICLE_COUNT)
+    const aAoFrom = new Float32Array(PARTICLE_COUNT)
+    const aAoTo = new Float32Array(PARTICLE_COUNT)
     const scatter = new Float32Array(PARTICLE_COUNT * 3)
     const seeds = new Float32Array(PARTICLE_COUNT)
 
@@ -361,6 +386,8 @@ export default function AnimalField() {
     const nToAttr = new THREE.BufferAttribute(aNormalTo, 3)
     const tFromAttr = new THREE.BufferAttribute(aToneFrom, 1)
     const tToAttr = new THREE.BufferAttribute(aToneTo, 1)
+    const oFromAttr = new THREE.BufferAttribute(aAoFrom, 1)
+    const oToAttr = new THREE.BufferAttribute(aAoTo, 1)
 
     geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(PARTICLE_COUNT * 3), 3))
     geometry.setAttribute('aFrom', fromAttr)
@@ -371,6 +398,8 @@ export default function AnimalField() {
     geometry.setAttribute('aSeed', new THREE.BufferAttribute(seeds, 1))
     geometry.setAttribute('aToneFrom', tFromAttr)
     geometry.setAttribute('aToneTo', tToAttr)
+    geometry.setAttribute('aAoFrom', oFromAttr)
+    geometry.setAttribute('aAoTo', oToAttr)
     geometry.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 26)
 
     const uniforms = {
@@ -414,14 +443,16 @@ export default function AnimalField() {
       const b = shapes[Math.min(i + 1, shapes.length - 1)] ?? a
 
       pairIndex = i
-      aFrom.set(a.positions); aNormalFrom.set(a.normals); aToneFrom.set(a.tones)
-      aTo.set(b.positions); aNormalTo.set(b.normals); aToneTo.set(b.tones)
+      aFrom.set(a.positions); aNormalFrom.set(a.normals); aToneFrom.set(a.tones); aAoFrom.set(a.ao)
+      aTo.set(b.positions); aNormalTo.set(b.normals); aToneTo.set(b.tones); aAoTo.set(b.ao)
       fromAttr.needsUpdate = true
       toAttr.needsUpdate = true
       nFromAttr.needsUpdate = true
       nToAttr.needsUpdate = true
       tFromAttr.needsUpdate = true
       tToAttr.needsUpdate = true
+      oFromAttr.needsUpdate = true
+      oToAttr.needsUpdate = true
     }
     setPair(0)
 

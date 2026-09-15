@@ -29,6 +29,7 @@ export interface ShapeResponse {
   positions: Float32Array
   normals: Float32Array
   tones: Float32Array
+  ao: Float32Array
 }
 
 const ctx = self as unknown as DedicatedWorkerGlobalScope
@@ -41,10 +42,12 @@ ctx.onmessage = (event: MessageEvent<ShapeRequest>) => {
     positions: shape.positions,
     normals: shape.normals,
     tones: shape.tones,
+    ao: shape.ao,
   }
   ctx.postMessage(payload, [
     shape.positions.buffer,
     shape.normals.buffer,
     shape.tones.buffer,
+    shape.ao.buffer,
   ])
 }

@@ -54,6 +54,19 @@ export interface ShapeData {
    * render: one float per point, read straight into the fragment shader.
    */
   tones: Float32Array
+  /**
+   * Baked ambient occlusion, one value per point. 1 = fully open, 0 = deeply
+   * occluded (an armpit, the inside of an ear, where the tail meets the rump).
+   *
+   * This is the difference between a cloud of lit dots and something that
+   * looks like it has volume. Without it every point is lit as if floating
+   * alone in space, so creases and joins glow exactly as brightly as an
+   * exposed flank and the whole form goes flat. It is computed from the
+   * distance field itself — march a short way along the normal and compare how
+   * much free space there actually is against how much there would be in the
+   * open — so it costs nothing at render time.
+   */
+  ao: Float32Array
 }
 
 type Vec3 = [number, number, number]
@@ -780,6 +793,7 @@ export function sampleAnimal(key: AnimalKey, count: number, seed = 1): ShapeData
   const positions = new Float32Array(count * 3)
   const normals = new Float32Array(count * 3)
   const tones = new Float32Array(count)
+  const ao = new Float32Array(count)
 
   if (key === 'orb') {
     const golden = Math.PI * (3 - Math.sqrt(5))
@@ -791,7 +805,8 @@ export function sampleAnimal(key: AnimalKey, count: number, seed = 1): ShapeData
       positions[i * 3] = nx * 2; positions[i * 3 + 1] = ny * 2; positions[i * 3 + 2] = nz * 2
       normals[i * 3] = nx; normals[i * 3 + 1] = ny; normals[i * 3 + 2] = nz
     }
-    return { positions, normals, tones }
+    ao.fill(1)
+    return { positions, normals, tones, ao }
   }
 
   const parts = BUILDERS[key]()
@@ -804,7 +819,33 @@ export function sampleAnimal(key: AnimalKey, count: number, seed = 1): ShapeData
   let acc = 0
   for (const a of areas) { acc += a / total; cdf.push(acc) }
 
-  interface P { x: number; y: number; z: number; nx: number; ny: number; nz: number; tone: number; ang: number; rad: number }
+  interface P { x: number; y: number; z: number; nx: number; ny: number; nz: number; tone: number; occ: number; ang: number; rad: number }
+
+  /**
+   * Ambient occlusion from the distance field (the Inigo Quilez method).
+   *
+   * Step along the surface normal. In open space the field value at distance h
+   * should be h; anything less means geometry is crowding in, and the shortfall
+   * is how occluded the point is. Each successive sample counts for less, so
+   * near geometry dominates. Five taps is enough to catch a joint or an ear
+   * without the cost running away.
+   */
+  function occlusion(x: number, y: number, z: number, nx: number, ny: number, nz: number): number {
+    let sum = 0
+    let scale = 1
+    for (let i = 1; i <= 5; i++) {
+      // Step size is set against the scale of these models, which span roughly
+      // four units. The first attempt marched only 0.11 units in total, so
+      // nothing but a razor-thin crease registered: ninety percent of points
+      // came back fully open and the shading was indistinguishable from having
+      // no occlusion at all.
+      const h = 0.07 * i
+      const d = field(x + nx * h, y + ny * h, z + nz * h)
+      sum += (h - d) * scale
+      scale *= 0.72
+    }
+    return Math.max(0, Math.min(1, 1 - 2.6 * sum))
+  }
   const pts: P[] = []
 
   const PROJECT_STEPS = 4
@@ -838,7 +879,8 @@ export function sampleAnimal(key: AnimalKey, count: number, seed = 1): ShapeData
 
     const [nx, ny, nz] = gradient(x, y, z)
     const tone = Math.max(-1, Math.min(1, marking(x, y, z)))
-    pts.push({ x, y, z, nx, ny, nz, tone, ang: Math.atan2(y, x), rad: Math.hypot(x, y) })
+    const occ = occlusion(x, y, z, nx, ny, nz)
+    pts.push({ x, y, z, nx, ny, nz, tone, occ, ang: Math.atan2(y, x), rad: Math.hypot(x, y) })
   }
 
   // Top up by duplicating with a tiny jitter if convergence was unusually poor,
@@ -859,9 +901,10 @@ export function sampleAnimal(key: AnimalKey, count: number, seed = 1): ShapeData
     normals[i * 3 + 1] = p.ny
     normals[i * 3 + 2] = p.nz
     tones[i] = p.tone
+    ao[i] = p.occ
   }
 
-  return { positions, normals, tones }
+  return { positions, normals, tones, ao }
 }
 
 export const MORPH_SEQUENCE: AnimalKey[] = ['dog', 'cat', 'bird', 'rabbit', 'fish']

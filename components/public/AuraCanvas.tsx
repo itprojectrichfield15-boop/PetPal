@@ -39,11 +39,14 @@ const VERTEX = /* glsl */ `
   attribute vec3  aScatter;
   attribute float aSeed;
   attribute float aTone;
+  attribute float aAo;
 
   varying vec3  vNormal;
   varying float vDepth;
   varying float vBlend;
   varying float vTone;
+  varying float vAo;
+  varying float vFacing;
 
   void main() {
     float e = uIntro * uIntro * (3.0 - 2.0 * uIntro);
@@ -61,12 +64,16 @@ const VERTEX = /* glsl */ `
     mat3 rx = mat3(1.0, 0.0, 0.0, 0.0, cos(ax), sin(ax), 0.0, -sin(ax), cos(ax));
     pos = rx * ry * pos;
     vNormal = normalize(rx * ry * aNormalIn);
+    // Points on the far side of the body are why an additive cloud reads as a
+    // hollow shell; this lets the fragment shader hold them back.
+    vFacing = dot(vNormal, vec3(0.0, 0.0, 1.0));
 
     vec4 mv = modelViewMatrix * vec4(pos, 1.0);
     gl_Position = projectionMatrix * mv;
     vDepth = -mv.z;
     vBlend = clamp((aShape.y + 2.4) / 4.8, 0.0, 1.0);
     vTone = aTone;
+    vAo = aAo;
 
     gl_PointSize = uSize * (0.6 + aSeed * 0.8) * uPixelRatio * (14.0 / max(vDepth, 0.001));
   }
@@ -82,6 +89,8 @@ const FRAGMENT = /* glsl */ `
   varying float vDepth;
   varying float vBlend;
   varying float vTone;
+  varying float vAo;
+  varying float vFacing;
 
   void main() {
     vec2 c = gl_PointCoord - 0.5;
@@ -103,8 +112,16 @@ const FRAGMENT = /* glsl */ `
     float diff = max(dot(N, L), 0.0);
     float rim  = pow(1.0 - max(dot(N, V), 0.0), 2.2);
 
+    // Baked ambient occlusion — creases and joins stop glowing as brightly as
+    // an open flank, which is most of what gives the form volume.
+    float occ = mix(0.34, 1.0, vAo);
+
     // Dark markings keep their rim light so the silhouette survives them.
-    vec3 lit = base * (0.5 + diff * 1.1) + uAccent * rim * (0.4 + max(-vTone, 0.0) * 0.5);
+    vec3 lit = base * (0.5 * occ + diff * 1.1 * occ) + uAccent * rim * (0.4 + max(-vTone, 0.0) * 0.5);
+
+    // A real animal is opaque. Without this the far side shines through the
+    // near side and the whole thing looks like a shell of dots.
+    alpha *= 0.12 + 0.88 * smoothstep(-0.55, 0.12, vFacing);
 
     float fog = smoothstep(16.0, 2.0, vDepth);
     gl_FragColor = vec4(lit, alpha * uOpacity * fog);
@@ -175,6 +192,7 @@ export default function AuraCanvas({
     geometry.setAttribute('aScatter', new THREE.BufferAttribute(scatter, 3))
     geometry.setAttribute('aSeed', new THREE.BufferAttribute(seeds, 1))
     geometry.setAttribute('aTone', new THREE.BufferAttribute(shape.tones, 1))
+    geometry.setAttribute('aAo', new THREE.BufferAttribute(shape.ao, 1))
     geometry.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 18)
 
     const uniforms = {
