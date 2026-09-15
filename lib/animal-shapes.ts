@@ -119,6 +119,28 @@ function pair(p: Part): Part[] {
 /** Default smoothing between parts. Larger fuses more; too large melts detail. */
 const BLEND = 0.16
 
+/**
+ * Coat depth per species, in world units.
+ *
+ * Every animal had an identically crisp surface, which meant a long-haired
+ * Maine Coon read as smooth as a fish. Real coats differ enormously at the
+ * silhouette, and that edge is most of what tells them apart at a glance: a
+ * Maine Coon's outline is a soft halo, a beagle's is nearly a hard line, and a
+ * clownfish is sharper still because scales are not fur at all.
+ *
+ * Points are pushed out along their own normal by a random amount up to this
+ * distance, so the surface gains thickness without losing its shape. The
+ * lighting normal is left untouched — it stays the true surface normal, so a
+ * fluffy animal is still lit as the solid form underneath.
+ */
+const COAT_DEPTH: Record<Exclude<AnimalKey, 'orb'>, number> = {
+  dog: 0.030,     // beagle — short, dense, close-lying
+  cat: 0.085,     // Maine Coon — the longest coat of any of them
+  bird: 0.045,    // feathers: softer than scales, tidier than fur
+  rabbit: 0.070,  // dense and plush
+  fish: 0.008,    // scales. Nearly nothing, and the contrast is the point.
+}
+
 /* ────────────────────────────────────────────────────────────────────────────
    The breeds
    ──────────────────────────────────────────────────────────────────────────── */
@@ -892,11 +914,26 @@ export function sampleAnimal(key: AnimalKey, count: number, seed = 1): ShapeData
 
   pts.sort((a, b) => (a.ang - b.ang) || (a.rad - b.rad))
 
+  /*
+   * Coat. Each point lifts off the surface along its own normal by a random
+   * fraction of the species' coat depth.
+   *
+   * Biased towards the surface with a squared random, because a real coat is
+   * dense near the skin and thins towards the tips — a uniform random makes an
+   * even shell that reads as a fuzzy balloon rather than fur.
+   */
+  const coat = COAT_DEPTH[key]
+
   for (let i = 0; i < count; i++) {
     const p = pts[i]
-    positions[i * 3] = p.x
-    positions[i * 3 + 1] = p.y
-    positions[i * 3 + 2] = p.z
+    const r = rand()
+    const lift = coat * r * r
+
+    positions[i * 3] = p.x + p.nx * lift
+    positions[i * 3 + 1] = p.y + p.ny * lift
+    positions[i * 3 + 2] = p.z + p.nz * lift
+    // The normal stays the true surface normal, so the animal is still lit as
+    // the solid body underneath rather than as a cloud of loose strands.
     normals[i * 3] = p.nx
     normals[i * 3 + 1] = p.ny
     normals[i * 3 + 2] = p.nz
