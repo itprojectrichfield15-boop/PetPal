@@ -38,6 +38,8 @@ export default function DashboardSidebar() {
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
+  // A vet keeps every owner tool above; this only ADDS a professional section.
+  const [isVet, setIsVet] = useState(false)
 
   useEffect(() => {
     async function check() {
@@ -47,6 +49,13 @@ export default function DashboardSidebar() {
         const supabase = createClient()
         const { data: { user } } = await supabase.auth.getUser()
         if (await isUserAdmin(user)) setIsAdmin(true)
+        if (user) {
+          // Presence of a vet_profiles row is what makes someone a professional.
+          // Verification is a separate matter, handled inside the console.
+          const { data: vet } = await supabase
+            .from('vet_profiles').select('id').eq('id', user.id).maybeSingle()
+          if (vet) setIsVet(true)
+        }
       } catch {}
     }
     check()
@@ -138,6 +147,27 @@ export default function DashboardSidebar() {
               </Link>
             )
           })}
+
+          {isVet && (
+            <>
+              {!collapsed && (
+                <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-widest px-3 py-2 mt-4">Professional</p>
+              )}
+              <Link
+                href="/vet"
+                onClick={() => { try { localStorage.setItem('pp_chrome', 'app') } catch {}; setMobileOpen(false) }}
+                className={cn(
+                  'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all duration-200',
+                  pathname === '/vet'
+                    ? 'bg-[#FFAE6D]/12 text-[#FFAE6D] border border-[#FFAE6D]/20'
+                    : 'text-zinc-400 hover:text-white hover:bg-white/5'
+                )}
+              >
+                <Stethoscope className="w-5 h-5 shrink-0" />
+                {!collapsed && <span className="font-medium">Vet Console</span>}
+              </Link>
+            </>
+          )}
 
           {isAdmin && (
             <>
