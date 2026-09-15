@@ -178,6 +178,7 @@ const FRAGMENT = /* glsl */ `
   uniform vec3  uKeyLight;
   uniform vec3  uRimLight;
   uniform float uOpacity;
+  uniform float uLight;
 
   varying float vDepth;
   varying float vBlend;
@@ -245,7 +246,25 @@ const FRAGMENT = /* glsl */ `
     lit += base * core * 0.70;
 
     float fog = smoothstep(18.0, 2.0, vDepth);
-    gl_FragColor = vec4(lit, alpha * uOpacity * fog);
+
+    /*
+     * On a light ground this has to be drawn as INK, not as glow.
+     *
+     * The dark theme renders these additively: every point adds light to a
+     * near-black page, which is why they shine. Additive blending onto white
+     * can only ever reach white, so on the light theme the animals would be
+     * invisible. Switching to normal blending is half the answer; the other
+     * half is inverting what carries the form. Here density does it — a
+     * shadowed part of the body takes MORE ink and a lit part takes less,
+     * which is how shading works on paper.
+     */
+    if (uLight > 0.5) {
+      float lum = dot(lit, vec3(0.2126, 0.7152, 0.0722));
+      vec3 ink = mix(vec3(0.16, 0.11, 0.21), base * 0.42, 0.55);
+      gl_FragColor = vec4(ink, alpha * uOpacity * fog * clamp(1.05 - lum * 0.85, 0.10, 1.0));
+    } else {
+      gl_FragColor = vec4(lit, alpha * uOpacity * fog);
+    }
   }
 `
 
@@ -412,6 +431,7 @@ export default function AnimalField() {
       uSpin: { value: 0 },
       uBreath: { value: 0 },
       uOpacity: { value: reduceMotion ? 1 : 0 },
+      uLight: { value: 0 },
       uColorA: { value: new THREE.Color('#FF8A4C') },
       uColorB: { value: new THREE.Color('#FFDCAE') },
       uColorC: { value: new THREE.Color('#B9B4FF') },
@@ -455,6 +475,24 @@ export default function AnimalField() {
       oToAttr.needsUpdate = true
     }
     setPair(0)
+
+
+    /*
+     * Keep the renderer in step with the theme.
+     *
+     * Additive blending onto a light page can only ever reach white, so the
+     * light theme needs normal blending plus the ink path in the fragment
+     * shader. Both have to change together, and `needsUpdate` is required
+     * because blending is a compiled material property, not a uniform.
+     */
+    function syncTheme() {
+      const light = document.documentElement.getAttribute('data-theme') === 'light'
+      uniforms.uLight.value = light ? 1 : 0
+      material.blending = light ? THREE.NormalBlending : THREE.AdditiveBlending
+      material.needsUpdate = true
+    }
+    syncTheme()
+    window.addEventListener('petpal:prefs-changed', syncTheme)
 
     const mouseTarget = new THREE.Vector2()
     let scrollTarget = 0
@@ -668,6 +706,7 @@ export default function AnimalField() {
       worker?.terminate()
       stop()
       ro.disconnect()
+      window.removeEventListener('petpal:prefs-changed', syncTheme)
       window.removeEventListener('scroll', readScroll)
       window.removeEventListener('resize', resize)
       window.removeEventListener('orientationchange', resize)
@@ -699,9 +738,14 @@ export default function AnimalField() {
       aria-hidden="true"
     >
       {/* Stage lighting behind the subject — also the fallback when WebGL is
-          unavailable, so this layer is never an empty rectangle. */}
+          unavailable, so this layer is never an empty rectangle.
+
+          The light theme needs its own, far fainter version: these washes are
+          sized to glow against a near-black page, and at that strength on a
+          warm white one they turned the whole interface muddy. The `stage-glow`
+          class carries the light-theme values; see globals.css. */}
       <div
-        className="absolute inset-0"
+        className="absolute inset-0 stage-glow"
         style={{
           background:
             'radial-gradient(52% 44% at 64% 36%, rgba(255,138,76,0.30) 0%, transparent 70%), radial-gradient(44% 40% at 26% 74%, rgba(142,139,245,0.22) 0%, transparent 72%)',

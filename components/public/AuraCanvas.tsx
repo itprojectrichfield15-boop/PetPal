@@ -84,6 +84,7 @@ const FRAGMENT = /* glsl */ `
   uniform vec3  uColorB;
   uniform vec3  uAccent;
   uniform float uOpacity;
+  uniform float uLight;
 
   varying vec3  vNormal;
   varying float vDepth;
@@ -124,7 +125,16 @@ const FRAGMENT = /* glsl */ `
     alpha *= 0.12 + 0.88 * smoothstep(-0.55, 0.12, vFacing);
 
     float fog = smoothstep(16.0, 2.0, vDepth);
-    gl_FragColor = vec4(lit, alpha * uOpacity * fog);
+
+    // On a light ground the form is carried by ink density rather than glow —
+    // additive blending onto white can only reach white. See AnimalField.
+    if (uLight > 0.5) {
+      float lum = dot(lit, vec3(0.2126, 0.7152, 0.0722));
+      vec3 ink = mix(vec3(0.16, 0.11, 0.21), base * 0.42, 0.55);
+      gl_FragColor = vec4(ink, alpha * uOpacity * fog * clamp(1.05 - lum * 0.85, 0.10, 1.0));
+    } else {
+      gl_FragColor = vec4(lit, alpha * uOpacity * fog);
+    }
   }
 `
 
@@ -203,6 +213,7 @@ export default function AuraCanvas({
       uMouse: { value: new THREE.Vector2() },
       uRestYaw: { value: REST_YAW[species] ?? 0.5 },
       uOpacity: { value: reduceMotion ? 0.85 : 0 },
+      uLight: { value: 0 },
       uColorA: { value: new THREE.Color('#FF8A4C') },
       uColorB: { value: new THREE.Color('#B9B4FF') },
       uAccent: { value: new THREE.Color('#FFD98E') },
@@ -220,6 +231,24 @@ export default function AuraCanvas({
     const points = new THREE.Points(geometry, material)
     points.scale.setScalar(REST_SCALE[species] ?? 1)
     scene.add(points)
+
+
+    /*
+     * Keep the renderer in step with the theme.
+     *
+     * Additive blending onto a light page can only ever reach white, so the
+     * light theme needs normal blending plus the ink path in the fragment
+     * shader. Both have to change together, and `needsUpdate` is required
+     * because blending is a compiled material property, not a uniform.
+     */
+    function syncTheme() {
+      const light = document.documentElement.getAttribute('data-theme') === 'light'
+      uniforms.uLight.value = light ? 1 : 0
+      material.blending = light ? THREE.NormalBlending : THREE.AdditiveBlending
+      material.needsUpdate = true
+    }
+    syncTheme()
+    window.addEventListener('petpal:prefs-changed', syncTheme)
 
     const mouseTarget = new THREE.Vector2()
     let raf = 0
@@ -312,6 +341,7 @@ export default function AuraCanvas({
       io.disconnect()
       ro.disconnect()
       window.removeEventListener('pointermove', onPointerMove)
+      window.removeEventListener('petpal:prefs-changed', syncTheme)
       document.removeEventListener('visibilitychange', onVisibility)
       geometry.dispose()
       material.dispose()

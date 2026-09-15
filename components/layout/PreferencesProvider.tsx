@@ -71,6 +71,23 @@ export function applyPreferences() {
     prefs = {}
   }
 
+  /*
+   * Theme. 'system' follows the OS, which is the sensible default for someone
+   * who has never opened the setting. The attribute drives the light-theme
+   * override block in globals.css; dark is the stylesheet's own baseline, so
+   * dark simply removes the attribute rather than adding a second set of rules.
+   */
+  const theme = prefs.theme === 'light' || prefs.theme === 'dark' ? prefs.theme : 'system'
+  const prefersLight =
+    typeof window !== 'undefined' &&
+    window.matchMedia('(prefers-color-scheme: light)').matches
+  const effective = theme === 'system' ? (prefersLight ? 'light' : 'dark') : theme
+
+  if (effective === 'light') root.setAttribute('data-theme', 'light')
+  else root.removeAttribute('data-theme')
+  // Keeps form controls, scrollbars and the like in step with the theme.
+  root.style.colorScheme = effective
+
   // These drive real CSS in globals.css, not just a saved boolean.
   root.classList.toggle('reduce-motion', prefs.reduceMotion === true)
   root.classList.toggle('high-contrast', prefs.highContrast === true)
@@ -83,9 +100,13 @@ export default function PreferencesProvider() {
     window.addEventListener(PREFS_CHANGED, onChange)
     // Another tab changing settings should update this one too.
     window.addEventListener('storage', onChange)
+    // And when the theme is left on 'system', follow the OS switching.
+    const media = window.matchMedia('(prefers-color-scheme: light)')
+    media.addEventListener('change', onChange)
     return () => {
       window.removeEventListener(PREFS_CHANGED, onChange)
       window.removeEventListener('storage', onChange)
+      media.removeEventListener('change', onChange)
     }
   }, [])
 

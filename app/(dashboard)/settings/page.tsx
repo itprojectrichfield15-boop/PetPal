@@ -44,6 +44,9 @@ const ACCENTS = [
 ]
 
 /** Preference defaults, overlaid with whatever this device has saved. */
+/** Theme choice. 'system' follows the operating system. */
+type ThemeChoice = 'system' | 'light' | 'dark'
+
 const DEFAULT_TOGGLES = {
   emailReports: true,
   emailDigest: false,
@@ -59,6 +62,16 @@ const DEFAULT_TOGGLES = {
 
 type Toggles = typeof DEFAULT_TOGGLES
 
+/** Pull a valid theme out of the saved prefs blob, or null. */
+function safeTheme(raw: string): ThemeChoice | null {
+  try {
+    const t = (JSON.parse(raw) ?? {}).theme
+    return t === 'light' || t === 'dark' || t === 'system' ? t : null
+  } catch {
+    return null
+  }
+}
+
 export default function SettingsPage() {
   const [tab, setTab] = useState('profile')
   const [email, setEmail] = useState('')
@@ -66,6 +79,7 @@ export default function SettingsPage() {
   const [bio, setBio] = useState('')
   const [saving, setSaving] = useState(false)
   const [toggleEdits, setToggleEdits] = useState<Partial<Toggles> | null>(null)
+  const [themeEdit, setThemeEdit] = useState<ThemeChoice | null>(null)
 
   // Saved preferences are read during render (raw strings are stable values),
   // so the remembered accent and toggles are correct on the first paint rather
@@ -168,10 +182,30 @@ export default function SettingsPage() {
     }
   }
 
+  /** Current theme choice, read from the same saved blob as the toggles. */
+  const theme: ThemeChoice = (() => {
+    const t = (savedPrefsRaw ? safeTheme(savedPrefsRaw) : null) ?? 'system'
+    return (themeEdit ?? t) as ThemeChoice
+  })()
+
+  function setTheme(next: ThemeChoice) {
+    setThemeEdit(next)
+    let current: Record<string, unknown> = {}
+    try { current = savedPrefsRaw ? JSON.parse(savedPrefsRaw) ?? {} : {} } catch { current = {} }
+    writeJSON(KEYS.prefs, { ...current, ...(toggleEdits ?? {}), theme: next })
+    applyPreferences()
+    window.dispatchEvent(new Event(PREFS_CHANGED))
+    toast.success(
+      next === 'system' ? 'Following your system theme' : `Switched to ${next} mode`
+    )
+  }
+
   function set(key: keyof Toggles, val: boolean) {
     const next = { ...toggles, [key]: val }
     setToggleEdits(next)
-    writeJSON(KEYS.prefs, next)
+    // Keep the theme choice — it lives in the same blob and would otherwise be
+    // wiped every time a switch was flipped.
+    writeJSON(KEYS.prefs, { ...next, theme })
     // Apply it now. These used to be saved and never read, so the toast was
     // the only evidence anything had happened.
     applyPreferences()
@@ -362,7 +396,30 @@ export default function SettingsPage() {
                     </div>
                   </Card>
                   <Card title="Display" desc="Adjust for comfort and accessibility.">
-                    <ToggleRow icon={Moon} label="Dark mode" desc="Always on — PetPal is dark by design" checked disabled onChange={() => {}} />
+                    <div className="py-3 border-b border-white/5">
+                      <div className="flex items-center gap-3 mb-3">
+                        <Moon className="w-5 h-5 text-zinc-400" />
+                        <div>
+                          <div className="text-sm font-medium">Theme</div>
+                          <div className="text-xs text-zinc-400">
+                            Light, dark, or whatever your device is set to.
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex gap-1 p-1 rounded-xl bg-white/[0.03] w-fit">
+                        {(['system', 'light', 'dark'] as ThemeChoice[]).map(t => (
+                          <button
+                            key={t}
+                            onClick={() => setTheme(t)}
+                            className={`px-4 py-1.5 rounded-lg text-sm capitalize transition-all ${
+                              theme === t ? 'bg-primary/15 text-primary' : 'text-zinc-400 hover:text-white'
+                            }`}
+                          >
+                            {t}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                     <ToggleRow icon={Zap} label="Reduce motion" desc="Minimise animations and transitions" checked={toggles.reduceMotion} onChange={v => set('reduceMotion', v)} />
                     <ToggleRow icon={Eye} label="High contrast" desc="Increase text and border contrast" checked={toggles.highContrast} onChange={v => set('highContrast', v)} />
                   </Card>

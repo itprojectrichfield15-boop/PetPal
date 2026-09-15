@@ -434,3 +434,186 @@ html.high-contrast .glass-card,
 html.high-contrast [class*="border-white/"] {
   border-color: rgba(255, 255, 255, 0.28);
 }
+
+/* ────────────────────────────────────────────────────────────────────────────
+   LIGHT THEME
+
+   The interface was built dark, with the ground, the surfaces and the hairline
+   borders hard-coded into roughly four hundred utility classes rather than
+   drawn from tokens. Rewriting every one of those was the riskier change, so
+   the light theme instead REDEFINES what those recurring utilities resolve to
+   — the same technique the high-contrast block above already uses.
+
+   The selectors are written out explicitly rather than matched with
+   [class*="bg-white/"], because a substring match would also hit
+   `hover:bg-white/5` and pin that hover state permanently on.
+
+   Applied by PreferencesProvider as data-theme="light" on <html>.
+   ──────────────────────────────────────────────────────────────────────────── */
+
+:root[data-theme="light"] {
+  --background: #FBF7F4;          /* warm off-white, not a cold grey */
+  --foreground: #24192E;          /* deep plum ink, echoing the dark ground */
+  --card: #FFFFFF;
+  --card-foreground: #24192E;
+  --popover: #FFFFFF;
+  --popover-foreground: #24192E;
+  --secondary: #F2EBE6;
+  --secondary-foreground: #24192E;
+  --muted: #F2EBE6;
+  --muted-foreground: #6B5F73;
+  --accent: #F2EBE6;
+  --accent-foreground: #24192E;
+  --border: rgba(36, 25, 46, 0.12);
+  --input: rgba(36, 25, 46, 0.10);
+}
+
+:root[data-theme="light"] body {
+  background: var(--background);
+  color: var(--foreground);
+}
+
+/* The accent is the user's choice and every swatch is a light pastel — legible
+   on the dark ground, not on a white one. Darken it for text and borders only;
+   fills keep the true colour. color-mix means this follows whatever accent is
+   set rather than hard-coding a second palette. */
+:root[data-theme="light"] .text-primary {
+  color: color-mix(in oklab, var(--primary) 62%, #2A1400);
+}
+
+/* Frosted surfaces invert: light glass on a warm ground. */
+:root[data-theme="light"] .glass-card {
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.92) 0%, rgba(255, 255, 255, 0.72) 100%),
+    var(--card);
+  border: 1px solid rgba(36, 25, 46, 0.10);
+  box-shadow: 0 1px 2px rgba(36, 25, 46, 0.04), 0 8px 24px rgba(36, 25, 46, 0.05);
+}
+
+:root[data-theme="light"] .border-primary\/20 {
+  border-color: color-mix(in oklab, var(--primary) 55%, #2A1400);
+}
+:root[data-theme="light"] .border-primary\/25 {
+  border-color: color-mix(in oklab, var(--primary) 55%, #2A1400);
+}
+:root[data-theme="light"] .border-primary\/30 {
+  border-color: color-mix(in oklab, var(--primary) 55%, #2A1400);
+}
+:root[data-theme="light"] .border-primary\/40 {
+  border-color: color-mix(in oklab, var(--primary) 55%, #2A1400);
+}
+:root[data-theme="light"] .border-primary\/50 {
+  border-color: color-mix(in oklab, var(--primary) 55%, #2A1400);
+}
+
+/* Body copy. The dark theme leans on zinc for every level of emphasis. */
+:root[data-theme="light"] .text-zinc-100 { color: #1B1222; }
+:root[data-theme="light"] .text-zinc-200 { color: #24192E; }
+:root[data-theme="light"] .text-zinc-300 { color: #3A2E44; }
+:root[data-theme="light"] .text-zinc-400 { color: #5C4F66; }
+:root[data-theme="light"] .text-zinc-500 { color: #7A6D84; }
+:root[data-theme="light"] .text-zinc-600 { color: #948AA0; }
+
+/* Subtle raised surfaces: white-on-dark becomes ink-on-light. */
+:root[data-theme="light"] .bg-white\/5 { background-color: rgba(36, 25, 46, 0.0375); }
+:root[data-theme="light"] .bg-white\/\[0\.03\] { background-color: rgba(36, 25, 46, 0.0225); }
+:root[data-theme="light"] .bg-white\/\[0\.06\] { background-color: rgba(36, 25, 46, 0.045); }
+:root[data-theme="light"] .bg-white\/\[0\.02\] { background-color: rgba(36, 25, 46, 0.015); }
+:root[data-theme="light"] .bg-white\/10 { background-color: rgba(36, 25, 46, 0.075); }
+
+/* Hairline borders. */
+:root[data-theme="light"] .border-white\/10 { border-color: rgba(36, 25, 46, 0.14); }
+:root[data-theme="light"] .border-white\/8 { border-color: rgba(36, 25, 46, 0.112); }
+:root[data-theme="light"] .border-white\/5 { border-color: rgba(36, 25, 46, 0.08); }
+:root[data-theme="light"] .border-white\/\[0\.08\] { border-color: rgba(36, 25, 46, 0.112); }
+:root[data-theme="light"] .border-white\/\[0\.07\] { border-color: rgba(36, 25, 46, 0.098); }
+:root[data-theme="light"] .border-white\/15 { border-color: rgba(36, 25, 46, 0.21); }
+:root[data-theme="light"] .border-white\/\[0\.09\] { border-color: rgba(36, 25, 46, 0.126); }
+:root[data-theme="light"] .border-white\/\[0\.06\] { border-color: rgba(36, 25, 46, 0.084); }
+:root[data-theme="light"] .border-white\/12 { border-color: rgba(36, 25, 46, 0.168); }
+:root[data-theme="light"] .divide-white\/\[0\.06\] > * + * { border-color: rgba(36, 25, 46, 0.10); }
+
+/* Hover states stay hover states. */
+:root[data-theme="light"] .hover\:bg-white\/5:hover { background-color: rgba(36, 25, 46, 0.045); }
+:root[data-theme="light"] .hover\:bg-white\/\[0\.02\]:hover { background-color: rgba(36, 25, 46, 0.018); }
+:root[data-theme="light"] .hover\:bg-white\/10:hover { background-color: rgba(36, 25, 46, 0.09); }
+:root[data-theme="light"] .hover\:bg-white\/\[0\.03\]:hover { background-color: rgba(36, 25, 46, 0.027); }
+:root[data-theme="light"] .hover\:bg-white\/30:hover { background-color: rgba(36, 25, 46, 0.27); }
+:root[data-theme="light"] .hover\:border-white\/20:hover { border-color: rgba(36, 25, 46, 0.24); }
+:root[data-theme="light"] .hover\:border-white\/25:hover { border-color: rgba(36, 25, 46, 0.3); }
+
+/* Panels that hard-code the dark palette. */
+:root[data-theme="light"] .bg-\[\#0D0A14\] { background-color: var(--background); }
+:root[data-theme="light"] .bg-\[\#171226\] { background-color: var(--card); }
+:root[data-theme="light"] .bg-\[\#1C1630\] { background-color: #F2EBE6; }
+:root[data-theme="light"] .from-\[\#171226\] { --tw-gradient-from: var(--card); }
+:root[data-theme="light"] .to-\[\#171226\] { --tw-gradient-to: var(--card); }
+:root[data-theme="light"] .border-\[\#0D0A14\] { border-color: rgba(36, 25, 46, 0.12); }
+
+/* The landing page's stage lighting. The inline gradients are tuned to glow
+   against a near-black page; at that strength on a warm white one they turn
+   the whole interface muddy, so the light theme gets a much fainter wash. */
+:root[data-theme="light"] .stage-glow {
+  background:
+    radial-gradient(52% 44% at 64% 36%, rgba(255, 138, 76, 0.10) 0%, transparent 70%),
+    radial-gradient(44% 40% at 26% 74%, rgba(142, 139, 245, 0.08) 0%, transparent 72%) !important;
+}
+
+/* Text hard-coded to white. Forty places assume a dark ground; on a light one
+   they vanish entirely — the logo lost its first half and the trust pill went
+   blank. Buttons are excluded: their fill stays dark, so white on top is still
+   correct there. */
+:root[data-theme="light"] .text-white:not(button):not(a[class*="bg-primary"]):not([class*="bg-primary"]):not([class*="bg-gradient"]) {
+  color: var(--foreground);
+}
+:root[data-theme="light"] .text-\[\#F4EFF7\] {
+  color: var(--foreground);
+}
+
+/* `--bg` is a second name for the page ground, used by the scrim gradients
+   that fade the high-quality photography into the page. It is separate from
+   --background and was still holding the dark value, which laid a dark wash
+   diagonally across the whole light interface. */
+:root[data-theme="light"] {
+  --bg: #FBF7F4;
+}
+
+/* The hero headline is a clipped gradient running white → pale lilac → grey.
+   Every stop of it is designed to sit on a near-black page; on a warm white
+   one the top two thirds are simply not there, which left the headline looking
+   half-erased. The light theme runs the same gradient in reverse ink. */
+:root[data-theme="light"] .text-gradient-soft {
+  background: linear-gradient(180deg, #24192E 0%, #2E2039 38%, #6B5F73 100%);
+}
+
+/* `hover:text-white` is the standard hover across the nav and sidebar. On a
+   light ground it makes the link disappear at the exact moment the pointer is
+   on it. */
+:root[data-theme="light"] .hover\:text-white:hover {
+  color: var(--foreground);
+}
+
+/* The two hero buttons are frosted glass tuned for a dark page: a translucent
+   white fill on `.btn-glass`, and a pale apricot wash with near-white text on
+   `.btn-glass-primary`. On a warm white ground the fills vanish and the label
+   with them, so the primary call to action read as an empty peach rectangle. */
+:root[data-theme="light"] .btn-glass {
+  background: rgba(36, 25, 46, 0.04);
+  border-color: rgba(36, 25, 46, 0.14);
+  color: var(--foreground);
+}
+:root[data-theme="light"] .btn-glass:hover {
+  background: rgba(36, 25, 46, 0.08);
+  border-color: rgba(36, 25, 46, 0.24);
+}
+:root[data-theme="light"] .btn-glass-primary {
+  /* Solid rather than translucent — the whole point of the primary action is
+     that it is unmissable, and a wash of apricot on white is not. */
+  background: var(--primary);
+  border-color: color-mix(in oklab, var(--primary) 70%, #2A1400);
+  color: var(--primary-foreground);
+}
+:root[data-theme="light"] .btn-glass-primary:hover {
+  background: color-mix(in oklab, var(--primary) 88%, #2A1400);
+  border-color: color-mix(in oklab, var(--primary) 60%, #2A1400);
+}
