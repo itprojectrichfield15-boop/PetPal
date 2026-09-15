@@ -48,12 +48,28 @@ interface VetRow {
   created_at: string | null
 }
 
-const OWNERS = [
-  { id: 1, name: 'Amara Okonkwo', pets: 1, joined: '2026-05-12', plan: 'Free' },
-  { id: 2, name: 'Thabo Mokoena', pets: 1, joined: '2026-05-20', plan: 'Free' },
-  { id: 3, name: 'Lerato Dube', pets: 2, joined: '2026-06-01', plan: 'Free' },
-  { id: 4, name: 'Sipho Ndlovu', pets: 3, joined: '2026-06-14', plan: 'Free' },
-]
+/**
+ * Registered accounts, loaded from the database.
+ *
+ * This list used to be four invented people — Amara Okonkwo, Thabo Mokoena and
+ * two more — shown on an admin screen as though they were real users of the
+ * app, complete with pet counts and a "plan" that PetPal does not have.
+ *
+ * Reading it for real needed a policy: profiles restricted every account to its
+ * own row, so an administrator had nothing to list. "admin reads profiles"
+ * grants that, through the is_admin() helper.
+ *
+ * Pet counts are deliberately not shown. Pets are personal data and the policy
+ * on that table restricts them to their owner, which is the right default; an
+ * admin screen does not need to see what animals someone keeps.
+ */
+interface OwnerRow {
+  id: string
+  display_name: string | null
+  email: string | null
+  role: string | null
+  created_at: string | null
+}
 
 const SIGNUPS = [
   { d: 'Mon', n: 220 }, { d: 'Tue', n: 310 }, { d: 'Wed', n: 280 },
@@ -75,6 +91,8 @@ export default function AdminPage() {
   const [role, setRole] = useState<Role>('loading')
   const [tab, setTab] = useState('overview')
   const [posts, setPosts] = useState<Post[]>(SEED_POSTS)
+  const [owners, setOwners] = useState<OwnerRow[]>([])
+  const [ownersLoaded, setOwnersLoaded] = useState(false)
   const [vets, setVets] = useState<VetRow[]>([])
   const [vetsLoaded, setVetsLoaded] = useState(false)
   const [savingVet, setSavingVet] = useState<string | null>(null)
@@ -102,6 +120,14 @@ export default function AdminPage() {
             .order('created_at', { ascending: false })
           setVets((vetRows ?? []) as VetRow[])
           setVetsLoaded(true)
+
+          const { data: ownerRows } = await supabase
+            .from('profiles')
+            .select('id, display_name, email, role, created_at')
+            .order('created_at', { ascending: false })
+            .limit(200)
+          setOwners((ownerRows ?? []) as OwnerRow[])
+          setOwnersLoaded(true)
         }
       } catch { setRole('forbidden') }
     }
@@ -372,27 +398,50 @@ export default function AdminPage() {
 
             {tab === 'owners' && (
               <div className="glass-card rounded-2xl overflow-hidden">
-                <div className="p-5 border-b border-white/8"><h2 className="font-semibold flex items-center gap-2"><Users className="w-4 h-4 text-primary" /> Pet owners</h2></div>
+                <div className="p-5 border-b border-white/8">
+                  <h2 className="font-semibold flex items-center gap-2">
+                    <Users className="w-4 h-4 text-primary" /> Registered accounts
+                  </h2>
+                  <p className="text-xs text-zinc-500 mt-1">
+                    Pets are not listed here. They are personal data and the database restricts them
+                    to their owner, which is the right default — running an admin screen does not
+                    require seeing what animals someone keeps.
+                  </p>
+                </div>
+                {owners.length === 0 ? (
+                  <div className="p-8 text-center text-sm text-zinc-400">
+                    {ownersLoaded ? 'No accounts to show.' : 'Loading…'}
+                  </div>
+                ) : (
                 <div className="overflow-x-auto">
                   <Table>
                     <TableHeader><TableRow className="border-white/5 hover:bg-transparent">
                       <TableHead className="text-zinc-500 text-xs uppercase tracking-wider">Name</TableHead>
-                      <TableHead className="text-zinc-500 text-xs uppercase tracking-wider">Pets</TableHead>
+                      <TableHead className="text-zinc-500 text-xs uppercase tracking-wider">Email</TableHead>
+                      <TableHead className="text-zinc-500 text-xs uppercase tracking-wider">Role</TableHead>
                       <TableHead className="text-zinc-500 text-xs uppercase tracking-wider">Joined</TableHead>
-                      <TableHead className="text-zinc-500 text-xs uppercase tracking-wider">Plan</TableHead>
                     </TableRow></TableHeader>
                     <TableBody>
-                      {OWNERS.map(o => (
+                      {owners.map(o => (
                         <TableRow key={o.id} className="border-white/5 hover:bg-white/[0.02]">
-                          <TableCell className="font-medium">{o.name}</TableCell>
-                          <TableCell className="text-sm"><span className="flex items-center gap-1.5 text-zinc-400"><PawPrint className="w-3.5 h-3.5" /> {o.pets}</span></TableCell>
-                          <TableCell className="text-zinc-400 text-sm">{(() => { try { return formatRelative(o.joined) } catch { return o.joined } })()}</TableCell>
-                          <TableCell><Badge className="bg-primary/10 text-primary border-primary/25 text-[10px]">{o.plan}</Badge></TableCell>
+                          <TableCell className="font-medium">{o.display_name || <span className="text-zinc-600">Unnamed</span>}</TableCell>
+                          <TableCell className="text-zinc-400 text-sm">{o.email ?? '—'}</TableCell>
+                          <TableCell>
+                            <Badge className="bg-primary/10 text-primary border-primary/25 text-[10px] capitalize">
+                              {o.role ?? 'user'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-zinc-400 text-sm">
+                            {o.created_at
+                              ? (() => { try { return formatRelative(o.created_at!) } catch { return o.created_at } })()
+                              : '—'}
+                          </TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
                   </Table>
                 </div>
+                )}
               </div>
             )}
 

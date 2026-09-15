@@ -51,6 +51,34 @@ create policy "insert own profile"
   with check (auth.uid() = id);
 
 
+/*
+ * Is the caller an administrator?
+ *
+ * This has to be a SECURITY DEFINER function rather than a subquery inside the
+ * policy. A policy ON profiles that itself SELECTs FROM profiles recurses
+ * infinitely — Postgres applies the policy to the subquery, which applies the
+ * policy again. SECURITY DEFINER runs the lookup with the definer's rights, so
+ * row-level security does not apply inside it and the recursion never starts.
+ */
+create or replace function is_admin()
+returns boolean
+language sql
+security definer
+stable
+set search_path = public
+as $$
+  select exists (select 1 from profiles where id = auth.uid() and role = 'admin');
+$$;
+
+-- The admin screen lists registered accounts. Without this an administrator
+-- could read only their own row, so that screen had nothing real to show and
+-- displayed four invented people instead.
+drop policy if exists "admin reads profiles" on profiles;
+create policy "admin reads profiles"
+  on profiles for select
+  using (is_admin());
+
+
 -- When someone signs up, create their profile row automatically.
 -- SECURITY DEFINER lets the trigger write to profiles even though the new user
 -- has no permissions of their own at that instant.
@@ -238,7 +266,7 @@ create policy "vet updates own profile" on vet_profiles for update using (auth.u
 -- hand, which is not a workable handover.
 drop policy if exists "admin verifies vets" on vet_profiles;
 create policy "admin verifies vets" on vet_profiles for update
-  using (exists (select 1 from profiles p where p.id = auth.uid() and p.role = 'admin'));
+  using (is_admin());
 
 
 -- ─────────────────────────────────────────────────────────────────────────────
