@@ -51,7 +51,7 @@ export default function SignupPage() {
     try {
       const { createClient } = await import('@/lib/supabase/client')
       const supabase = createClient()
-      const { data, error } = await supabase.auth.signUp({
+      const { error } = await supabase.auth.signUp({
         email,
         password,
         options: {
