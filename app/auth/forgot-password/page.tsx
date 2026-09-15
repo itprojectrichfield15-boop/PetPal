@@ -67,7 +67,7 @@ export default function ForgotPasswordPage() {
         <div className="flex items-center justify-center gap-2.5 mb-10">
           <Logo size={38} glow />
           <span className="text-2xl font-bold" style={{ fontFamily: 'var(--font-display)' }}>
-            Paw<span className="text-[#FFAE6D]">Pal</span>
+            Pet<span className="text-[#FFAE6D]">Pal</span>
           </span>
         </div>
 

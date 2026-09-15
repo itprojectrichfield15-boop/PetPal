@@ -10,7 +10,11 @@
  *
  * Now it queries actual `amenity=veterinary` records. Anything OSM doesn't know
  * (ratings, live open/closed state) is simply not shown, rather than fabricated.
- * Overpass is free, keyless and CORS-enabled.
+ * Overpass is free and keyless.
+ *
+ * The request goes through this app's own `/api/vets` route, NOT straight from
+ * the browser: Overpass stopped returning CORS headers, which blocked every
+ * direct call and left the finder permanently showing its error state.
  */
 
 export interface Vet {
@@ -30,7 +34,7 @@ export interface Vet {
   address: string | null
 }
 
-const OVERPASS_ENDPOINTS = [
+export const OVERPASS_ENDPOINTS = [
   'https://overpass-api.de/api/interpreter',
   'https://overpass.kumi.systems/api/interpreter',
 ]
@@ -66,12 +70,63 @@ function buildAddress(tags: Record<string, string>): string | null {
   return parts.length ? parts.join(', ') : null
 }
 
+/** The Overpass QL for "veterinary practices within `radiusM` of this point". */
+export function buildOverpassQuery(center: [number, number], radiusM: number): string {
+  const [lat, lng] = center
+  return `
+    [out:json][timeout:20];
+    (
+      node["amenity"="veterinary"](around:${radiusM},${lat},${lng});
+      way["amenity"="veterinary"](around:${radiusM},${lat},${lng});
+    );
+    out center 40;
+  `.trim()
+}
+
+/** Turn a raw Overpass response into sorted `Vet` records. */
+export function parseOverpass(json: { elements?: unknown }, center: [number, number]): Vet[] {
+  const elements = (Array.isArray(json.elements) ? json.elements : []) as OverpassElement[]
+  const vets: Vet[] = []
+
+  for (const el of elements) {
+    const elLat = el.lat ?? el.center?.lat
+    const elLng = el.lon ?? el.center?.lon
+    if (typeof elLat !== 'number' || typeof elLng !== 'number') continue
+
+    const tags = el.tags ?? {}
+    const hours = tags.opening_hours ?? null
+
+    vets.push({
+      id: el.id,
+      // An unnamed record is still a real, mappable practice.
+      name: tags.name ?? tags.operator ?? 'Veterinary practice',
+      lat: elLat,
+      lng: elLng,
+      distanceKm: haversine(center, [elLat, elLng]),
+      openingHours: hours,
+      phone: tags.phone ?? tags['contact:phone'] ?? null,
+      website: tags.website ?? tags['contact:website'] ?? null,
+      emergency: hours === '24/7' || tags.emergency === 'yes',
+      address: buildAddress(tags),
+    })
+  }
+
+  vets.sort((a, b) => a.distanceKm - b.distanceKm)
+  return vets
+}
+
 /**
  * Find veterinary practices near a point.
  *
+ * Goes through this app's own `/api/vets` route rather than calling Overpass
+ * from the browser. Overpass stopped returning CORS headers, so the direct call
+ * was blocked by the browser on every single lookup and the finder was
+ * permanently broken. CORS is a browser rule, so a server-side call is not
+ * subject to it. See `app/api/vets/route.ts`.
+ *
  * @param center  [latitude, longitude]
  * @param radiusM search radius in metres (default 12km)
- * @throws when every Overpass mirror fails — callers should show an honest
+ * @throws when the directory cannot be reached — callers must show an honest
  *         error state rather than substituting invented results.
  */
 export async function fetchNearbyVets(
@@ -80,61 +135,18 @@ export async function fetchNearbyVets(
   signal?: AbortSignal
 ): Promise<Vet[]> {
   const [lat, lng] = center
-  const query = `
-    [out:json][timeout:20];
-    (
-      node["amenity"="veterinary"](around:${radiusM},${lat},${lng});
-      way["amenity"="veterinary"](around:${radiusM},${lat},${lng});
-    );
-    out center 40;
-  `.trim()
+  const params = new URLSearchParams({
+    lat: String(lat),
+    lng: String(lng),
+    radius: String(radiusM),
+  })
 
-  let lastError: unknown = null
-
-  for (const endpoint of OVERPASS_ENDPOINTS) {
-    try {
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: 'data=' + encodeURIComponent(query),
-        signal,
-      })
-      if (!res.ok) throw new Error(`Overpass responded ${res.status}`)
-
-      const json = (await res.json()) as { elements?: OverpassElement[] }
-      const elements = json.elements ?? []
-
-      const vets: Vet[] = []
-      for (const el of elements) {
-        const elLat = el.lat ?? el.center?.lat
-        const elLng = el.lon ?? el.center?.lon
-        if (typeof elLat !== 'number' || typeof elLng !== 'number') continue
-
-        const tags = el.tags ?? {}
-        const hours = tags.opening_hours ?? null
-
-        vets.push({
-          id: el.id,
-          // An unnamed record is still a real, mappable practice.
-          name: tags.name ?? tags.operator ?? 'Veterinary practice',
-          lat: elLat,
-          lng: elLng,
-          distanceKm: haversine(center, [elLat, elLng]),
-          openingHours: hours,
-          phone: tags.phone ?? tags['contact:phone'] ?? null,
-          website: tags.website ?? tags['contact:website'] ?? null,
-          emergency: hours === '24/7' || tags.emergency === 'yes',
-          address: buildAddress(tags),
-        })
-      }
-
-      vets.sort((a, b) => a.distanceKm - b.distanceKm)
-      return vets
-    } catch (err) {
-      lastError = err
-      // Try the next mirror.
-    }
+  const res = await fetch(`/api/vets?${params}`, { signal })
+  if (!res.ok) {
+    const body = (await res.json().catch(() => null)) as { error?: string } | null
+    throw new Error(body?.error ?? `The practice directory responded ${res.status}.`)
   }
 
-  throw lastError instanceof Error ? lastError : new Error('Could not reach the vet directory')
+  const body = (await res.json()) as { vets?: Vet[] }
+  return body.vets ?? []
 }

@@ -91,7 +91,7 @@ export default function DashboardSidebar() {
                 className="text-lg font-black whitespace-nowrap"
                 style={{ fontFamily: 'var(--font-display)' }}
               >
-                Paw<span className="text-[#FFAE6D]">Pal</span>
+                Pet<span className="text-[#FFAE6D]">Pal</span>
               </motion.span>
             )}
           </Link>
