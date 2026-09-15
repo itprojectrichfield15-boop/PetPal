@@ -61,13 +61,45 @@ security definer
 set search_path = public
 as $$
 begin
-  insert into public.profiles (id, email, display_name)
+  insert into public.profiles (id, email, display_name, role)
   values (
     new.id,
     new.email,
-    coalesce(new.raw_user_meta_data->>'display_name', 'Pet Parent')
+    coalesce(new.raw_user_meta_data->>'display_name', 'Pet Parent'),
+    case when new.raw_user_meta_data->>'role' = 'vet' then 'vet' else 'user' end
   )
   on conflict (id) do nothing;
+
+  /*
+   * A professional signing up also gets their vet_profiles row here, and it
+   * has to happen in this trigger rather than from the client.
+   *
+   * The signup page used to insert it straight after auth.signUp(). That
+   * silently failed every time: with email confirmation on — Supabase's
+   * default — signUp returns a user but no SESSION, so auth.uid() is null,
+   * and the row-level policy on vet_profiles is `with check (auth.uid() = id)`.
+   * The insert was rejected, the account was created without its professional
+   * record, and the vet had no way to ever be verified. The table sat empty.
+   *
+   * This function is SECURITY DEFINER, so it runs with the definer's rights
+   * and needs no session at all.
+   *
+   * verified stays false. An administrator checks the registration number
+   * against the register before granting it — a fake vet answer is worse than
+   * no answer.
+   */
+  if new.raw_user_meta_data->>'role' = 'vet' then
+    insert into public.vet_profiles (id, full_name, practice_name, registration_no, verified)
+    values (
+      new.id,
+      coalesce(new.raw_user_meta_data->>'display_name', 'Veterinary professional'),
+      nullif(new.raw_user_meta_data->>'practice_name', ''),
+      nullif(new.raw_user_meta_data->>'registration_no', ''),
+      false
+    )
+    on conflict (id) do nothing;
+  end if;
+
   return new;
 end;
 $$;

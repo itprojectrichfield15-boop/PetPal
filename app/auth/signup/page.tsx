@@ -58,6 +58,11 @@ export default function SignupPage() {
           data: {
             display_name: displayName.trim() || (kind === 'vet' ? 'Veterinary professional' : 'Pet Parent'),
             role: kind === 'vet' ? 'vet' : 'user',
+            // Carried in user metadata so the handle_new_user trigger can write
+            // the vet_profiles row server-side. See the note below on why the
+            // client cannot do it.
+            practice_name: kind === 'vet' ? practice.trim() : '',
+            registration_no: kind === 'vet' ? registration.trim() : '',
           },
         },
       })
@@ -68,24 +73,19 @@ export default function SignupPage() {
         return
       }
 
-      // Create the professional record. It starts unverified — this only
-      // registers the claim; an administrator confirms it.
-      if (kind === 'vet' && data.user) {
-        const { error: vetError } = await supabase.from('vet_profiles').insert({
-          id: data.user.id,
-          full_name: displayName.trim(),
-          practice_name: practice.trim() || null,
-          registration_no: registration.trim(),
-          verified: false,
-        })
-        if (vetError) {
-          // The account exists either way; say so rather than implying failure.
-          toast.error('Account created, but your professional details didn’t save', {
-            description: 'Add them from Settings once you’re signed in.',
-          })
-        }
-      }
-
+      /*
+       * The professional record is NOT created here.
+       *
+       * This used to insert into vet_profiles straight after signUp, and it
+       * failed every single time. With email confirmation on — Supabase's
+       * default — signUp returns a user but no session, so auth.uid() is null
+       * and the table's `with check (auth.uid() = id)` policy rejects the row.
+       * The account was created, the professional details were lost, and the
+       * vet could never be verified.
+       *
+       * The handle_new_user trigger writes it instead, from the metadata
+       * above. It is SECURITY DEFINER, so it needs no session.
+       */
       setDone(true)
     } catch (err) {
       // "Failed to fetch" lands here: the request never reached Supabase.

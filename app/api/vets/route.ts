@@ -68,7 +68,9 @@ export async function GET(request: Request) {
           Accept: 'application/json',
         },
         body: 'data=' + encodeURIComponent(query),
-        signal: AbortSignal.timeout(20_000),
+        // Short, because we may have several mirrors to get through and a
+        // slow one must not hold up the ones behind it.
+        signal: AbortSignal.timeout(10_000),
         next: { revalidate },
       })
 

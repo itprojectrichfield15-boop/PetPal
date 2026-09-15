@@ -34,9 +34,26 @@ export interface Vet {
   address: string | null
 }
 
+/**
+ * Overpass mirrors, tried in order until one answers.
+ *
+ * Two mirrors was not enough. Both went down together and the finder had
+ * nothing to fall back on — the main instance returned 504 while the other
+ * timed out, from two different networks.
+ *
+ * ── A trap worth naming ────────────────────────────────────────────────────
+ * Only GLOBAL instances belong in this list. Several public Overpass servers
+ * carry a regional extract: overpass.osm.ch, for one, answers HTTP 200 with
+ * zero elements for a query outside Switzerland. That is far worse than an
+ * error, because the app would confidently tell someone there are no vets near
+ * them when there are four. A mirror that lies quietly must never be added.
+ */
 export const OVERPASS_ENDPOINTS = [
+  // Canonical instance. Fails fast when overloaded, so it costs little to try.
   'https://overpass-api.de/api/interpreter',
+  'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
   'https://overpass.kumi.systems/api/interpreter',
+  'https://overpass.private.coffee/api/interpreter',
 ]
 
 /** Great-circle distance in kilometres. */
