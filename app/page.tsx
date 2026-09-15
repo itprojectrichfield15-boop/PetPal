@@ -22,16 +22,37 @@ const EASE = [0.16, 1, 0.3, 1] as const
    Shared primitives
    ═══════════════════════════════════════════════════════════════════════════ */
 
-/** Fade-and-rise on scroll into view. One place, so timing stays consistent. */
+/**
+ * Scroll-into-view reveal. One place, so the timing stays consistent.
+ *
+ * Fade and rise alone read as a stock template. Two additions do most of the
+ * work of making it feel considered: a small blur that resolves as the element
+ * settles, which reads as something coming into focus rather than sliding in,
+ * and a slight scale-up, which gives it somewhere to arrive from. Both are
+ * cheap — blur and transform are composited on the GPU.
+ *
+ * The blur is animated as a filter string rather than a number because Framer
+ * interpolates the numeric part inside the string for us.
+ *
+ * MotionConfig above honours the reduce-motion setting: transform and filter
+ * are dropped there and only the fade remains.
+ */
 function Reveal({
   children, delay = 0, y = 22, className,
 }: { children: React.ReactNode; delay?: number; y?: number; className?: string }) {
   return (
     <motion.div
-      initial={{ opacity: 0, y }}
-      whileInView={{ opacity: 1, y: 0 }}
+      initial={{ opacity: 0, y, scale: 0.985, filter: 'blur(6px)' }}
+      whileInView={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
       viewport={{ once: true, amount: 0.25 }}
-      transition={{ delay, duration: 0.7, ease: EASE }}
+      transition={{
+        delay,
+        duration: 0.85,
+        ease: EASE,
+        // The blur resolves a little ahead of the movement, so the element is
+        // already sharp as it settles rather than sharpening after it lands.
+        filter: { delay, duration: 0.55, ease: 'easeOut' },
+      }}
       className={className}
     >
       {children}

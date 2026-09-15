@@ -622,3 +622,22 @@ html.high-contrast [class*="border-white/"] {
   background: color-mix(in oklab, var(--primary) 88%, #2A1400);
   border-color: color-mix(in oklab, var(--primary) 60%, #2A1400);
 }
+
+/* The floating navbar. Both its states are dark glass — a near-black pill at
+   82% opacity when scrolled, and #171226/40 before that — so on a light page
+   it hung there as a dark bar with dark links inside it, unreadable at both
+   ends. The links themselves are text-zinc-400, which the block above already
+   darkens, so they only needed the surface behind them to change. */
+:root[data-theme="light"] .glass-strong {
+  background: rgba(255, 255, 255, 0.86);
+  box-shadow: 0 8px 40px rgba(36, 25, 46, 0.10) !important;
+}
+:root[data-theme="light"] nav.bg-\[\#171226\]\/40 {
+  background: rgba(255, 255, 255, 0.72) !important;
+}
+
+/* The hover pill behind a nav link, and the same trick wherever it appears:
+   a white wash that is invisible on white. */
+:root[data-theme="light"] .bg-white\/\[0\.06\] {
+  background-color: rgba(36, 25, 46, 0.06);
+}

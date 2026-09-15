@@ -4,6 +4,7 @@ import "./globals.css"
 import { Toaster } from "sonner"
 import SiteEffects from "@/components/SiteEffects"
 import PreferencesProvider from "@/components/layout/PreferencesProvider"
+import MotionProvider from "@/components/layout/MotionProvider"
 
 const spaceGrotesk = Space_Grotesk({
   subsets: ["latin"],
@@ -65,7 +66,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* Applies the saved accent, reduce-motion and high-contrast settings. */}
         <PreferencesProvider />
         <SiteEffects />
-        {children}
+        {/* Makes "Reduce motion" reach Framer Motion, which CSS cannot. */}
+        <MotionProvider>{children}</MotionProvider>
         <Toaster
           position="top-right"
           toastOptions={{
