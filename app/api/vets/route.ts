@@ -53,9 +53,14 @@ export async function GET(request: Request) {
   }
 
   const query = buildOverpassQuery([lat, lng], radius)
-  let lastStatus: number | null = null
+  // Per-mirror outcome, returned with the error. Without it a failed lookup
+  // says only "the directory did not respond", which is useless when the
+  // question is *which* mirror is down and how.
+  const attempts: { endpoint: string; outcome: string }[] = []
 
   for (const endpoint of OVERPASS_ENDPOINTS) {
+    const host = new URL(endpoint).host
+    const startedAt = Date.now()
     try {
       // Overpass is a donated public service. A per-request timeout stops one
       // slow mirror from holding the whole lookup open.
@@ -75,22 +80,23 @@ export async function GET(request: Request) {
       })
 
       if (!res.ok) {
-        lastStatus = res.status
+        attempts.push({ endpoint: host, outcome: `HTTP ${res.status} after ${Date.now() - startedAt}ms` })
         continue
       }
 
       const json = (await res.json()) as { elements?: unknown }
       const vets = parseOverpass(json, [lat, lng])
-      return NextResponse.json({ vets })
-    } catch {
-      // Try the next mirror.
+      return NextResponse.json({ vets, source: host })
+    } catch (err) {
+      const reason = err instanceof Error ? err.name : 'failed'
+      attempts.push({ endpoint: host, outcome: `${reason} after ${Date.now() - startedAt}ms` })
     }
   }
 
   return NextResponse.json(
     {
       error: 'The public practice directory did not respond.',
-      upstreamStatus: lastStatus,
+      attempts,
     },
     { status: 502 }
   )
