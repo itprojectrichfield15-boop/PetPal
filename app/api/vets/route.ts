@@ -1,5 +1,9 @@
 import { NextResponse } from 'next/server'
-import { parseOverpass, OVERPASS_ENDPOINTS, buildOverpassQuery } from '@/lib/vets'
+import {
+  parseOverpass, OVERPASS_ENDPOINTS, buildOverpassQuery,
+  bundledVetsNear, isInBundledRegion, type BundledVets,
+} from '@/lib/vets'
+import bundled from '@/lib/vets-za.json'
 
 /**
  * Server-side proxy for the OpenStreetMap Overpass API.
@@ -90,6 +94,29 @@ export async function GET(request: Request) {
     } catch (err) {
       const reason = err instanceof Error ? err.name : 'failed'
       attempts.push({ endpoint: host, outcome: `${reason} after ${Date.now() - startedAt}ms` })
+    }
+  }
+
+  /*
+   * Every mirror failed. Fall back to the bundled extract rather than showing
+   * an error for something that is entirely outside this app's control.
+   *
+   * The results are flagged as `stale` so the screen can say they may be out
+   * of date. They are real OpenStreetMap records with a known extraction date,
+   * not substitutes invented to fill the gap — the one thing this feature must
+   * never do is send somebody to a practice that does not exist.
+   */
+  if (isInBundledRegion(lat, lng)) {
+    const data = bundled as BundledVets
+    const vets = bundledVetsNear(data, [lat, lng], radius)
+    if (vets.length > 0) {
+      return NextResponse.json({
+        vets,
+        source: 'bundled',
+        stale: true,
+        extracted: data.extracted,
+        attempts,
+      })
     }
   }
 

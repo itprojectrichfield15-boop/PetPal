@@ -100,6 +100,74 @@ export function buildOverpassQuery(center: [number, number], radiusM: number): s
   `.trim()
 }
 
+/**
+ * Bundled fallback, used only when every live mirror has failed.
+ *
+ * Overpass is a donated public service and it goes down. During one afternoon
+ * of work on this feature all four mirrors returned 504 or timed out at the
+ * same moment, from two different networks — which meant a core screen showed
+ * an error for reasons that had nothing to do with this app or its hosting.
+ * For something being demonstrated, that is not good enough.
+ *
+ * This is REAL OpenStreetMap data, extracted once and dated, not invented
+ * records. It covers South Africa only, because that is where this deployment
+ * is used; a failed lookup anywhere else still reports the failure honestly
+ * rather than returning a list from the wrong continent.
+ *
+ * The UI is told when results came from here, so it can say they may be out of
+ * date instead of implying they are live.
+ */
+export interface BundledVets {
+  source: string
+  region: string
+  extracted: string
+  count: number
+  practices: {
+    i: number; a: number; o: number
+    n?: string; h?: string; p?: string; w?: string; e?: number; d?: string
+  }[]
+}
+
+/** Rough bounding box of South Africa, including the exclave of Lesotho. */
+const ZA_BOUNDS = { minLat: -35.0, maxLat: -22.0, minLng: 16.3, maxLng: 33.1 }
+
+export function isInBundledRegion(lat: number, lng: number): boolean {
+  return (
+    lat >= ZA_BOUNDS.minLat && lat <= ZA_BOUNDS.maxLat &&
+    lng >= ZA_BOUNDS.minLng && lng <= ZA_BOUNDS.maxLng
+  )
+}
+
+/** Nearest bundled practices to a point, within `radiusM`. */
+export function bundledVetsNear(
+  data: BundledVets,
+  center: [number, number],
+  radiusM: number
+): Vet[] {
+  const radiusKm = radiusM / 1000
+  const out: Vet[] = []
+
+  for (const r of data.practices) {
+    const distanceKm = haversine(center, [r.a, r.o])
+    if (distanceKm > radiusKm) continue
+    out.push({
+      id: r.i,
+      name: r.n ?? 'Veterinary practice',
+      lat: r.a,
+      lng: r.o,
+      distanceKm,
+      openingHours: r.h ?? null,
+      phone: r.p ?? null,
+      website: r.w ?? null,
+      emergency: r.h === '24/7' || r.e === 1,
+      address: r.d ?? null,
+    })
+  }
+
+  out.sort((a, b) => a.distanceKm - b.distanceKm)
+  return out.slice(0, 40)
+}
+
 /** Turn a raw Overpass response into sorted `Vet` records. */
 export function parseOverpass(json: { elements?: unknown }, center: [number, number]): Vet[] {
   const elements = (Array.isArray(json.elements) ? json.elements : []) as OverpassElement[]
@@ -146,6 +214,36 @@ export function parseOverpass(json: { elements?: unknown }, center: [number, num
  * @throws when the directory cannot be reached — callers must show an honest
  *         error state rather than substituting invented results.
  */
+export interface VetLookup {
+  vets: Vet[]
+  /** True when the live directory was unreachable and the bundled extract was used. */
+  stale: boolean
+  /** Extraction date of the bundled data, when that is what was served. */
+  extracted: string | null
+}
+
+export async function fetchNearbyVetsDetailed(
+  center: [number, number],
+  radiusM = 12000,
+  signal?: AbortSignal
+): Promise<VetLookup> {
+  const [lat, lng] = center
+  const params = new URLSearchParams({
+    lat: String(lat), lng: String(lng), radius: String(radiusM),
+  })
+  const res = await fetch(`/api/vets?${params}`, { signal })
+  if (!res.ok) {
+    const body = (await res.json().catch(() => null)) as { error?: string } | null
+    throw new Error(body?.error ?? `The practice directory responded ${res.status}.`)
+  }
+  const body = (await res.json()) as { vets?: Vet[]; stale?: boolean; extracted?: string }
+  return {
+    vets: body.vets ?? [],
+    stale: body.stale === true,
+    extracted: body.extracted ?? null,
+  }
+}
+
 export async function fetchNearbyVets(
   center: [number, number],
   radiusM = 12000,

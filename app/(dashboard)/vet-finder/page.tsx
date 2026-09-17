@@ -10,7 +10,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import PageHeader from '@/components/layout/PageHeader'
-import { fetchNearbyVets, type Vet } from '@/lib/vets'
+import { fetchNearbyVetsDetailed, type Vet } from '@/lib/vets'
 import { useClientValue } from '@/lib/use-client-value'
 
 const VetMap = dynamic(() => import('@/components/VetMap'), {
@@ -64,16 +64,21 @@ export default function VetFinderPage() {
   // ── Load real practices for that point ───────────────────────────────────
   // `attempt` is bumped by the retry button to re-run the effect below.
   const [attempt, setAttempt] = useState(0)
+  /* Set when the live directory was unreachable and the bundled extract was
+     used instead. The screen must say so rather than passing dated records off
+     as live ones. */
+  const [staleFrom, setStaleFrom] = useState<string | null>(null)
 
   useEffect(() => {
     if (!center) return
     const controller = new AbortController()
     const { signal } = controller
 
-    fetchNearbyVets(center, 12000, signal)
-      .then(found => {
+    fetchNearbyVetsDetailed(center, 12000, signal)
+      .then(result => {
         if (signal.aborted) return
-        setVets(found)
+        setVets(result.vets)
+        setStaleFrom(result.stale ? result.extracted : null)
         setVetState('ready')
       })
       .catch((err: unknown) => {
@@ -232,6 +237,15 @@ export default function VetFinderPage() {
             ))}
           </div>
         </div>
+
+        {staleFrom && (
+          <div className="mt-5 rounded-xl border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-[12px] text-amber-200/90">
+            <strong className="font-semibold">Showing a saved copy.</strong>{' '}
+            The live practice directory isn&rsquo;t responding, so these are from a snapshot taken on{' '}
+            {staleFrom}. They are real practices, but opening hours and phone numbers may have changed —
+            phone ahead before travelling.
+          </div>
+        )}
 
         <p className="text-[11px] text-zinc-600 mt-5 leading-relaxed">
           Practice data from the OpenStreetMap community. Details can be out of date — always phone ahead, especially
