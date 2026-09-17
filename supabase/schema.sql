@@ -269,6 +269,48 @@ create policy "admin verifies vets" on vet_profiles for update
   using (is_admin());
 
 
+-- Whether this professional is currently taking questions. A vet who is on
+-- leave or at capacity can step out of the queue without deleting anything,
+-- and owners see who is actually available rather than a list that includes
+-- people who will not answer.
+alter table vet_profiles add column if not exists accepting boolean not null default true;
+
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 4b. SAVED REPLIES  ·  a professional's own tool
+--     A vet answering the same question for the twentieth time should not type
+--     it for the twentieth time. These belong to the vet alone: nobody else can
+--     read them, because a half-written draft is not something an owner should
+--     ever see.
+-- ─────────────────────────────────────────────────────────────────────────────
+create table if not exists vet_replies (
+  id         uuid primary key default gen_random_uuid(),
+  vet_id     uuid not null references auth.users(id) on delete cascade,
+  title      text not null check (char_length(title) between 2 and 80),
+  body       text not null check (char_length(body) between 20 and 2000),
+  -- How many times it has been used. Lets the console put the ones that
+  -- actually earn their place at the top.
+  uses       int not null default 0 check (uses >= 0),
+  created_at timestamptz default now()
+);
+
+create index if not exists vet_replies_owner_idx on vet_replies (vet_id, created_at desc);
+
+alter table vet_replies enable row level security;
+
+drop policy if exists "vet reads own replies" on vet_replies;
+create policy "vet reads own replies" on vet_replies for select using (auth.uid() = vet_id);
+
+drop policy if exists "vet writes own replies" on vet_replies;
+create policy "vet writes own replies" on vet_replies for insert with check (auth.uid() = vet_id);
+
+drop policy if exists "vet updates own replies" on vet_replies;
+create policy "vet updates own replies" on vet_replies for update using (auth.uid() = vet_id);
+
+drop policy if exists "vet deletes own replies" on vet_replies;
+create policy "vet deletes own replies" on vet_replies for delete using (auth.uid() = vet_id);
+
+
 -- ─────────────────────────────────────────────────────────────────────────────
 -- 5. ASK A VET  ·  the two-sided feature
 --    Owners post a question; verified vets answer it. Questions are public so

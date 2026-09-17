@@ -9,7 +9,7 @@ import {
 } from 'recharts'
 import {
   Stethoscope, ShieldCheck, Clock, MessageSquare, ArrowRight, AlertCircle,
-  Search, Send, Inbox, User, BarChart3, Save,
+  Search, Send, Inbox, User, BarChart3, Save, BookmarkPlus, Trash2, Power, Plus,
 } from 'lucide-react'
 import PageHeader from '@/components/layout/PageHeader'
 import { SPECIES_LABELS, toSpecies, type PetSpecies } from '@/lib/types'
@@ -59,7 +59,24 @@ interface MyAnswer {
   questionTitle: string
 }
 
-type Tab = 'queue' | 'answers' | 'profile'
+type Tab = 'queue' | 'answers' | 'replies' | 'profile'
+
+/**
+ * A saved reply.
+ *
+ * The first version of this console was entirely about owners — read their
+ * questions, answer their questions. A professional needs tools of their own,
+ * and the most immediate one is not having to type the same paragraph about
+ * post-operative feeding for the twentieth time. These belong to the vet
+ * alone; the policy on vet_replies is scoped to the author, because a
+ * half-written draft is not something an owner should ever be able to read.
+ */
+interface SavedReply {
+  id: string
+  title: string
+  body: string
+  uses: number
+}
 
 interface VetData {
   id: string
@@ -70,8 +87,11 @@ interface VetData {
   specialities: string
   bio: string
   registration: string | null
+  /** Whether this vet is currently taking questions. */
+  accepting: boolean
   queue: QueueItem[]
   answers: MyAnswer[]
+  replies: SavedReply[]
 }
 
 type State =
@@ -98,6 +118,9 @@ export default function VetConsolePage() {
   const [drafts, setDrafts] = useState<Record<string, string>>({})
   const [posting, setPosting] = useState<string | null>(null)
   const [savingProfile, setSavingProfile] = useState(false)
+  const [newReply, setNewReply] = useState({ title: '', body: '' })
+  const [savingReply, setSavingReply] = useState(false)
+  const [togglingAccepting, setTogglingAccepting] = useState(false)
   const [profileEdits, setProfileEdits] = useState<Partial<VetData>>({})
 
   useEffect(() => {
@@ -114,7 +137,7 @@ export default function VetConsolePage() {
 
         const { data: profile } = await supabase
           .from('vet_profiles')
-          .select('full_name, practice_name, city, specialities, bio, registration_no, verified')
+          .select('full_name, practice_name, city, specialities, bio, registration_no, verified, accepting')
           .eq('id', user.id)
           .maybeSingle()
 
@@ -126,6 +149,15 @@ export default function VetConsolePage() {
           .select('id, title, body, species, created_at, answer_count')
           .eq('answer_count', 0)
           .order('created_at', { ascending: false })
+          .limit(50)
+
+        // The vet's own saved replies. Most-used first, so the ones that earn
+        // their place are the ones in reach.
+        const { data: replyRows } = await supabase
+          .from('vet_replies')
+          .select('id, title, body, uses')
+          .eq('vet_id', user.id)
+          .order('uses', { ascending: false })
           .limit(50)
 
         // This vet's own answers, newest first, with the question they answered.
@@ -148,6 +180,8 @@ export default function VetConsolePage() {
             specialities: profile.specialities ?? '',
             bio: profile.bio ?? '',
             registration: profile.registration_no,
+            accepting: profile.accepting !== false,
+            replies: (replyRows ?? []) as SavedReply[],
             queue: (questions ?? []) as QueueItem[],
             answers: (mine ?? []).map(a => {
               const q = (a as { questions?: { title?: string } | { title?: string }[] }).questions
@@ -244,6 +278,103 @@ export default function VetConsolePage() {
     }
   }
 
+  /** Step in or out of the queue without deleting anything. */
+  async function toggleAccepting() {
+    if (!vet || togglingAccepting) return
+    const next = !vet.accepting
+    setTogglingAccepting(true)
+    const before = vet.accepting
+    setState({ kind: 'vet', data: { ...vet, accepting: next } })
+    try {
+      const { tryCreateClient } = await import('@/lib/supabase/client')
+      const supabase = tryCreateClient()
+      if (!supabase) throw new Error('offline')
+      const { error } = await supabase.from('vet_profiles').update({ accepting: next }).eq('id', vet.id)
+      if (error) throw error
+      toast.success(next ? 'You’re taking questions again' : 'Marked as not taking questions', {
+        description: next
+          ? 'Owners will see you as available.'
+          : 'Your profile stays up; you just won’t be listed as available.',
+      })
+    } catch {
+      setState({ kind: 'vet', data: { ...vet, accepting: before } })
+      toast.error('Couldn’t change your availability')
+    } finally {
+      setTogglingAccepting(false)
+    }
+  }
+
+  async function addReply() {
+    if (!vet || savingReply) return
+    const title = newReply.title.trim()
+    const body = newReply.body.trim()
+    if (title.length < 2) { toast.error('Give the reply a short name'); return }
+    if (body.length < 20) { toast.error('The reply needs at least 20 characters'); return }
+
+    setSavingReply(true)
+    try {
+      const { tryCreateClient } = await import('@/lib/supabase/client')
+      const supabase = tryCreateClient()
+      if (!supabase) { toast.error('The database isn’t reachable'); return }
+      const { data, error } = await supabase
+        .from('vet_replies')
+        .insert({ vet_id: vet.id, title, body })
+        .select('id, title, body, uses').single()
+      if (error || !data) {
+        toast.error('Couldn’t save that reply', { description: error?.message })
+        return
+      }
+      setState({ kind: 'vet', data: { ...vet, replies: [data as SavedReply, ...vet.replies] } })
+      setNewReply({ title: '', body: '' })
+      toast.success('Reply saved', { description: 'It’s now one click away in the queue.' })
+    } catch {
+      toast.error('Couldn’t save that reply')
+    } finally {
+      setSavingReply(false)
+    }
+  }
+
+  async function deleteReply(id: string) {
+    if (!vet) return
+    const before = vet.replies
+    setState({ kind: 'vet', data: { ...vet, replies: vet.replies.filter(r => r.id !== id) } })
+    try {
+      const { tryCreateClient } = await import('@/lib/supabase/client')
+      const supabase = tryCreateClient()
+      if (!supabase) throw new Error('offline')
+      const { error } = await supabase.from('vet_replies').delete().eq('id', id)
+      if (error) throw error
+      toast.success('Reply deleted')
+    } catch {
+      setState({ kind: 'vet', data: { ...vet, replies: before } })
+      toast.error('Couldn’t delete that reply')
+    }
+  }
+
+  /** Drop a saved reply into the composer for a question, and count the use. */
+  async function insertReply(questionId: string, reply: SavedReply) {
+    if (!vet) return
+    setDrafts(d => ({
+      ...d,
+      [questionId]: d[questionId] ? `${d[questionId].trimEnd()}
+
+${reply.body}` : reply.body,
+    }))
+    setState({
+      kind: 'vet',
+      data: {
+        ...vet,
+        replies: vet.replies.map(r => (r.id === reply.id ? { ...r, uses: r.uses + 1 } : r)),
+      },
+    })
+    try {
+      const { tryCreateClient } = await import('@/lib/supabase/client')
+      const supabase = tryCreateClient()
+      // Best effort. A missed count is not worth interrupting the vet over.
+      await supabase?.from('vet_replies').update({ uses: reply.uses + 1 }).eq('id', reply.id)
+    } catch { /* ignore */ }
+  }
+
   async function saveProfile() {
     if (!vet || savingProfile) return
     setSavingProfile(true)
@@ -297,7 +428,14 @@ export default function VetConsolePage() {
         species="bird"
       />
 
-      <div className="max-w-6xl mx-auto px-6 pb-24 -mt-4">
+      {/*
+        * No negative top margin here. It used to be -mt-4, which pulled this
+        * container up over the header's bottom edge — the header's panel ends
+        * on a border, so the card below overlapped it and the two edges drew
+        * across each other. Every other tool page uses plain padding, and this
+        * one now matches them.
+        */}
+      <div className="relative max-w-6xl mx-auto px-6 lg:px-8 py-10 pb-24">
         {state.kind === 'loading' && (
           <div className="glass-card rounded-2xl p-8 text-center text-zinc-400">Loading your console…</div>
         )}
@@ -335,9 +473,23 @@ export default function VetConsolePage() {
                     : 'An administrator checks your registration number against the register before you can answer.'}
                 </p>
               </div>
-              <div className="flex gap-6 shrink-0">
+              <div className="flex items-center gap-6 shrink-0">
                 <Metric label="In the queue" value={vet.queue.length} />
                 <Metric label="You’ve answered" value={vet.answers.length} />
+                {/* Stepping out of the queue without deleting anything. */}
+                <button
+                  onClick={toggleAccepting}
+                  disabled={togglingAccepting}
+                  title={vet.accepting ? 'Stop taking questions' : 'Start taking questions again'}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium transition-colors disabled:opacity-50 ${
+                    vet.accepting
+                      ? 'bg-emerald-500/12 text-emerald-300 hover:bg-emerald-500/20'
+                      : 'bg-white/5 text-zinc-400 hover:bg-white/10'
+                  }`}
+                >
+                  <Power size={14} />
+                  {vet.accepting ? 'Taking questions' : 'Not taking questions'}
+                </button>
               </div>
             </motion.div>
 
@@ -346,6 +498,7 @@ export default function VetConsolePage() {
               {([
                 { key: 'queue', label: 'Queue', icon: Inbox },
                 { key: 'answers', label: 'My answers', icon: MessageSquare },
+                { key: 'replies', label: 'Saved replies', icon: BookmarkPlus },
                 { key: 'profile', label: 'Profile', icon: User },
               ] as const).map(t => (
                 <button key={t.key} onClick={() => setTab(t.key)}
@@ -412,6 +565,21 @@ export default function VetConsolePage() {
                             rows={3}
                             className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm outline-none focus:border-primary/50 resize-y"
                           />
+                          {vet.replies.length > 0 && (
+                            <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                              <span className="text-[11px] text-zinc-500 mr-1">Insert:</span>
+                              {vet.replies.slice(0, 6).map(r => (
+                                <button
+                                  key={r.id}
+                                  onClick={() => insertReply(item.id, r)}
+                                  title={r.body.slice(0, 120)}
+                                  className="text-[11px] px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-zinc-300"
+                                >
+                                  {r.title}
+                                </button>
+                              ))}
+                            </div>
+                          )}
                           <div className="flex items-center justify-between mt-2">
                             <span className="text-xs text-zinc-500">
                               {(drafts[item.id] ?? '').trim().length} / 20 minimum
@@ -489,6 +657,65 @@ export default function VetConsolePage() {
                     <p className="text-xs text-zinc-500 mt-3">Answered {timeAgo(a.created_at)}</p>
                   </div>
                 ))}
+              </div>
+            )}
+
+            {/* ── Saved replies ────────────────────────────────────────── */}
+            {tab === 'replies' && (
+              <div className="grid lg:grid-cols-[1fr_340px] gap-6 items-start">
+                <div className="space-y-3">
+                  {vet.replies.length === 0 ? (
+                    <div className="glass-card rounded-2xl p-8 text-center">
+                      <BookmarkPlus size={26} className="mx-auto text-zinc-500 mb-3" />
+                      <p className="text-sm text-zinc-400 max-w-sm mx-auto">
+                        No saved replies yet. The paragraph you find yourself writing over and over —
+                        post-operative feeding, when a limp warrants an X-ray — belongs here.
+                      </p>
+                    </div>
+                  ) : vet.replies.map(r => (
+                    <div key={r.id} className="glass-card rounded-2xl p-5">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <h3 className="font-semibold text-sm">{r.title}</h3>
+                          <p className="text-xs text-zinc-500 mt-0.5">
+                            Used {r.uses} {r.uses === 1 ? 'time' : 'times'}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => deleteReply(r.id)}
+                          className="text-zinc-500 hover:text-[#FF6B81] shrink-0 p-1"
+                          title="Delete this reply"
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
+                      <p className="text-sm text-zinc-400 mt-3 whitespace-pre-wrap">{r.body}</p>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="glass-card rounded-2xl p-5">
+                  <h3 className="font-semibold text-sm flex items-center gap-2">
+                    <Plus size={15} className="text-zinc-400" /> New saved reply
+                  </h3>
+                  <p className="text-xs text-zinc-500 mt-1">
+                    Only you can see these. They appear as one-click buttons above the composer on
+                    every question in the queue.
+                  </p>
+                  <div className="mt-4 space-y-3">
+                    <Field label="Name" placeholder="e.g. Post-op feeding"
+                      value={newReply.title}
+                      onChange={v => setNewReply(n => ({ ...n, title: v }))} />
+                    <Field label="Reply" multiline
+                      placeholder="The text that gets inserted into your answer."
+                      value={newReply.body}
+                      onChange={v => setNewReply(n => ({ ...n, body: v }))} />
+                    <button onClick={addReply} disabled={savingReply}
+                      className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-medium disabled:opacity-50">
+                      <Save size={15} /> {savingReply ? 'Saving…' : 'Save reply'}
+                    </button>
+                  </div>
+                </div>
               </div>
             )}
 
