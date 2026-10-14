@@ -37,7 +37,8 @@ export default function SignupPage() {
 
   async function handleSignup(e: React.FormEvent) {
     e.preventDefault()
-    if (!email || !password) { toast.error('Email and password required'); return }
+    if (!email.trim() || !password) { toast.error('Email and password required'); return }
+    if (displayName.trim().length > 40) { toast.error('Keep your name under 40 characters'); return }
     if (password.length < 8) { toast.error('Password must be at least 8 characters'); return }
     if (kind === 'vet' && !displayName.trim()) {
       toast.error('Professional accounts need your full name')
@@ -51,10 +52,13 @@ export default function SignupPage() {
     try {
       const { createClient } = await import('@/lib/supabase/client')
       const supabase = createClient()
-      const { error } = await supabase.auth.signUp({
-        email,
+      const { data, error } = await supabase.auth.signUp({
+        email: email.trim(),
         password,
         options: {
+          // The confirmation link comes back through our own callback, which
+          // exchanges the code for a session and lands on the dashboard.
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
           data: {
             display_name: displayName.trim() || (kind === 'vet' ? 'Veterinary professional' : 'Pet Parent'),
             role: kind === 'vet' ? 'vet' : 'user',
@@ -86,6 +90,15 @@ export default function SignupPage() {
        * The handle_new_user trigger writes it instead, from the metadata
        * above. It is SECURITY DEFINER, so it needs no session.
        */
+
+      // With email confirmation switched off the user is signed in already;
+      // telling them to check their inbox for an email that will never come
+      // would be wrong.
+      if (data.session) {
+        toast.success('Account created')
+        window.location.href = kind === 'vet' ? '/vet' : '/dashboard'
+        return
+      }
       setDone(true)
     } catch (err) {
       // "Failed to fetch" lands here: the request never reached Supabase.
@@ -154,7 +167,7 @@ export default function SignupPage() {
           <h1 className="text-3xl font-black mb-2" style={{ fontFamily: 'var(--font-display)' }}>CREATE ACCOUNT</h1>
           <p className="text-[#A79CBF] mb-6 text-sm">
             {kind === 'owner'
-              ? 'Join 120,000+ pet parents who care smarter.'
+              ? 'Free, for every pet you have.'
               : 'Answer owners’ questions and reach the people who need you.'}
           </p>
 

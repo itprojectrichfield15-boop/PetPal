@@ -231,12 +231,18 @@ export const FOOD_DB: FoodEntry[] = [
     note: 'Safe and a good source of potassium, but high in natural sugar.',
     action: 'Small slices only, as an occasional treat.',
   },
+  /*
+   * One entry for all nut butters. Plain "peanut butter" used to be rated SAFE
+   * while "xylitol free peanut butter" — the safer product — was rated
+   * CAUTION, so the checker contradicted itself. The verdict that holds for
+   * every jar is caution: fine in small amounts only if the label is clear.
+   */
   {
-    names: ['peanut butter'],
-    level: 'safe',
+    names: ['peanut butter', 'xylitol free peanut butter', 'almond butter', 'nut butter'],
+    level: 'caution',
     appliesTo: 'Dogs',
-    note: 'A firm favourite and safe — but ONLY if it is xylitol-free. Some brands use xylitol, which is lethal to dogs.',
-    action: 'Read the label every time and pick a plain, unsweetened, xylitol-free brand.',
+    note: 'Plain, xylitol-free nut butter is fine in small amounts, but it is very high in fat — and some brands contain xylitol, which is lethal to dogs.',
+    action: 'Read the label every time. Choose plain, unsweetened and xylitol-free, and keep portions tiny.',
   },
   {
     names: ['salmon', 'cooked salmon', 'sardine', 'sardines', 'white fish'],
@@ -304,7 +310,9 @@ export const FOOD_DB: FoodEntry[] = [
     action: 'Emergency — go straight to a vet.',
   },
   {
-    names: ['cannabis', 'marijuana', 'weed', 'thc', 'edibles'],
+    // Not "weed": "my dog ate a weed" is about the garden, and answering it
+    // with a cannabis-poisoning emergency would be wrong.
+    names: ['cannabis', 'marijuana', 'thc', 'edibles'],
     level: 'toxic',
     appliesTo: 'Dogs and cats',
     note: 'Causes wobbliness, dribbling urine, low temperature and, in bad cases, collapse. Edibles are worse because they often also contain chocolate or xylitol.',
@@ -553,13 +561,6 @@ export const FOOD_DB: FoodEntry[] = [
     appliesTo: 'Dogs',
     note: 'Nutritious in small amounts, but high in oxalates, so not ideal for pets with kidney problems or a history of stones.',
     action: 'Small amounts occasionally; check with your vet for a pet with kidney disease.',
-  },
-  {
-    names: ['xylitol free peanut butter', 'almond butter'],
-    level: 'caution',
-    appliesTo: 'Dogs',
-    note: 'Safe if sweetener-free, but very high in fat and calories.',
-    action: 'Check the label for xylitol every time, and keep portions tiny.',
   },
 
   // ── SAFE ─────────────────────────────────────────────────────────────────

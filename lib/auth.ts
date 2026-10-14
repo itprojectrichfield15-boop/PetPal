@@ -1,25 +1,28 @@
 import type { User } from '@supabase/supabase-js'
 
 /**
- * Robust admin check. Reads the role from BOTH:
- *  1. user_metadata.role  (set directly on auth.users — no RLS needed)
- *  2. profiles.role       (requires the profile-read RLS policy)
+ * Is this user an administrator?
  *
- * Using both means admin detection works even if the RLS policy for
- * reading own profile hasn't been applied yet.
+ * Reads, in order:
+ *  1. app_metadata.role — only settable server-side (service role / SQL),
+ *  2. profiles.role     — only settable server-side, because the schema grants
+ *                         users UPDATE on their display name and avatar only.
+ *
+ * It deliberately does NOT read user_metadata.role. Any signed-in user can
+ * write their own user_metadata with `supabase.auth.updateUser({ data })`, so
+ * trusting it let anyone open the admin console by typing one line into the
+ * browser console. (The database's own is_admin() check would still have
+ * refused their writes, but the screen should not claim access it lacks.)
  */
 export async function isUserAdmin(user: User | null): Promise<boolean> {
   if (!user) return false
 
-  // Fast path — role embedded in the JWT user metadata
-  const metaRole = (user.user_metadata?.role || user.app_metadata?.role) as string | undefined
-  if (metaRole === 'admin') return true
+  if (user.app_metadata?.role === 'admin') return true
 
-  // Fallback — read from profiles table
   try {
     const { createClient } = await import('@/lib/supabase/client')
     const supabase = createClient()
-    const { data } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+    const { data } = await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle()
     return data?.role === 'admin'
   } catch {
     return false

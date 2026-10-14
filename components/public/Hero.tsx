@@ -2,18 +2,31 @@
 
 import { motion } from 'framer-motion'
 import Link from 'next/link'
-import Image from 'next/image'
-import { ArrowUpRight, ArrowRight, PawPrint, Apple, Star, ShieldCheck, MapPin } from 'lucide-react'
+import { ArrowUpRight, ArrowRight, PawPrint, Apple, ShieldCheck, MapPin } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { FOOD_DB } from '@/lib/food-safety'
+import { SPECIES_CFG, computePlan } from '@/lib/nutrition'
 
-/** Owner avatars for the social-proof pill. */
-const FACES = [
-  'photo-1438761681033-6461ffad8d80',
-  'photo-1500648767791-00dcc994a43e',
-  'photo-1494790108377-be9c29b29330',
+/*
+ * Proof points. These used to read "Loved by 120,000+ pet parents", "4.9 avg.
+ * rating" and "18k+ pets tracked" beside three stock-photo faces — figures
+ * nobody measured for an app that has no ratings and whose pet count is
+ * private by design. Everything here can now be checked by opening the app.
+ */
+const PROOF = [
+  { value: String(FOOD_DB.length), label: 'foods & plants checked' },
+  { value: String(Object.keys(SPECIES_CFG).length), label: 'species in the planner' },
+  { value: 'Free', label: 'no paid tier' },
 ]
 
-const EASE = [0.16, 1, 0.3, 1] as const
+/*
+ * The example chip is calculated by the same engine as the planner. It used to
+ * say "742 kcal" as typed text, while the planner gives 740 for the same
+ * 12.4 kg adult beagle — the front page contradicting the tool it advertised.
+ */
+const EXAMPLE_PLAN = computePlan({ species: 'dog', weightKg: 12.4, activity: 1.6, lifeStage: 'adult' })
+
+const EASE =[0.16, 1, 0.3, 1] as const
 
 export default function Hero() {
   return (
@@ -30,16 +43,10 @@ export default function Hero() {
         <div className="max-w-2xl">
           <motion.div
             initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, ease: EASE }}
-            className="inline-flex items-center gap-3 pl-2 pr-4 py-1.5 rounded-full border border-white/10 bg-white/[0.04] backdrop-blur-xl mb-7"
+            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-white/10 bg-white/[0.04] backdrop-blur-xl mb-7"
           >
-            <div className="flex -space-x-2">
-              {FACES.map((p, i) => (
-                <div key={i} className="relative w-6 h-6 rounded-full overflow-hidden border-2 border-[#0D0A14]">
-                  <Image src={`https://images.unsplash.com/${p}?w=48&h=48&fit=crop`} alt="" fill className="object-cover" sizes="24px" />
-                </div>
-              ))}
-            </div>
-            <span className="text-xs text-zinc-200 font-medium">Loved by 120,000+ pet parents</span>
+            <ShieldCheck className="w-3.5 h-3.5 text-primary" aria-hidden="true" />
+            <span className="text-xs text-zinc-200 font-medium">Free · most tools work without an account</span>
           </motion.div>
 
           <motion.h1
@@ -58,7 +65,8 @@ export default function Hero() {
             initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.22, duration: 0.6, ease: EASE }}
             className="text-lg text-zinc-300 max-w-lg leading-relaxed mb-9"
           >
-            Smart feeding plans, instant food-safety checks, health tracking and trusted vets near you —
+            Feeding plans, instant food-safety checks, reminders and weight tracking, and real vet practices
+            mapped near you —
             for dogs, cats, rabbits, birds, reptiles and every small creature in between.
           </motion.p>
 
@@ -84,22 +92,15 @@ export default function Hero() {
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}
             className="flex flex-wrap items-center gap-x-8 gap-y-4"
           >
-            <div>
-              <div className="text-2xl font-semibold tabular-nums" style={{ fontFamily: 'var(--font-display)' }}>120k+</div>
-              <div className="text-xs text-zinc-500">pet parents</div>
-            </div>
-            <div className="w-px h-8 bg-white/10" aria-hidden="true" />
-            <div>
-              <div className="text-2xl font-semibold tabular-nums flex items-center gap-1" style={{ fontFamily: 'var(--font-display)' }}>
-                4.9 <Star className="w-4 h-4 text-[#FFD98E] fill-[#FFD98E]" aria-hidden="true" />
+            {PROOF.map((p, i) => (
+              <div key={p.label} className="flex items-center gap-8">
+                {i > 0 && <div className="w-px h-8 bg-white/10 -ml-8" aria-hidden="true" />}
+                <div>
+                  <div className="text-2xl font-semibold tabular-nums" style={{ fontFamily: 'var(--font-display)' }}>{p.value}</div>
+                  <div className="text-xs text-zinc-500">{p.label}</div>
+                </div>
               </div>
-              <div className="text-xs text-zinc-500">avg. rating</div>
-            </div>
-            <div className="w-px h-8 bg-white/10" aria-hidden="true" />
-            <div>
-              <div className="text-2xl font-semibold tabular-nums" style={{ fontFamily: 'var(--font-display)' }}>18k+</div>
-              <div className="text-xs text-zinc-500">pets tracked</div>
-            </div>
+            ))}
           </motion.div>
         </div>
       </div>
@@ -114,7 +115,7 @@ export default function Hero() {
         </div>
         <div>
           <div className="text-sm font-semibold leading-tight">Biscuit&rsquo;s plan</div>
-          <div className="text-[11px] text-zinc-400">742 kcal · 2 meals</div>
+          <div className="text-[11px] text-zinc-400">{EXAMPLE_PLAN.mer} kcal · {EXAMPLE_PLAN.meals} meals</div>
         </div>
       </motion.div>
 
@@ -135,8 +136,8 @@ export default function Hero() {
             * feature that does not exist. Distance and opening hours are real
             * things the finder does show.
             */}
-          <div className="text-sm font-semibold leading-tight">Vet 1.2km away</div>
-          <div className="text-[11px] text-zinc-400">Opening hours listed</div>
+          <div className="text-sm font-semibold leading-tight">Practices near you</div>
+          <div className="text-[11px] text-zinc-400">Sorted by distance</div>
         </div>
       </motion.div>
 

@@ -11,8 +11,13 @@
 --  This replaces the six older migration files. Those were inherited from the
 --  unrelated project PetPal was forked from and created five tables the app
 --  never queries (companies, toxicity_reports, burnout_assessments, resources,
---  report_upvotes). Everything PetPal actually uses is below: six tables,
---  two functions and two triggers.
+--  report_upvotes). Everything PetPal actually uses is below: nine tables,
+--  seven functions and four triggers.
+--
+--  If your database was set up from an older copy of this file, run this one
+--  in full again — it adds the health-record tables and closes several
+--  security holes, without touching existing data. tests/schema.test.mjs runs
+--  this file in a real Postgres and attacks every policy (npm test).
 -- ════════════════════════════════════════════════════════════════════════════
 
 
@@ -48,7 +53,15 @@ create policy "update own profile"
 drop policy if exists "insert own profile" on profiles;
 create policy "insert own profile"
   on profiles for insert
-  with check (auth.uid() = id);
+  with check (auth.uid() = id and role = 'user');
+
+-- The update policy above decides WHICH ROW a user may touch; these grants
+-- decide WHICH COLUMNS. Without them a user could run
+--   update profiles set role = 'admin' where id = auth.uid()
+-- from the browser console and is_admin() would believe it. A user may change
+-- how they appear, never what they are allowed to do.
+revoke update on profiles from anon, authenticated;
+grant update (display_name, avatar_url) on profiles to authenticated;
 
 
 /*
@@ -179,6 +192,113 @@ drop policy if exists "owner deletes pets" on pets;
 create policy "owner deletes pets"
   on pets for delete using (auth.uid() = owner_id);
 
+-- Sanity limits the form also enforces. NOT VALID applies them to every new
+-- or edited row without failing on rows written before they existed.
+do $$ begin
+  alter table pets add constraint pets_name_length
+    check (char_length(btrim(name)) between 1 and 40) not valid;
+exception when duplicate_object then null; end $$;
+
+do $$ begin
+  alter table pets add constraint pets_weight_max
+    check (weight is null or weight <= 200) not valid;
+exception when duplicate_object then null; end $$;
+
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 2b. HEALTH RECORDS  ·  reminders and a weight log, per pet
+--     The dashboard used to show a weight chart and an "Upcoming" list that were
+--     hard-coded for an example dog, to every user. These two tables are where
+--     those numbers now come from. Both belong to the pet's owner alone.
+-- ─────────────────────────────────────────────────────────────────────────────
+create table if not exists pet_reminders (
+  id         uuid primary key default gen_random_uuid(),
+  pet_id     uuid not null references pets(id) on delete cascade,
+  owner_id   uuid not null references auth.users(id) on delete cascade,
+  kind       text not null default 'other'
+             check (kind in ('vaccine','vet_visit','medication','deworming','grooming','other')),
+  title      text not null check (char_length(btrim(title)) between 2 and 80),
+  due_on     date not null,
+  done       boolean not null default false,
+  created_at timestamptz default now()
+);
+
+create index if not exists pet_reminders_owner_due_idx on pet_reminders (owner_id, done, due_on);
+
+alter table pet_reminders enable row level security;
+
+-- The pet must belong to the same owner, or a user could hang a reminder off
+-- somebody else's pet id.
+drop policy if exists "owner reads reminders" on pet_reminders;
+create policy "owner reads reminders" on pet_reminders for select using (auth.uid() = owner_id);
+
+drop policy if exists "owner writes reminders" on pet_reminders;
+create policy "owner writes reminders" on pet_reminders for insert
+  with check (auth.uid() = owner_id
+    and exists (select 1 from pets p where p.id = pet_id and p.owner_id = auth.uid()));
+
+drop policy if exists "owner updates reminders" on pet_reminders;
+create policy "owner updates reminders" on pet_reminders for update
+  using (auth.uid() = owner_id)
+  with check (auth.uid() = owner_id
+    and exists (select 1 from pets p where p.id = pet_id and p.owner_id = auth.uid()));
+
+drop policy if exists "owner deletes reminders" on pet_reminders;
+create policy "owner deletes reminders" on pet_reminders for delete using (auth.uid() = owner_id);
+
+
+create table if not exists pet_weights (
+  id          uuid primary key default gen_random_uuid(),
+  pet_id      uuid not null references pets(id) on delete cascade,
+  owner_id    uuid not null references auth.users(id) on delete cascade,
+  weight_kg   numeric not null check (weight_kg > 0 and weight_kg <= 200),
+  measured_on date not null default current_date check (measured_on <= current_date + 1),
+  created_at  timestamptz default now()
+);
+
+create index if not exists pet_weights_pet_idx on pet_weights (pet_id, measured_on);
+
+alter table pet_weights enable row level security;
+
+drop policy if exists "owner reads weights" on pet_weights;
+create policy "owner reads weights" on pet_weights for select using (auth.uid() = owner_id);
+
+drop policy if exists "owner writes weights" on pet_weights;
+create policy "owner writes weights" on pet_weights for insert
+  with check (auth.uid() = owner_id
+    and exists (select 1 from pets p where p.id = pet_id and p.owner_id = auth.uid()));
+
+drop policy if exists "owner deletes weights" on pet_weights;
+create policy "owner deletes weights" on pet_weights for delete using (auth.uid() = owner_id);
+
+
+-- pets.weight is the CURRENT weight and must always equal the latest entry in
+-- the log. Keeping that in the database means no screen can update one and
+-- forget the other.
+create or replace function sync_pet_weight()
+returns trigger language plpgsql security definer set search_path = public as $$
+declare
+  target uuid := coalesce(new.pet_id, old.pet_id);
+  latest numeric;
+begin
+  select w.weight_kg into latest
+    from pet_weights w
+   where w.pet_id = target
+   order by w.measured_on desc, w.created_at desc
+   limit 1;
+  -- If the last entry was deleted, keep whatever weight the profile had.
+  if latest is not null then
+    update pets set weight = latest where id = target;
+  end if;
+  return null;
+end;
+$$;
+
+drop trigger if exists pet_weights_sync on pet_weights;
+create trigger pet_weights_sync
+  after insert or delete on pet_weights
+  for each row execute procedure sync_pet_weight();
+
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- 3. COMMUNITY WALL
@@ -203,9 +323,18 @@ drop policy if exists "read confessions" on confessions;
 create policy "read confessions"
   on confessions for select using (true);
 
+-- Every new post starts at zero hearts. Without the check, a crafted request
+-- could publish a post that claims thousands of hearts it never received.
 drop policy if exists "insert confessions" on confessions;
 create policy "insert confessions"
-  on confessions for insert with check (true);
+  on confessions for insert with check (hearts = 0);
+
+-- Moderation. There was no delete policy at all, so the admin screen's remove
+-- button was silently refused by the database while the screen said "Post
+-- removed" — and the post was back on the next refresh.
+drop policy if exists "admin deletes confessions" on confessions;
+create policy "admin deletes confessions"
+  on confessions for delete using (is_admin());
 
 
 -- Hearts are incremented through this function rather than a direct UPDATE.
@@ -254,8 +383,12 @@ alter table vet_profiles enable row level security;
 drop policy if exists "read vet profiles" on vet_profiles;
 create policy "read vet profiles" on vet_profiles for select using (true);
 
+-- verified = false is essential. Without it any signed-in user could insert
+-- their own row with verified = true and answer questions under a "Verified
+-- vet" badge — the exact thing the verification step exists to prevent.
 drop policy if exists "vet inserts own profile" on vet_profiles;
-create policy "vet inserts own profile" on vet_profiles for insert with check (auth.uid() = id);
+create policy "vet inserts own profile" on vet_profiles for insert
+  with check (auth.uid() = id and verified = false);
 
 drop policy if exists "vet updates own profile" on vet_profiles;
 create policy "vet updates own profile" on vet_profiles for update using (auth.uid() = id);
@@ -274,6 +407,43 @@ create policy "admin verifies vets" on vet_profiles for update
 -- and owners see who is actually available rather than a list that includes
 -- people who will not answer.
 alter table vet_profiles add column if not exists accepting boolean not null default true;
+
+
+/*
+ * A vet may edit their own professional details, but never their own
+ * verification, and never the registration number that verification was
+ * checked against — otherwise a vet could be verified under one number and
+ * then swap it. Only an administrator may change either.
+ *
+ * auth.uid() is null when this runs from the SQL Editor or the service role,
+ * which are already trusted, so those are let through.
+ */
+create or replace function guard_vet_profile()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  if auth.uid() is not null and not is_admin() then
+    if new.verified is distinct from old.verified then
+      raise exception 'Only an administrator can change verification.';
+    end if;
+    if new.registration_no is distinct from old.registration_no then
+      raise exception 'Only an administrator can change a registration number.';
+    end if;
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists vet_profiles_guard on vet_profiles;
+create trigger vet_profiles_guard
+  before update on vet_profiles
+  for each row execute procedure guard_vet_profile();
+
+-- Two accounts claiming the same registration number are deliberately NOT
+-- blocked here. A unique index would make the sign-up trigger fail, and
+-- Supabase would show the second person only "Database error saving new
+-- user". Instead the admin console flags a shared number beside both
+-- accounts, so an administrator sees it before verifying either.
+drop index if exists vet_profiles_registration_unique;
 
 
 -- ─────────────────────────────────────────────────────────────────────────────
@@ -337,12 +507,20 @@ alter table questions enable row level security;
 drop policy if exists "read questions" on questions;
 create policy "read questions" on questions for select using (true);
 
+-- A new question starts unanswered and open; the count is the trigger's job.
 drop policy if exists "signed in asks" on questions;
 create policy "signed in asks" on questions for insert
-  with check (auth.uid() is not null and auth.uid() = asker_id);
+  with check (auth.uid() is not null and auth.uid() = asker_id
+              and answer_count = 0 and resolved = false);
 
 drop policy if exists "author updates question" on questions;
 create policy "author updates question" on questions for update using (auth.uid() = asker_id);
+
+-- The author may mark their question resolved — nothing else. Without this an
+-- author could rewrite answer_count, or reword a question a vet already
+-- answered so the answer no longer matches it.
+revoke update on questions from anon, authenticated;
+grant update (resolved) on questions to authenticated;
 
 
 create table if not exists answers (
@@ -375,6 +553,11 @@ create policy "verified vets answer" on answers for insert
 drop policy if exists "vet edits own answer" on answers;
 create policy "vet edits own answer" on answers for update using (auth.uid() = vet_id);
 
+-- Editing means the wording. Moving an answer to a different question would
+-- leave both questions' answer_count wrong.
+revoke update on answers from anon, authenticated;
+grant update (body) on answers to authenticated;
+
 
 -- Keep questions.answer_count in step without a round trip from the client.
 create or replace function bump_answer_count()
@@ -393,6 +576,28 @@ drop trigger if exists answers_count_trigger on answers;
 create trigger answers_count_trigger
   after insert or delete on answers
   for each row execute procedure bump_answer_count();
+
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 5b. DELETING YOUR OWN ACCOUNT
+--     Settings offers "Delete account". The browser cannot remove an auth user
+--     itself, so this function does it for the caller and nobody else. Every
+--     table keyed to the user cascades (profile, pets, health records, vet
+--     profile, saved replies); questions and answers stay in the public archive
+--     with the author detached, which their foreign keys already specify.
+-- ─────────────────────────────────────────────────────────────────────────────
+create or replace function delete_my_account()
+returns void language plpgsql security definer set search_path = public, auth as $$
+begin
+  if auth.uid() is null then
+    raise exception 'Not signed in.';
+  end if;
+  delete from auth.users where id = auth.uid();
+end;
+$$;
+
+revoke all on function delete_my_account() from public, anon;
+grant execute on function delete_my_account() to authenticated;
 
 
 -- ─────────────────────────────────────────────────────────────────────────────

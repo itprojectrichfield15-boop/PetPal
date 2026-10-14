@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
+import { useClientValue } from '@/lib/use-client-value'
 import { motion } from 'framer-motion'
 import {
   Dog, Cat, Rabbit, Bird, Turtle, Rat, Bone, Flame, Droplets, Beef, Wheat, Info, Sparkles,
@@ -19,9 +20,32 @@ const SPECIES_ICON: Record<SpeciesKey, typeof Dog> = {
 
 const LIFE_STAGES: LifeStage[] = ['young', 'adult', 'senior']
 
+/**
+ * Read `?species=&weight=` — set by the "Nutrition plan for …" link on a
+ * pet's page — so the planner opens on that pet instead of a generic dog.
+ * Anything missing or out of range falls back to the species default.
+ */
+function parsePrefill(search: string): { species: SpeciesKey; weight: number } | null {
+  const params = new URLSearchParams(search)
+  const s = params.get('species')
+  if (!s || !(s in SPECIES_CFG)) return null
+  const species = s as SpeciesKey
+  const cfg = SPECIES_CFG[species]
+  const w = Number(params.get('weight'))
+  const weight = Number.isFinite(w) && w >= 0.1 && w <= cfg.maxKg ? Math.round(w * 10) / 10 : cfg.defaultKg
+  return { species, weight }
+}
+
 export default function NutritionPage() {
-  const [species, setSpecies] = useState<SpeciesKey>('dog')
-  const [weight, setWeight] = useState(SPECIES_CFG.dog.defaultKg)
+  const search = useClientValue(() => window.location.search, '')
+  const prefill = useMemo(() => parsePrefill(search), [search])
+
+  // Explicit choices override the pre-fill; until the user touches a control
+  // the planner shows the pet it was opened for.
+  const [speciesChoice, setSpecies] = useState<SpeciesKey | null>(null)
+  const [weightChoice, setWeight] = useState<number | null>(null)
+  const species = speciesChoice ?? prefill?.species ?? 'dog'
+  const weight = weightChoice ?? prefill?.weight ?? SPECIES_CFG[species].defaultKg
   const [activity, setActivity] = useState<number>(1.6)
   const [lifeStage, setLifeStage] = useState<LifeStage>('adult')
   const [bodyCondition, setBodyCondition] = useState(3)
@@ -34,17 +58,18 @@ export default function NutritionPage() {
 
   /** Switching species rescales the weight into that species' sensible range. */
   function pickSpecies(next: SpeciesKey) {
-    const nextCfg = SPECIES_CFG[next]
+    if (next === species) return
     setSpecies(next)
-    setWeight(w => {
-      const clamped = Math.min(Math.max(w, 0.1), nextCfg.maxKg)
-      // If the current weight is wildly out of range for the new species, start
-      // from that species' typical weight instead of an odd clamped value.
-      return clamped === w ? w : nextCfg.defaultKg
-    })
+    // Each species starts from its own typical weight. Carrying the old value
+    // across used to turn a 12 kg dog into a 12 kg cat — a weight the planner
+    // then happily fed as though it were healthy.
+    setWeight(SPECIES_CFG[next].defaultKg)
   }
 
-  const step = cfg.maxKg <= 3 ? 0.1 : cfg.maxKg <= 15 ? 0.25 : 0.5
+  // Steps of 0.1 kg up to 15 kg and 0.5 kg above, so the value shown (one
+  // decimal place) is always exactly the value the plan is calculated from.
+  // A 0.25 kg step used to show "4.3 kg" while calculating for 4.25.
+  const step = cfg.maxKg <= 15 ? 0.1 : 0.5
 
   return (
     <div className="relative min-h-screen">
@@ -87,7 +112,7 @@ export default function NutritionPage() {
             <div>
               <div className="flex items-center justify-between mb-2">
                 <label htmlFor="weight" className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Weight</label>
-                <span className="font-mono text-sm text-primary font-semibold">{weight.toFixed(step < 1 ? 1 : 1)} kg</span>
+                <span className="font-mono text-sm text-primary font-semibold">{weight.toFixed(1)} kg</span>
               </div>
               <input
                 id="weight"
@@ -96,7 +121,7 @@ export default function NutritionPage() {
                 max={cfg.maxKg}
                 step={step}
                 value={Math.min(weight, cfg.maxKg)}
-                onChange={e => setWeight(+e.target.value)}
+                onChange={e => setWeight(Math.round(+e.target.value * 10) / 10)}
                 className="w-full accent-primary"
               />
               <div className="flex justify-between text-[10px] text-zinc-600 mt-1 font-mono">
@@ -191,8 +216,8 @@ export default function NutritionPage() {
               {[
                 { icon: Bone, label: cfg.foodLabel, v: `${plan.dryGrams}g`, sub: `≈ ${plan.cups} cups` },
                 { icon: Beef, label: 'Or wet/fresh', v: `${plan.wetGrams}g`, sub: 'per day' },
-                { icon: Wheat, label: 'Meals', v: `${plan.meals}×`, sub: `≈ ${plan.gramsPerMeal}g each` },
-                { icon: Droplets, label: 'Water', v: `${plan.waterMl}ml`, sub: 'min daily' },
+                { icon: Wheat, label: plan.meals === 1 ? 'Meal' : 'Meals', v: `${plan.meals}×`, sub: plan.meals === 1 ? 'per day, or as your vet advises' : `≈ ${plan.gramsPerMeal}g each` },
+                { icon: Droplets, label: 'Water', v: `${plan.waterMl}ml`, sub: 'typical daily, incl. food moisture' },
               ].map(s => (
                 <div key={s.label} className="glass-card rounded-2xl p-4">
                   <s.icon className="w-4 h-4 text-primary mb-2" aria-hidden="true" />

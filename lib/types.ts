@@ -28,6 +28,41 @@ export interface Pet {
   created_at: string
 }
 
+/** What a reminder is for. Mirrors the `pet_reminders.kind` check. */
+export type ReminderKind = 'vaccine' | 'vet_visit' | 'medication' | 'deworming' | 'grooming' | 'other'
+
+export const REMINDER_KINDS: Record<ReminderKind, string> = {
+  vaccine: 'Vaccination',
+  vet_visit: 'Vet visit',
+  medication: 'Medication',
+  deworming: 'Deworming / flea',
+  grooming: 'Grooming',
+  other: 'Other',
+}
+
+/** A row of `pet_reminders` — something due for one pet on one date. */
+export interface PetReminder {
+  id: string
+  pet_id: string
+  owner_id: string
+  kind: ReminderKind
+  title: string
+  /** ISO date (yyyy-mm-dd), no time — a reminder is for a day. */
+  due_on: string
+  done: boolean
+  created_at: string
+}
+
+/** A row of `pet_weights` — one weigh-in. The latest one is the pet's weight. */
+export interface PetWeight {
+  id: string
+  pet_id: string
+  owner_id: string
+  weight_kg: number
+  measured_on: string
+  created_at: string
+}
+
 /** The two kinds of account, plus the administrator. */
 export type UserRole = 'user' | 'vet' | 'admin'
 

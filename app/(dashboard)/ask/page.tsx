@@ -51,7 +51,12 @@ interface QuestionRow {
   answers?: AnswerRow[]
 }
 
-/** Shown until the database is connected, and clearly labelled as examples. */
+/**
+ * Shown ONLY when the board cannot be reached, under a banner saying so. They
+ * used to carry invented doctors' names and a real Johannesburg practice's
+ * name with a "Verified vet" badge; an example must not look like a real,
+ * verified professional.
+ */
 const SEED: QuestionRow[] = [
   {
     id: 'seed-1',
@@ -60,7 +65,7 @@ const SEED: QuestionRow[] = [
     species: 'dog', answer_count: 1, created_at: new Date(Date.now() - 5400_000).toISOString(),
     answers: [{
       id: 'a1', created_at: new Date(Date.now() - 3600_000).toISOString(),
-      vetName: 'Dr. Naledi Mahlangu', vetPractice: 'Greenside Animal Hospital', verified: true,
+      vetName: 'Example answer', vetPractice: null, verified: false,
       body: 'Itching without visible fleas is very often environmental or food allergy rather than parasites — flea dirt can also be missed if the burden is low. Try a damp white paper test: comb onto wet white paper and look for reddish-brown specks. If that’s clear, ask your vet about a diet trial and a skin check, since the neck and tail base pattern is worth examining directly.',
     }],
   },
@@ -71,7 +76,7 @@ const SEED: QuestionRow[] = [
     species: 'cat', answer_count: 1, created_at: new Date(Date.now() - 86400_000).toISOString(),
     answers: [{
       id: 'a2', created_at: new Date(Date.now() - 72000_000).toISOString(),
-      vetName: 'Dr. Idris Patel', vetPractice: 'Melville Veterinary Clinic', verified: true,
+      vetName: 'Example answer', vetPractice: null, verified: false,
       body: 'Kittens do breathe faster than adult cats, and rates rise further in active sleep. As a rough guide, count breaths over 30 seconds while she is settled and double it — under about 40 at rest is usually unremarkable at that age. What would concern me is effort rather than rate: belly heaving, open-mouth breathing, or blue-tinged gums all mean same-day attention.',
     }],
   },
@@ -93,10 +98,11 @@ type Viewer =
   | { kind: 'vet'; id: string; verified: boolean }
 
 export default function AskPage() {
-  const [questions, setQuestions] = useState<QuestionRow[]>(SEED)
+  const [liveQuestions, setQuestions] = useState<QuestionRow[]>([])
   const [loadState, setLoadState] = useState<'loading' | 'live' | 'offline'>('loading')
   const [viewer, setViewer] = useState<Viewer>({ kind: 'loading' })
-  const [open, setOpen] = useState<string | null>(SEED[0].id)
+  const [availableVets, setAvailableVets] = useState<number | null>(null)
+  const [open, setOpen] = useState<string | null>(null)
 
   // Composer
   const [title, setTitle] = useState('')
@@ -148,28 +154,53 @@ export default function AskPage() {
           .from('questions').select('*').order('created_at', { ascending: false }).limit(40)
 
         if (!active) return
-        if (error || !qs || qs.length === 0) { setLoadState('offline'); return }
+        if (error || !qs) { setLoadState('offline'); return }
+
+        // How many verified professionals are currently taking questions —
+        // the "accepting" switch in the vet console, made visible to owners.
+        const { count: vetCount } = await supabase
+          .from('vet_profiles').select('id', { count: 'exact', head: true })
+          .eq('verified', true).eq('accepting', true)
+        if (active) setAvailableVets(vetCount ?? null)
+
+        // A connected but empty board is a real, empty board — not a reason to
+        // show invented example questions with invented vets' names on them.
+        if (qs.length === 0) { setQuestions([]); setOpen(null); setLoadState('live'); return }
 
         const ids = qs.map((q: { id: string }) => q.id)
-        const { data: as } = await supabase
+        /*
+         * Two plain queries, joined here.
+         *
+         * This used to embed `vet_profiles(...)` in the answers query. That
+         * cannot work: answers.vet_id references auth.users, not vet_profiles,
+         * so PostgREST has no relationship to follow and rejects the request.
+         * The error was ignored, so every answer silently vanished on reload.
+         */
+        const { data: as, error: aErr } = await supabase
           .from('answers')
-          .select('id, question_id, body, created_at, vet_profiles(full_name, practice_name, verified)')
+          .select('id, question_id, vet_id, body, created_at')
           .in('question_id', ids)
           .order('created_at', { ascending: true })
 
-        if (!active) return
+        const vetIds = [...new Set((as ?? []).map(a => a.vet_id).filter((v): v is string => Boolean(v)))]
+        const { data: vetRows } = vetIds.length
+          ? await supabase.from('vet_profiles').select('id, full_name, practice_name, verified').in('id', vetIds)
+          : { data: [] as { id: string; full_name: string; practice_name: string | null; verified: boolean }[] }
 
+        if (!active) return
+        if (aErr) toast.error('Answers couldn’t be loaded', { description: aErr.message })
+
+        const vetsById = new Map((vetRows ?? []).map(v => [v.id, v]))
         const byQuestion = new Map<string, AnswerRow[]>()
-        for (const a of (as ?? []) as unknown as Array<{
-          id: string; question_id: string; body: string; created_at: string
-          vet_profiles: { full_name: string; practice_name: string | null; verified: boolean } | null
-        }>) {
+        for (const a of as ?? []) {
+          const vet = a.vet_id ? vetsById.get(a.vet_id) : undefined
           const list = byQuestion.get(a.question_id) ?? []
           list.push({
             id: a.id, body: a.body, created_at: a.created_at,
-            vetName: a.vet_profiles?.full_name ?? 'Veterinary professional',
-            vetPractice: a.vet_profiles?.practice_name ?? null,
-            verified: Boolean(a.vet_profiles?.verified),
+            // A deleted account leaves its answers in the archive, unsigned.
+            vetName: vet?.full_name ?? 'Former PetPal vet',
+            vetPractice: vet?.practice_name ?? null,
+            verified: Boolean(vet?.verified),
           })
           byQuestion.set(a.question_id, list)
         }
@@ -192,7 +223,10 @@ export default function AskPage() {
     return () => { active = false }
   }, [])
 
-  const canAsk = viewer.kind === 'owner' || viewer.kind === 'vet'
+  // Posting needs a signed-in user AND a live board; on the example board a
+  // post would have nowhere to go.
+  const questions = loadState === 'offline' ? SEED : liveQuestions
+  const canAsk = (viewer.kind === 'owner' || viewer.kind === 'vet') && loadState === 'live'
 
   async function ask() {
     const t = title.trim()
@@ -237,7 +271,7 @@ export default function AskPage() {
   async function answer(questionId: string) {
     const text = (drafts[questionId] ?? '').trim()
     if (text.length < 20) { toast.error('Give the owner a little more to work with — at least 20 characters.'); return }
-    if (viewer.kind !== 'vet' || !viewer.verified || answering) return
+    if (viewer.kind !== 'vet' || !viewer.verified || answering || loadState !== 'live') return
 
     setAnswering(questionId)
     try {
@@ -365,13 +399,21 @@ export default function AskPage() {
                     </button>
                   ))}
                 </div>
-                <Button onClick={ask} disabled={posting} className="btn-glass-primary rounded-xl gap-2 h-9 text-sm">
+                <Button onClick={ask} disabled={posting || !canAsk} className="btn-glass-primary rounded-xl gap-2 h-9 text-sm">
                   <Send className="w-3.5 h-3.5" /> {posting ? 'Posting…' : 'Post question'}
                 </Button>
               </div>
             </div>
           )}
         </div>
+
+        {loadState === 'live' && availableVets !== null && (
+          <p className="text-xs text-zinc-500 -mt-5 mb-8">
+            {availableVets === 0
+              ? 'No verified vet is taking questions right now. You can still post — it will wait in the queue.'
+              : `${availableVets} verified ${availableVets === 1 ? 'vet is' : 'vets are'} currently taking questions.`}
+          </p>
+        )}
 
         {/* ── Vet status ── */}
         {viewer.kind === 'vet' && (
@@ -395,7 +437,7 @@ export default function AskPage() {
           <div className="rounded-xl p-3.5 mb-6 flex items-start gap-2.5 text-xs text-zinc-400 border border-white/10 bg-white/[0.02]">
             <Sparkles className="w-4 h-4 text-[#FFD98E] shrink-0 mt-px" aria-hidden="true" />
             <span className="leading-relaxed">
-              Showing example questions — the live board isn&rsquo;t reachable, so nothing posted here will be saved.
+              Showing example questions — the live board isn&rsquo;t reachable, so posting is paused until it is.
             </span>
           </div>
         )}
@@ -409,6 +451,15 @@ export default function AskPage() {
             <span className="text-[11px] text-zinc-500">{unanswered} awaiting an answer</span>
           )}
         </div>
+
+        {loadState === 'loading' && (
+          <div className="text-sm text-zinc-500 text-center py-10">Loading questions…</div>
+        )}
+        {loadState === 'live' && questions.length === 0 && (
+          <div className="rounded-[1.25rem] border border-white/[0.08] p-8 text-center text-sm text-zinc-400">
+            No questions yet. Be the first to ask one.
+          </div>
+        )}
 
         <div className="space-y-3">
           {questions.map(q => {
@@ -495,7 +546,7 @@ export default function AskPage() {
                         {/* Only a verified vet sees this. The database enforces
                             the same rule, so hiding it is convenience, not
                             security. */}
-                        {viewer.kind === 'vet' && viewer.verified && (
+                        {viewer.kind === 'vet' && viewer.verified && loadState === 'live' && (
                           <div className="mt-5 pt-5 border-t border-white/[0.07]">
                             <label
                               htmlFor={`answer-${q.id}`}

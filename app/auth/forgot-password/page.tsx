@@ -30,7 +30,9 @@ export default function ForgotPasswordPage() {
       const { createClient } = await import('@/lib/supabase/client')
       const supabase = createClient()
       const { error } = await supabase.auth.resetPasswordForEmail(trimmed, {
-        redirectTo: `${window.location.origin}/auth/callback?next=/settings`,
+        // Lands on the "Change password" form. It used to land on a settings
+        // page that had no way to set a password, so the reset went nowhere.
+        redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent('/settings?tab=security')}`,
       })
       if (error) {
         const f = describeSupabaseError(error)

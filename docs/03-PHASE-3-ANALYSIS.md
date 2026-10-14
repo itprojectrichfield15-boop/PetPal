@@ -255,7 +255,9 @@ implements them — the SQL belongs in Phase 4.
 | Entity | Represents | Key attributes |
 |---|---|---|
 | User profile | A registered person | Identifier, email, display name, role |
-| Pet | An animal owned by a user | Name, species, breed, age, weight, sex |
+| Pet | An animal owned by a user | Name, species, breed, age, current weight, sex |
+| Reminder | A dated task for one pet | Type, title, due date, done |
+| Weight entry | One weigh-in of one pet | Weight, date measured |
 | Professional record | A veterinary professional's credentials | Full name, practice, registration number, verification status, availability |
 | Saved reply | A professional's reusable text | Title, body, usage count |
 | Question | A query from an owner | Title, body, species, answer count |
@@ -274,6 +276,7 @@ Every entity has a unique identifier that is never null and never reused.
 |---|---|---|
 | User profile | Account identifier | Unique, never null |
 | Pet | Generated identifier | Unique, never null |
+| Reminder / Weight entry | Generated identifier | Unique, never null |
 | Question / Answer | Generated identifier | Unique, never null |
 
 ### Referential integrity
@@ -284,14 +287,22 @@ defined.
 | Relationship | Rule on delete |
 |---|---|
 | Pet → owner | Deleting the account deletes the pets (cascade) |
+| Reminder / Weight entry → pet | Deleting the pet deletes its reminders and weigh-ins (cascade) |
+| Reminder / Weight entry → owner | Cascade; and a new one may only point at a pet the same user owns |
+| Profile → account | Cascade |
 | Professional record → account | Cascade |
 | Saved reply → professional | Cascade |
 | Answer → question | Cascade |
-| Answer → professional | Cascade |
+| Question → asker | **Set null** — the question stays, without the asker |
+| Answer → professional | **Set null** — the answer stays, without the author |
 
 Justify the cascade choice: when a user deletes their account, their personal
 data must go with it. Leaving orphaned pet records would be both a data-quality
-failure and a privacy failure.
+failure and a privacy failure. Users can now do this themselves from Settings.
+
+Justify the exception too: questions and answers are a public archive that other
+owners rely on, so they survive the account that wrote them, with the link to
+that person removed.
 
 ### Domain integrity
 
@@ -300,9 +311,16 @@ Every value must be of the right type and within the permitted range.
 | Attribute | Domain rule | Reason |
 |---|---|---|
 | Pet species | One of: dog, cat, bird, rabbit, fish, reptile, small, other, invert | A typo must not create a new species |
-| Pet weight | Greater than zero, or absent | A negative weight is meaningless and would break the calculation |
+| Pet name | 1–40 characters, not just spaces | A blank name identifies nothing |
+| Pet weight | Greater than zero and at most 200 kg, or absent; the form also applies a per-species maximum (e.g. 15 kg for a cat) | A negative weight is meaningless and would break the calculation; an absurd one is almost always a typo |
 | Pet sex | male, female, unknown | |
-| User role | user, vet, admin | |
+| Reminder type | vaccine, vet visit, medication, deworming, grooming, other | |
+| Reminder title | 2–80 characters | |
+| Reminder due date | Today or later when created | A reminder for the past is not a reminder |
+| Weigh-in weight | Greater than zero, at most 200 kg | As for pet weight |
+| Weigh-in date | Not in the future | A weight cannot be measured before it happens |
+| User role | user, vet, admin — and never changed by the user themselves | Otherwise anyone could grant themselves administration |
+| Verification status | Changed only by an administrator | A self-asserted credential is no credential |
 | Community post text | 10–280 characters | Too short says nothing; too long is not a wall post |
 | Community mood | happy, proud, help, sad | |
 | Hearts | Zero or greater | A negative count is impossible |
@@ -315,7 +333,9 @@ Every value must be of the right type and within the permitted range.
 
 ## 3.4.3 Derived data
 
-One attribute is derived: the number of answers on a question.
+Two attributes are derived: the number of answers on a question, and a pet's
+current weight (which is always its most recent weigh-in). The analysis below
+uses the answer count; the same reasoning applies to the current weight.
 
 **Analysis:** strictly this is redundant, since it can be counted from the
 answers themselves. Storing it is a deliberate denormalisation for performance —
@@ -334,6 +354,8 @@ Raise the issue here in Analysis; state the mechanism in Design.
 |---|---|---|
 | User profiles | Hundreds | Sign-ups |
 | Pets | 1–3 per user | Sign-ups |
+| Reminders | A handful per pet per year | Vaccination and medication schedules |
+| Weight entries | Roughly one per pet per month for engaged owners | Engagement |
 | Questions | Tens per month | Engagement |
 | Answers | 1–3 per question | Professional availability |
 | Community posts | Tens per month | Engagement |
@@ -345,8 +367,11 @@ All far below the free-tier storage limit identified in Phase 2.
 
 State the requirement here; the mechanism is Phase 4.
 
-- Pet records must be readable only by their owner
+- Pet records, reminders and weight entries must be readable only by their owner
 - Profile records must be readable only by their owner and by an administrator
+- A user must never be able to change their own role, or a professional their
+  own verification status
+- A user must be able to delete their own account and personal data
 - Saved replies must be readable only by their author
 - Community posts must carry no author identifier
 - Answers must be writable only by a verified professional
@@ -415,14 +440,14 @@ because it proves the requirements were derived rather than imagined.
 | W5 | FR-18, NFR-01 | Single search, immediate result |
 | W6, W7 | FR-25, FR-27, FR-28 | Distance-sorted open data; only facts held by the source; no ranking |
 | W8 | FR-30 to FR-34 | Ask a Vet with database-enforced verification |
-| W9 | FR-08 to FR-10 | Pet profiles |
+| W9 | FR-08 to FR-10, FR-51 to FR-55 | Pet profiles, a weight log with a trend chart, and dated reminders |
 | W10 | NFR (signed-out access) | Core tools work without an account |
 | W11 | FR-12, FR-13 | Nine species supported throughout |
 | W12 | All | One application |
 
 ## 3.6.3 Functional requirements
 
-Copy the full FR-01 to FR-50 table from `01-SYSTEM-REFERENCE.md` §7.1, organised
+Copy the full FR-01 to FR-58 table from `01-SYSTEM-REFERENCE.md` §7.1, organised
 under the same subheadings.
 
 **Add a priority column** using MoSCoW:
@@ -595,9 +620,14 @@ The guidelines mention data dictionaries in the expected outcomes. Include one.
 
 | Attribute | Entity | Type | Length | Required | Domain | Description |
 |---|---|---|---|---|---|---|
-| Pet name | Pet | Text | — | Yes | Any | The animal's name |
+| Pet name | Pet | Text | 40 | Yes | 1–40 characters, not only spaces | The animal's name |
 | Species | Pet | Text | — | Yes | 9 permitted values | The kind of animal |
-| Weight | Pet | Decimal | — | No | > 0 | Bodyweight in kilograms |
+| Weight | Pet | Decimal | — | No | > 0 and ≤ 200 | Current bodyweight in kilograms; derived from the latest weight entry |
+| Weight | Weight entry | Decimal | — | Yes | > 0 and ≤ 200 | One weigh-in, in kilograms |
+| Date measured | Weight entry | Date | — | Yes | Not in the future | When the pet was weighed |
+| Reminder type | Reminder | Text | — | Yes | 6 permitted values | Vaccine, vet visit, medication, deworming, grooming, other |
+| Due date | Reminder | Date | — | Yes | Today or later when created | When the task is due |
+| Done | Reminder | Boolean | — | Yes | true/false | Whether the owner has ticked it off |
 | Verification status | Professional | Boolean | — | Yes | true/false | Whether an administrator has confirmed the registration |
 | Availability | Professional | Boolean | — | Yes | true/false | Whether taking questions |
 | Answer count | Question | Integer | — | Yes | ≥ 0 | Derived; number of answers |

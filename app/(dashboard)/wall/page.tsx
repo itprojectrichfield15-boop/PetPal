@@ -27,6 +27,7 @@ const MOODS = [
   { key: 'sad', label: 'Tough day', color: '#A79CBF' },
 ]
 
+/** Shown only when the feed cannot be reached, under a banner saying so. */
 const SEED: Confession[] = [
   { id: 1, text: 'Biscuit finally learned to sit AND stay today. Three weeks of patience and so many treats. Proud dog dad moment! 🐶', mood: 'proud', hearts: 248, time: '12m ago' },
   { id: 2, text: 'Used the food checker before giving Luna a bit of my dinner — turns out onions are toxic to cats! Probably saved her a vet trip.', mood: 'happy', hearts: 519, time: '38m ago' },
@@ -37,7 +38,7 @@ const SEED: Confession[] = [
 ]
 
 export default function WallPage() {
-  const [posts, setPosts] = useState<Confession[]>(SEED)
+  const [livePosts, setPosts] = useState<Confession[]>([])
   const [draft, setDraft] = useState('')
   const [mood, setMood] = useState('happy')
   const [posting, setPosting] = useState(false)
@@ -59,7 +60,8 @@ export default function WallPage() {
   const liked = editedLiked ?? savedLiked
   const setLiked = setEditedLiked
 
-  // Load real posts; fall back to the seed if unavailable or empty.
+  // Load real posts. Examples appear only if the feed can't be reached — an
+  // empty feed is shown as empty, not padded out with invented posts.
   useEffect(() => {
     let active = true
     async function load() {
@@ -73,7 +75,7 @@ export default function WallPage() {
           .order('created_at', { ascending: false })
           .limit(50)
         if (!active) return
-        if (error || !data || data.length === 0) { setLoadState('offline'); return }
+        if (error || !data) { setLoadState('offline'); return }
         setPosts(data.map(d => ({
           id: d.id, text: d.text, mood: d.mood, hearts: d.hearts ?? 0,
           time: formatRelative(d.created_at),
@@ -87,7 +89,14 @@ export default function WallPage() {
     return () => { active = false }
   }, [])
 
+  const offline = loadState === 'offline'
+  const posts = offline ? SEED : livePosts
+
   async function post() {
+    if (loadState !== 'live') {
+      toast.error('The community feed isn’t reachable', { description: 'Posting is paused until it is.' })
+      return
+    }
     const text = draft.trim()
     if (text.length < 10) { toast.error('Say a little more — at least 10 characters.'); return }
     if (text.length > 280) { toast.error('That’s a bit long — keep it under 280 characters.'); return }
@@ -102,14 +111,7 @@ export default function WallPage() {
     try {
       const { tryCreateClient } = await import('@/lib/supabase/client')
       const supabase = tryCreateClient()
-      if (!supabase) {
-        // No backend configured: the post is real on screen but only for this
-        // session. Say so rather than implying it was published.
-        toast.success('Posted to this session', {
-          description: 'The community feed isn’t connected, so this won’t be saved.',
-        })
-        return
-      }
+      if (!supabase) throw new Error('offline')
 
       const { data, error } = await supabase
         .from('confessions')
@@ -143,6 +145,7 @@ export default function WallPage() {
     const key = String(id)
     if (liked.has(key)) return            // one heart per browser, per post
     if (key.startsWith('tmp-')) return    // not saved yet — nothing to increment
+    if (loadState !== 'live') return      // example posts can't be hearted
 
     // Optimistic bump.
     setPosts(p => p.map(c => (c.id === id ? { ...c, hearts: c.hearts + 1, liked: true } : c)))
@@ -153,8 +156,7 @@ export default function WallPage() {
     try {
       const { tryCreateClient } = await import('@/lib/supabase/client')
       const supabase = tryCreateClient()
-      // Seed posts have numeric ids and exist only on the client.
-      if (!supabase || typeof id !== 'string') return
+      if (!supabase) throw new Error('offline')
       const { error } = await supabase.rpc('increment_hearts', { cid: id })
       if (error) throw error
     } catch {
@@ -206,7 +208,7 @@ export default function WallPage() {
             </div>
             <div className="flex items-center gap-3">
               <span className="text-xs text-zinc-600 font-mono">{draft.length}/280</span>
-              <Button onClick={post} disabled={posting} className="btn-glass-primary gap-1.5 h-9 rounded-xl text-sm">
+              <Button onClick={post} disabled={posting || offline} className="btn-glass-primary gap-1.5 h-9 rounded-xl text-sm">
                 <Send className="w-3.5 h-3.5" /> {posting ? 'Posting…' : 'Post'}
               </Button>
             </div>
@@ -222,10 +224,15 @@ export default function WallPage() {
           <div className="glass-card rounded-xl p-3 mb-4 flex items-start gap-2.5 text-xs text-zinc-400">
             <Sparkles className="w-4 h-4 text-[#FFD98E] shrink-0 mt-px" />
             <span>
-              Showing example posts — the live community feed isn&rsquo;t reachable right now, so anything you post
-              here won&rsquo;t be saved.
+              Showing example posts — the live community feed isn&rsquo;t reachable right now, so posting and
+              hearts are paused until it is.
             </span>
           </div>
+        )}
+
+        {loadState === 'loading' && <p className="text-sm text-zinc-500 text-center py-10">Loading posts…</p>}
+        {loadState === 'live' && posts.length === 0 && (
+          <div className="glass-card rounded-2xl p-8 text-center text-sm text-zinc-400">No posts yet — share the first one.</div>
         )}
 
         {/* Feed */}
@@ -261,7 +268,7 @@ export default function WallPage() {
                       return (
                         <button
                           onClick={() => like(c.id)}
-                          disabled={isLiked}
+                          disabled={isLiked || offline}
                           aria-pressed={isLiked}
                           aria-label={isLiked ? `Hearted, ${c.hearts} hearts` : `Heart this post, ${c.hearts} hearts`}
                           className={`flex items-center gap-1.5 text-xs transition-colors ${

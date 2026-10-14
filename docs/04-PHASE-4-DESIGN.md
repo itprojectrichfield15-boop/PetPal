@@ -179,6 +179,20 @@ Model these as classes with attributes and operations:
 │ -role: Role           │        │ -species: Species    │
 │ -createdAt: Date      │        │ -weight: number      │
 └───────────────────────┘        └──────────────────────┘
+                                       │1           │1
+                                       │*           │*
+                        ┌──────────────────────┐ ┌──────────────────────┐
+                        │    <<entity>>        │ │    <<entity>>        │
+                        │    PetReminder       │ │    PetWeight         │
+                        │──────────────────────│ │──────────────────────│
+                        │ -id: UUID            │ │ -id: UUID            │
+                        │ -petId: UUID         │ │ -petId: UUID         │
+                        │ -ownerId: UUID       │ │ -ownerId: UUID       │
+                        │ -kind: ReminderKind  │ │ -weightKg: number    │
+                        │ -title: string       │ │ -measuredOn: Date    │
+                        │ -dueOn: Date         │ └──────────────────────┘
+                        │ -done: boolean       │
+                        └──────────────────────┘
           │1
           │
           │0..1
@@ -227,7 +241,10 @@ Model these as classes with attributes and operations:
 └────────────────────────────────┘  └───────────────────────────────┘
 ```
 
-Add an enumeration for `Species` with its nine values and `Role` with its three.
+Add an enumeration for `Species` with its nine values, `Role` with its three,
+and `ReminderKind` with its six (vaccine, vet_visit, medication, deworming,
+grooming, other). These match `lib/types.ts`, where `PetReminder` and
+`PetWeight` are defined.
 
 ## 4.3.2 Hardware Architectural Design
 
@@ -386,7 +403,7 @@ build time**, so a change requires a rebuild.
 
 | Data | Where | Why |
 |---|---|---|
-| User accounts, pets, questions, answers, professional records | Supabase PostgreSQL | Shared, relational, needs access control |
+| User accounts, pets, reminders, weigh-ins, questions, answers, professional records | Supabase PostgreSQL | Shared, relational, needs access control |
 | Care plan progress | Browser local storage | Device-specific, no account required |
 | Appearance preferences | Browser local storage | Device-specific by nature |
 | Bundled practice data | Static JSON in the build | Must be available when the network is not |
@@ -412,6 +429,8 @@ attribute becomes a column with a concrete type.
 |---|---|
 | User profile | `profiles` |
 | Pet | `pets` |
+| Reminder | `pet_reminders` |
+| Weight entry | `pet_weights` |
 | Professional record | `vet_profiles` |
 | Saved reply | `vet_replies` |
 | Question | `questions` |
@@ -428,16 +447,40 @@ Reproduce every table from `01-SYSTEM-REFERENCE.md` Part 5 in this format:
 |---|---|---|---|---|---|
 | `id` | uuid | No | `gen_random_uuid()` | PK | — |
 | `owner_id` | uuid | Yes | — | FK → `auth.users(id)` | On delete cascade |
-| `name` | text | No | — | — | — |
+| `name` | text | No | — | — | 1–40 characters after trimming |
 | `species` | text | No | `'dog'` | — | In 9 permitted values |
 | `breed` | text | Yes | — | — | — |
 | `age` | text | Yes | — | — | — |
-| `weight` | numeric | Yes | — | — | Null or > 0 |
+| `weight` | numeric | Yes | — | — | Null, or > 0 and ≤ 200; set by trigger from `pet_weights` |
 | `sex` | text | Yes | `'male'` | — | male/female/unknown |
 | `photo_url` | text | Yes | — | — | — |
 | `created_at` | timestamptz | Yes | `now()` | — | — |
 
-Do this for all seven tables.
+**Table: `pet_reminders`**
+
+| Column | Type | Null | Default | Key | Constraint |
+|---|---|---|---|---|---|
+| `id` | uuid | No | `gen_random_uuid()` | PK | — |
+| `pet_id` | uuid | No | — | FK → `pets(id)` | On delete cascade |
+| `owner_id` | uuid | No | — | FK → `auth.users(id)` | On delete cascade |
+| `kind` | text | No | `'other'` | — | vaccine/vet_visit/medication/deworming/grooming/other |
+| `title` | text | No | — | — | 2–80 characters after trimming |
+| `due_on` | date | No | — | — | — |
+| `done` | boolean | No | `false` | — | — |
+| `created_at` | timestamptz | Yes | `now()` | — | — |
+
+**Table: `pet_weights`**
+
+| Column | Type | Null | Default | Key | Constraint |
+|---|---|---|---|---|---|
+| `id` | uuid | No | `gen_random_uuid()` | PK | — |
+| `pet_id` | uuid | No | — | FK → `pets(id)` | On delete cascade |
+| `owner_id` | uuid | No | — | FK → `auth.users(id)` | On delete cascade |
+| `weight_kg` | numeric | No | — | — | > 0 and ≤ 200 |
+| `measured_on` | date | No | `current_date` | — | ≤ `current_date + 1` (a day's slack for time zones) |
+| `created_at` | timestamptz | Yes | `now()` | — | — |
+
+Do this for all nine tables.
 
 ## 4.5.3 Physical ER diagram
 
@@ -450,6 +493,8 @@ data types, primary keys, foreign keys and constraints**. Crow's Foot notation.
 |---|---|---|---|
 | Primary keys | All | `id` | Automatic |
 | `pets_owner_created_idx` | `pets` | `(owner_id, created_at desc)` | The dashboard always filters by owner and sorts by date |
+| `pet_reminders_owner_due_idx` | `pet_reminders` | `(owner_id, done, due_on)` | The dashboard asks for one owner's unfinished reminders in date order |
+| `pet_weights_pet_idx` | `pet_weights` | `(pet_id, measured_on)` | A pet's chart reads its entries in date order |
 | `confessions_created_idx` | `confessions` | `(created_at desc)` | The wall is always newest-first |
 | `questions_created_idx` | `questions` | `(created_at desc)` | Same |
 | `answers_question_idx` | `answers` | `(question_id, created_at)` | Fetching a question's answers in order |
@@ -476,6 +521,9 @@ Group by type, as in Phase 3 §3.4.2, but now give the implementation:
 | `bump_answer_count()` | Function + trigger | Keeps the derived answer count correct |
 | `increment_hearts(uuid)` | Function | Atomic heart increment without an update policy |
 | `is_admin()` | Function | Administrator check, used inside policies |
+| `sync_pet_weight()` | Function + trigger (after insert/delete on `pet_weights`) | Keeps `pets.weight` equal to the latest weigh-in |
+| `guard_vet_profile()` | Function + trigger (before update on `vet_profiles`) | Only an administrator may change `verified` or `registration_no` |
+| `delete_my_account()` | Function (RPC, signed-in users only) | Deletes the caller's own login; their profile, pets, health records, vet profile and saved replies cascade; questions and answers stay, detached |
 
 For each, document: name, parameters, return type, security context, and what it
 does. Give the pseudocode.
@@ -489,34 +537,59 @@ lifecycle.
 **`is_admin` deserves an explanation too:** a policy on `profiles` that itself
 queries `profiles` recurses infinitely. `SECURITY DEFINER` breaks the recursion.
 
+**`guard_vet_profile` is the one to use for "why a trigger and not a policy?"**
+A policy can say *who* may update a row, but the vet must be allowed to update
+their own row (bio, practice, availability). What must be blocked is a change to
+two particular columns by anyone but an administrator, and a `before update`
+trigger can compare old and new values column by column.
+
 ## 4.5.7 Row-level security policy design
 
-Present the full policy matrix — **24 policies**:
+Present the full policy matrix — **32 policies**:
 
 | Table | Operation | Who | Rule |
 |---|---|---|---|
 | `profiles` | select | Owner | `auth.uid() = id` |
 | `profiles` | select | Administrator | `is_admin()` |
-| `profiles` | insert / update | Owner | `auth.uid() = id` |
+| `profiles` | insert | Owner | `auth.uid() = id AND role = 'user'` |
+| `profiles` | update | Owner | `auth.uid() = id` — and only `display_name`, `avatar_url` (column grant) |
 | `pets` | all four | Owner | `auth.uid() = owner_id` |
-| `confessions` | select / insert | Anyone | `true` |
+| `pet_reminders` | select / delete | Owner | `auth.uid() = owner_id` |
+| `pet_reminders` | insert / update | Owner | `auth.uid() = owner_id` AND the pet belongs to the same owner |
+| `pet_weights` | select / delete | Owner | `auth.uid() = owner_id` |
+| `pet_weights` | insert | Owner | `auth.uid() = owner_id` AND the pet belongs to the same owner |
+| `pet_weights` | update | **Nobody** | No policy — remove and re-enter instead |
+| `confessions` | select | Anyone | `true` |
+| `confessions` | insert | Anyone | `hearts = 0` |
+| `confessions` | delete | Administrator | `is_admin()` |
 | `confessions` | update | **Nobody** | No policy exists |
 | `vet_profiles` | select | Anyone | `true` |
-| `vet_profiles` | insert / update | Self | `auth.uid() = id` |
+| `vet_profiles` | insert | Self | `auth.uid() = id AND verified = false` |
+| `vet_profiles` | update | Self | `auth.uid() = id` (the guard trigger blocks `verified` and `registration_no`) |
 | `vet_profiles` | update | Administrator | `is_admin()` |
 | `vet_replies` | all four | Author | `auth.uid() = vet_id` |
 | `questions` | select | Anyone | `true` |
-| `questions` | insert | Signed in | `auth.uid() = asker_id` |
+| `questions` | insert | Signed in | `auth.uid() = asker_id AND answer_count = 0 AND resolved = false` |
+| `questions` | update | Author | `auth.uid() = asker_id` — and only `resolved` (column grant) |
 | `answers` | select | Anyone | `true` |
 | `answers` | insert | **Verified vet only** | `auth.uid() = vet_id AND verified` |
+| `answers` | update | Author | `auth.uid() = vet_id` — and only `body` (column grant) |
 
-For each non-obvious one, give the design rationale. The two most interesting:
+(Counting policies: profiles 4, pets 4, pet_reminders 4, pet_weights 3,
+confessions 3, vet_profiles 4, vet_replies 4, questions 3, answers 3 = 32.)
+
+For each non-obvious one, give the design rationale. The most interesting:
 
 - **`confessions` has no update policy** — because a policy permissive enough to
   increment a counter would also permit rewriting the post. Hearts therefore go
   through a function.
 - **`answers` insert requires verification** — the interface also hides the
   composer, but that is a courtesy. The database is the control.
+- **Policies decide rows; grants decide columns.** The original design had only
+  policies, and "a user may update their own profile" quietly included the
+  `role` column — any user could make themselves an administrator. The design
+  now pairs each update policy with a column-level grant. This is the clearest
+  example in the project of a security rule that *looked* complete.
 
 ## 4.5.8 Backup and recovery design
 
@@ -757,9 +830,20 @@ For every form, document: fields, types, validation, and error messages.
 | Practice name | Text | No | — | — |
 | Registration number | Text | Professional: yes | Non-empty | "Enter your registration number so we can verify you" |
 
-Do this for: add a pet, nutrition planner, food safety search, wellness check,
-ask a question, post an answer, saved reply, professional profile, community post,
-settings.
+Do this for: add a pet, edit a pet, log a weigh-in, add a reminder, nutrition
+planner, food safety search, wellness check, ask a question, post an answer,
+saved reply, professional profile, community post, settings (display name,
+change password, delete account).
+
+A second worked example, for the health records on the pet page:
+
+| Field | Type | Required | Validation | Error message |
+|---|---|---|---|---|
+| Weight (kg) | Number | Yes | > 0 and ≤ the species maximum in `lib/health.ts` | "Weight must be a number above zero." / "… is more than any healthy cat weighs — check the number (it is in kilograms)." |
+| Measured on | Date | Yes | Not in the future | "A weigh-in can't be dated in the future." |
+| Reminder type | Select | Yes | One of six | — |
+| Reminder title | Text | No — left blank, the type's name is used (e.g. "Vaccination") | 2–80 characters | "Keep the reminder between 2 and 80 characters." |
+| Due on | Date | Yes | Today or later | "A reminder needs a date from today onwards." |
 
 **Input design principles to state:**
 
@@ -781,10 +865,13 @@ For each screen, document what is produced and how it is presented.
 | Feeding plan | Nutrition | Figures, table, radar chart | Calories, grams, meals, water, macros |
 | Safety verdict | Food safety | Colour-coded card | Verdict, reason, action, species scope |
 | Practice list | Find a vet | List + interactive map | Distance-sorted; **only fields the source holds** |
-| Wellness result | Wellness | Score, band, guidance | Advises consultation at moderate scores |
+| Wellness result | Wellness | Score, band, guidance, "Worth looking at" list | Advises consultation at moderate scores; any red-flag answer gives "See a vet" regardless of score |
+| Dashboard | Dashboard | Pet cards, reminder list, line chart | Only the user's own data; overdue reminders highlighted; chart needs two weigh-ins |
+| Pet health record | Pet page | Line chart + dated lists | Weight log and reminders for one pet |
 | Question thread | Ask a Vet | Thread with verification badges | Public |
 | Vet queue | Vet console | Filterable list + bar chart | Chart counted from the actual queue |
-| Admin tables | Admin | Data tables | Real rows only |
+| Admin overview | Admin | Four counts, area chart, bar chart | Accounts, posts, verified and waiting vets; new accounts over 14 days; questions by species, answered vs waiting — all live |
+| Admin tables | Admin | Data tables | Real rows only; shared registration numbers flagged |
 
 **Output design principles to state:**
 
@@ -802,8 +889,8 @@ For each screen, document what is produced and how it is presented.
 Include a wireframe or annotated screenshot for each major screen. For each,
 label: layout regions, navigation, primary action, and the responsive behaviour.
 
-Cover at minimum: landing, sign-up, dashboard, nutrition, food safety, find a
-vet, ask a vet, vet console, admin, settings.
+Cover at minimum: landing, sign-up, dashboard, pet page, nutrition, food
+safety, find a vet, ask a vet, vet console, admin, settings.
 
 ## 4.7.6 Responsive design
 
@@ -866,8 +953,15 @@ first sign-in.
 **Sign-in:** credentials → Supabase → JWT issued → stored in a cookie → sent with
 every request.
 
-**Password reset:** email requested → Supabase sends a link → user follows it →
-sets a new password.
+**Password reset:** email requested → Supabase sends a link → user follows it
+→ `/auth/callback` exchanges it for a session → user lands on Settings →
+Password & Privacy → sets a new password there.
+
+**Change password:** signed-in user enters a new password twice (at least 8
+characters) on Settings → Password & Privacy.
+
+**Delete account:** user types `DELETE` → the `delete_my_account()` function
+removes their login → everything personal cascades → the user is signed out.
 
 **Sign out others:** revokes every session except the current one.
 
@@ -886,10 +980,10 @@ state which one is the control.
 | Personal data at rest | Stored by Supabase; encrypted at rest by the provider |
 | Personal data in transit | HTTPS only |
 | Passwords | Never stored by the application; hashed by Supabase |
-| Pet records | Owner-only, enforced by policy; not visible to administrators |
+| Pet records, reminders, weigh-ins | Owner-only, enforced by policy; not visible to administrators |
 | Community posts | No author identifier stored at all — anonymity is structural |
 | Saved replies | Author-only |
-| Account deletion | Cascades to pets, questions, answers and replies |
+| Account deletion | User-initiated from Settings. Cascades to profile, pets (with their reminders and weigh-ins), professional record and saved replies. Questions and answers remain in the public archive with the author set to null |
 
 ## 4.8.5 The key-handling rule
 

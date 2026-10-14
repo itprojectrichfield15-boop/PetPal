@@ -16,7 +16,7 @@ PetPal is a website. It has two halves:
 | Half | What it is | Where it lives |
 |---|---|---|
 | **The app** | The pages, the design, the 3D animals, all the code | GitHub → Vercel |
-| **The database** | Accounts, saved pets, community posts | Supabase |
+| **The database** | Accounts, pets with their weigh-ins and reminders, community posts, Ask a Vet | Supabase |
 
 They are separate services and both are free. The app talks to the database using
 two settings called **environment variables**. If those two settings are wrong,
@@ -80,7 +80,8 @@ git push -u origin main
 
 ## Step 3 — Create the tables
 
-The database is empty. This step creates the six tables the app needs.
+The database is empty. This step creates the nine tables the app needs, along
+with the security rules that decide who may read and change each one.
 
 1. In your Supabase project, click **SQL Editor** in the left sidebar.
 2. Click **New query**.
@@ -90,11 +91,22 @@ The database is empty. This step creates the six tables the app needs.
 
 You should see **Success. No rows returned**. That is correct — it means it worked.
 
-To check: click **Table Editor** in the sidebar. You should now see six tables:
-`profiles`, `pets`, `confessions`, `vet_profiles`, `questions` and `answers`.
+To check: click **Table Editor** in the sidebar. You should now see nine tables:
+`profiles`, `pets`, `pet_reminders`, `pet_weights`, `confessions`,
+`vet_profiles`, `vet_replies`, `questions` and `answers`.
 
 > You can run this file again later without breaking anything. It repairs a
 > half-finished setup rather than erroring.
+
+> 🔁 **Already set up from an older copy of PetPal? Run the whole file again.**
+> This version adds two tables (`pet_reminders` and `pet_weights`, for the
+> health records on each pet's page) and closes several security holes in the
+> old rules — for example, any signed-in user could previously make themselves
+> an administrator from the browser console. None of that reaches your database
+> until you paste the **entire** `supabase/schema.sql` into the SQL Editor and
+> click Run again. It is safe to re-run: existing accounts, pets and posts are
+> kept. Afterwards, open `/setup` — it checks all nine tables and names any that
+> are missing.
 
 ---
 
@@ -194,7 +206,7 @@ Work down the list until all of them are green.
 | URL doesn't look like a Supabase URL | Re-copy it from Step 4. No trailing slash. |
 | Project does not respond | The project is paused or deleted. Open Supabase and Restore it. |
 | Anon key rejected | You copied the wrong key. Get the **publishable** (or legacy **anon**) one — see Step 4. |
-| Table not found | You skipped Step 3. Run `supabase/schema.sql`. |
+| Table not found | You skipped Step 3, or set up from an older copy. Run the whole of `supabase/schema.sql` again. |
 
 Then create an account on your site to confirm sign-up works.
 
@@ -269,30 +281,28 @@ dangerous. Someone could tell an owner that a toxic food is safe while wearing a
 professional badge. The restriction is enforced by a database policy, so hiding
 the button in the interface is not what stops it.
 
-To verify someone:
+To verify someone (you must be an admin — see the section above):
 
 1. Ask them for their registration number and check it against the professional
    register yourself.
-2. Supabase → **SQL Editor** → New query.
-3. Find them:
-
-```sql
-select id, full_name, practice_name, registration_no, verified
-from vet_profiles
-order by created_at desc;
-```
-
-4. Verify the right person, using their id from that list:
-
-```sql
-update vet_profiles set verified = true where id = 'paste-their-id-here';
-```
+2. On your site, open **Admin Panel** in the sidebar (`/admin`) → **Vets** tab.
+3. Find them in the list and click **Verify**. **Revoke** takes it away again.
 
 They can answer questions on **Ask a Vet** from their next page load.
 
-> There is no admin screen for this yet — it is a deliberate known limitation,
-> listed in PROJECT-GUIDE.md. The security model is correct; only the tooling is
-> missing.
+The screen only reports success once the database has confirmed the change. If
+two accounts have entered the same registration number, both rows are marked
+*"Same number as another account — check before verifying"*. That is not blocked
+at sign-up on purpose: a database rule would make the second person's sign-up
+fail with an unreadable "Database error saving new user", so it is left to you
+to check.
+
+A vet cannot verify themselves or change their own registration number — the
+database refuses both, even from the browser console. Only an admin can.
+
+> If you ever need to do it by hand, the SQL still works:
+> `update vet_profiles set verified = true where id = 'their-id';`
+> (find the id with `select id, full_name, registration_no, verified from vet_profiles;`).
 
 ---
 
@@ -324,7 +334,12 @@ This one really is a wrong email or password — the connection is fine.
 **Sign-up works but no confirmation email arrives**
 Supabase's built-in email sender is rate-limited and often lands in spam. For a
 demo, turn confirmation off: Supabase → **Authentication** → **Sign In / Up** →
-**Email** → turn off *Confirm email*.
+**Email** → turn off *Confirm email*. With confirmation off, a new account is
+signed straight in after sign-up instead of being told to check its email.
+
+**"Forgot password" — where do I set the new password?**
+The emailed link signs the user in and lands on **Settings → Password &
+Privacy** (`/settings?tab=security`), where the new password is set.
 
 **The site builds but every page is blank**
 Check Vercel → Deployments → the failed build's **Logs**. The error is usually

@@ -32,7 +32,11 @@ interface Check {
   fix?: string
 }
 
-const TABLES = ['profiles', 'pets', 'confessions'] as const
+/** Every table the app queries — a missing one means schema.sql wasn't (re)run. */
+const TABLES = [
+  'profiles', 'pets', 'pet_reminders', 'pet_weights', 'confessions',
+  'vet_profiles', 'vet_replies', 'questions', 'answers',
+] as const
 
 function StatusIcon({ status }: { status: Status }) {
   if (status === 'pending') return <Loader2 className="w-5 h-5 text-zinc-500 animate-spin shrink-0" />

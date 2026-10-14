@@ -19,13 +19,6 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 type Role = 'loading' | 'forbidden' | 'admin'
 interface Post { id: string; text: string; mood: string; hearts: number; created_at: string }
 
-const SEED_POSTS: Post[] = [
-  { id: '1', text: 'Biscuit finally learned to sit AND stay today!', mood: 'proud', hearts: 248, created_at: '2026-06-28' },
-  { id: '2', text: 'Used the food checker before giving Luna a bit of my dinner — saved a vet trip.', mood: 'happy', hearts: 519, created_at: '2026-06-28' },
-  { id: '3', text: 'Adopted a senior rescue beagle this weekend.', mood: 'happy', hearts: 871, created_at: '2026-06-27' },
-  { id: '4', text: 'Any tips for a puppy that cries at night?', mood: 'help', hearts: 333, created_at: '2026-06-27' },
-]
-
 /**
  * Registered veterinary professionals, loaded from the database.
  *
@@ -71,26 +64,56 @@ interface OwnerRow {
   created_at: string | null
 }
 
-const SIGNUPS = [
-  { d: 'Mon', n: 220 }, { d: 'Tue', n: 310 }, { d: 'Wed', n: 280 },
-  { d: 'Thu', n: 410 }, { d: 'Fri', n: 520 }, { d: 'Sat', n: 690 }, { d: 'Sun', n: 740 },
-]
-const SPECIES = [
-  { s: 'Dogs', n: 6200 }, { s: 'Cats', n: 4100 }, { s: 'Rabbits', n: 800 },
-  { s: 'Birds', n: 620 }, { s: 'Other', n: 410 },
-]
+/*
+ * The two overview charts used to be constants — "New sign-ups this week"
+ * rising to 740 a day and "Pets by species" with 6,200 dogs — on a screen
+ * whose stat cards had already been fixed to show only real counts. Both are
+ * now calculated from rows the administrator can genuinely read: account
+ * creation dates from profiles, and Ask a Vet questions by species.
+ * Pets stay out of it: they are private to their owner by design.
+ */
+const SPECIES_ORDER = ['dog', 'cat', 'rabbit', 'bird', 'fish', 'reptile', 'small', 'other'] as const
+const SPECIES_NAME: Record<string, string> = {
+  dog: 'Dogs', cat: 'Cats', rabbit: 'Rabbits', bird: 'Birds', fish: 'Fish', reptile: 'Reptiles', small: 'Small pets', other: 'Other',
+}
+
+/** Registration numbers compared without case or stray spaces. */
+function normalReg(s: string): string {
+  return s.trim().toLowerCase().replace(/\s+/g, '')
+}
+
+/** yyyy-mm-dd in the viewer's own time zone. */
+function localDay(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+/** The last `n` calendar days, oldest first. */
+function lastDays(n: number): Date[] {
+  const out: Date[] = []
+  for (let i = n - 1; i >= 0; i--) {
+    const d = new Date()
+    d.setHours(0, 0, 0, 0)
+    d.setDate(d.getDate() - i)
+    out.push(d)
+  }
+  return out
+}
 
 const TABS = [
   { key: 'overview', label: 'Overview', icon: LayoutDashboard },
   { key: 'community', label: 'Community', icon: MessageSquare },
   { key: 'vets', label: 'Vets', icon: Stethoscope },
-  { key: 'owners', label: 'Pet Owners', icon: Users },
+  { key: 'owners', label: 'Accounts', icon: Users },
 ]
 
 export default function AdminPage() {
   const [role, setRole] = useState<Role>('loading')
   const [tab, setTab] = useState('overview')
-  const [posts, setPosts] = useState<Post[]>(SEED_POSTS)
+  const [posts, setPosts] = useState<Post[]>([])
+  const [postCount, setPostCount] = useState(0)
+  const [accountCount, setAccountCount] = useState(0)
+  const [recentSignups, setRecentSignups] = useState<string[]>([])
+  const [questionStats, setQuestionStats] = useState<{ species: string; answer_count: number }[]>([])
   const [owners, setOwners] = useState<OwnerRow[]>([])
   const [ownersLoaded, setOwnersLoaded] = useState(false)
   const [vets, setVets] = useState<VetRow[]>([])
@@ -111,8 +134,20 @@ export default function AdminPage() {
         const admin = await isUserAdmin(user)
         setRole(admin ? 'admin' : 'forbidden')
         if (admin) {
-          const { data } = await supabase.from('confessions').select('*').order('created_at', { ascending: false }).limit(100)
-          if (data && data.length > 0) setPosts(data as Post[])
+          const { data, count } = await supabase.from('confessions')
+            .select('*', { count: 'exact' }).order('created_at', { ascending: false }).limit(100)
+          setPosts((data ?? []) as Post[])
+          setPostCount(count ?? data?.length ?? 0)
+
+          const since = lastDays(14)[0]
+          const [{ count: accounts }, { data: signups }, { data: qs }] = await Promise.all([
+            supabase.from('profiles').select('id', { count: 'exact', head: true }),
+            supabase.from('profiles').select('created_at').gte('created_at', since.toISOString()),
+            supabase.from('questions').select('species, answer_count').limit(1000),
+          ])
+          setAccountCount(accounts ?? 0)
+          setRecentSignups((signups ?? []).map(r => r.created_at as string).filter(Boolean))
+          setQuestionStats((qs ?? []) as { species: string; answer_count: number }[])
 
           const { data: vetRows } = await supabase
             .from('vet_profiles')
@@ -134,14 +169,32 @@ export default function AdminPage() {
     check()
   }, [])
 
+  /**
+   * Delete a post, and only say so once the database has confirmed it.
+   *
+   * This used to remove the row from the screen and toast "Post removed"
+   * before even trying — and there was no delete policy on the table, so the
+   * database always refused and the post was back on the next refresh.
+   * `.select()` matters: a refusal by row-level security is not an error, it
+   * simply deletes zero rows.
+   */
   async function removePost(id: string) {
-    setPosts(p => p.filter(x => x.id !== id))
-    toast.success('Post removed')
     try {
       const { createClient } = await import('@/lib/supabase/client')
       const supabase = createClient()
-      if (!/^\d+$/.test(id)) await supabase.from('confessions').delete().eq('id', id)
-    } catch {}
+      const { data, error } = await supabase.from('confessions').delete().eq('id', id).select('id')
+      if (error || !data?.length) {
+        toast.error('Couldn’t remove that post', {
+          description: error?.message ?? 'The database refused. Re-run supabase/schema.sql to add the moderation policy.',
+        })
+        return
+      }
+      setPosts(p => p.filter(x => x.id !== id))
+      setPostCount(c => Math.max(0, c - 1))
+      toast.success('Post removed')
+    } catch {
+      toast.error('Couldn’t reach the database')
+    }
   }
 
   /**
@@ -214,11 +267,35 @@ export default function AdminPage() {
    * showing three real ones.
    */
   const stats = [
-    { label: 'Community posts', value: posts.length, icon: MessageSquare },
-    { label: 'Registered professionals', value: vets.length, icon: Users },
+    { label: 'Registered accounts', value: accountCount, icon: Users },
+    { label: 'Community posts', value: postCount, icon: MessageSquare },
     { label: 'Verified vets', value: vets.filter(v => v.verified).length, icon: Stethoscope },
     { label: 'Awaiting verification', value: vets.filter(v => !v.verified).length, icon: PawPrint },
   ]
+
+  // Registration numbers claimed by more than one account. Sign-up allows it
+  // (blocking it would break sign-up with an unreadable error), so it is
+  // surfaced here, where the verification decision is made.
+  const regCounts = new Map<string, number>()
+  for (const v of vets) {
+    if (v.registration_no?.trim()) regCounts.set(normalReg(v.registration_no), (regCounts.get(normalReg(v.registration_no)) ?? 0) + 1)
+  }
+  const sharedRegistrations = new Set([...regCounts].filter(([, n]) => n > 1).map(([k]) => k))
+
+  const signupsByDay = lastDays(14).map(day => ({
+    d: day.toLocaleDateString(undefined, { day: 'numeric', month: 'short' }),
+    n: recentSignups.filter(c => localDay(new Date(c)) === localDay(day)).length,
+  }))
+  const questionsBySpecies = SPECIES_ORDER
+    .map(sp => {
+      const rows = questionStats.filter(q => (q.species in SPECIES_NAME ? q.species : 'other') === sp)
+      return {
+        s: SPECIES_NAME[sp],
+        answered: rows.filter(q => q.answer_count > 0).length,
+        waiting: rows.filter(q => q.answer_count === 0).length,
+      }
+    })
+    .filter(r => r.answered + r.waiting > 0)
 
   return (
     <div className="relative min-h-screen">
@@ -230,16 +307,6 @@ export default function AdminPage() {
         sub={`Signed in as ${userEmail}. Moderate the community, verify veterinary professionals, and review platform activity.`}
       />
       <div className="relative max-w-7xl mx-auto px-6 lg:px-8 py-10">
-        {/* The figures and lists below are demonstration data, not live records.
-            Stated plainly so nobody mistakes this screen for a working console. */}
-        <div className="rounded-xl p-3.5 mb-8 flex items-start gap-2.5 text-xs border border-[#FFD98E]/30 bg-[#FFD98E]/[0.07]">
-          <Shield className="w-4 h-4 text-[#FFD98E] shrink-0 mt-px" aria-hidden="true" />
-          <span className="text-zinc-200 leading-relaxed">
-            <span className="font-semibold">Demonstration data.</span> The figures, owners and vet records on this
-            screen are sample content. Community posts are live; the rest is not yet wired to the database.
-          </span>
-        </div>
-
         <div className="flex gap-1 mb-8 overflow-x-auto no-scrollbar">
           {TABS.map(t => (
             <button key={t.key} onClick={() => setTab(t.key)}
@@ -267,28 +334,35 @@ export default function AdminPage() {
                 </div>
                 <div className="grid lg:grid-cols-3 gap-6">
                   <div className="lg:col-span-2 glass-card rounded-2xl p-5">
-                    <h2 className="font-semibold text-sm uppercase tracking-wider text-zinc-400 mb-6">New sign-ups this week</h2>
+                    <h2 className="font-semibold text-sm uppercase tracking-wider text-zinc-400 mb-1">New accounts — last 14 days</h2>
+                    <p className="text-xs text-zinc-500 mb-5">{recentSignups.length} in total.</p>
                     <ResponsiveContainer width="100%" height={220}>
-                      <AreaChart data={SIGNUPS}>
+                      <AreaChart data={signupsByDay}>
                         <defs><linearGradient id="ag" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#FFAE6D" stopOpacity={0.4} /><stop offset="100%" stopColor="#FFAE6D" stopOpacity={0} /></linearGradient></defs>
                         <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                        <XAxis dataKey="d" tick={{ fill: '#A79CBF', fontSize: 11 }} axisLine={false} tickLine={false} />
-                        <YAxis tick={{ fill: '#A79CBF', fontSize: 11 }} axisLine={false} tickLine={false} />
-                        <Tooltip contentStyle={{ background: '#1C1630', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12 }} />
+                        <XAxis dataKey="d" tick={{ fill: '#A79CBF', fontSize: 10 }} axisLine={false} tickLine={false} interval={1} />
+                        <YAxis allowDecimals={false} tick={{ fill: '#A79CBF', fontSize: 11 }} axisLine={false} tickLine={false} width={28} />
+                        <Tooltip formatter={v => [v, 'New accounts']} contentStyle={{ background: '#1C1630', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12 }} />
                         <Area type="monotone" dataKey="n" stroke="#FFAE6D" fill="url(#ag)" strokeWidth={2.5} />
                       </AreaChart>
                     </ResponsiveContainer>
                   </div>
                   <div className="glass-card rounded-2xl p-5">
-                    <h2 className="font-semibold text-sm uppercase tracking-wider text-zinc-400 mb-6">Pets by species</h2>
-                    <ResponsiveContainer width="100%" height={220}>
-                      <BarChart data={SPECIES} layout="vertical">
-                        <XAxis type="number" tick={{ fill: '#A79CBF', fontSize: 10 }} axisLine={false} tickLine={false} />
-                        <YAxis dataKey="s" type="category" tick={{ fill: '#A79CBF', fontSize: 11 }} axisLine={false} tickLine={false} width={50} />
-                        <Tooltip cursor={{ fill: 'rgba(255,255,255,0.03)' }} contentStyle={{ background: '#1C1630', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12 }} />
-                        <Bar dataKey="n" fill="#8E8BF5" radius={[0, 6, 6, 0]} />
-                      </BarChart>
-                    </ResponsiveContainer>
+                    <h2 className="font-semibold text-sm uppercase tracking-wider text-zinc-400 mb-1">Ask a Vet by species</h2>
+                    <p className="text-xs text-zinc-500 mb-5">Answered vs still waiting.</p>
+                    {questionsBySpecies.length === 0 ? (
+                      <p className="text-sm text-zinc-500">No questions have been asked yet.</p>
+                    ) : (
+                      <ResponsiveContainer width="100%" height={220}>
+                        <BarChart data={questionsBySpecies} layout="vertical">
+                          <XAxis type="number" allowDecimals={false} tick={{ fill: '#A79CBF', fontSize: 10 }} axisLine={false} tickLine={false} />
+                          <YAxis dataKey="s" type="category" tick={{ fill: '#A79CBF', fontSize: 11 }} axisLine={false} tickLine={false} width={70} />
+                          <Tooltip cursor={{ fill: 'rgba(255,255,255,0.03)' }} contentStyle={{ background: '#1C1630', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12 }} />
+                          <Bar dataKey="answered" name="Answered" stackId="q" fill="#8FD9A8" />
+                          <Bar dataKey="waiting" name="Waiting" stackId="q" fill="#FFD98E" radius={[0, 6, 6, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    )}
                   </div>
                 </div>
               </div>
@@ -312,6 +386,9 @@ export default function AdminPage() {
                       <TableHead className="text-zinc-500 text-xs uppercase tracking-wider text-right">Action</TableHead>
                     </TableRow></TableHeader>
                     <TableBody>
+                      {posts.length === 0 && (
+                        <TableRow className="border-white/5"><TableCell colSpan={4} className="text-center text-sm text-zinc-500 py-8">No community posts.</TableCell></TableRow>
+                      )}
                       {posts.filter(p => p.text.toLowerCase().includes(search.toLowerCase())).map(p => (
                         <TableRow key={p.id} className="border-white/5 hover:bg-white/[0.02]">
                           <TableCell className="max-w-md"><span className="text-sm text-zinc-300 line-clamp-1">{p.text}</span></TableCell>
@@ -364,6 +441,9 @@ export default function AdminPage() {
                             </TableCell>
                             <TableCell className="text-sm font-mono text-zinc-300">
                               {v.registration_no || <span className="text-zinc-600 font-sans">Not given</span>}
+                              {v.registration_no && sharedRegistrations.has(normalReg(v.registration_no)) && (
+                                <span className="block font-sans text-[10px] text-[#FF6B81] mt-0.5">Same number as another account — check before verifying</span>
+                              )}
                             </TableCell>
                             <TableCell>
                               <Badge className={`text-[10px] ${v.verified

@@ -14,6 +14,7 @@
 | **`03-PHASE-3-ANALYSIS.md`** | How to write the Analysis document (20%) | Due 9 Oct 2026 |
 | **`04-PHASE-4-DESIGN.md`** | How to write the Design document (20%) | Due 30 Oct 2026 |
 | **`05-PHASE-5-IMPLEMENTATION.md`** | How to write the Implementation document (25%) | Due 9 Nov 2026 |
+| **`06-FINAL-REVIEW-FIXES.md`** | Every logic and data-integrity problem found in the final review, why it mattered, and the fix | Before the demonstration, and when asked "why does it work this way?" |
 
 Two more files live in the project root:
 
@@ -52,6 +53,13 @@ Open the live site. If it is down, nothing else matters.
 If it does not load, work through `../SETUP.md`, and use `/setup` on the site —
 it tells you exactly which piece is missing.
 
+> **If the database was set up from an older copy of the code,** re-run the
+> whole of `supabase/schema.sql` in the Supabase SQL Editor. It is safe to run
+> again, and it adds the two health-record tables (`pet_reminders`,
+> `pet_weights`) and the tightened security rules. Until you do, pet pages and
+> the dashboard cannot save reminders or weigh-ins, and `/setup` will list the
+> missing tables.
+
 > ⚠️ **A free Supabase project pauses after about a week with no traffic.** If
 > you have not opened the site in a while it will appear broken. Open the
 > Supabase dashboard and restore it. **Do this the day before any
@@ -71,14 +79,14 @@ Ten minutes. It gives you the vocabulary for everything else.
 
 `01-SYSTEM-REFERENCE.md` already contains, ready to use:
 
-- 50 numbered functional requirements (§7.1)
+- 58 numbered functional requirements (§7.1)
 - 19 numbered non-functional requirements (§7.2)
-- Every database table with every column (Part 5)
+- All nine database tables with every column (Part 5)
 - Data flow descriptions for your DFDs (Part 6)
 - Use cases (§7.3)
 - The algorithms with worked examples (Part 8)
-- The security model (Part 10)
-- Ten honest limitations (Part 13)
+- The security model, including the holes found and closed (Part 10)
+- Twelve honest limitations (Part 13)
 - Design decisions with their reasons (Part 14)
 - A glossary (Part 15)
 
@@ -124,12 +132,17 @@ from an average one, and they are all real and documented:
 **1. Defects with root-cause analysis.** The food-safety search once returned
 **TOXIC for chicken**, because it tested whether the stored phrase contained the
 search instead of the reverse. Full story in `01-SYSTEM-REFERENCE.md` §8.2 and
-`05-PHASE-5-IMPLEMENTATION.md` D-01. Twelve defects are logged with causes and
+`05-PHASE-5-IMPLEMENTATION.md` D-01. Twenty-one defects are logged with causes and
 fixes. Most student projects present a system that apparently never broke.
 
-**2. Security enforced in the database, not the interface.** 24 row-level
-security policies. Hiding a button stops a casual user; it does not stop anyone
-who opens a browser console. Be able to say this in the presentation.
+**2. Security enforced in the database, not the interface.** 32 row-level
+security policies, plus column-level grants and a trigger. Hiding a button stops
+a casual user; it does not stop anyone who opens a browser console. Be able to
+say this in the presentation — and be able to tell the story of the audit that
+found the original rules let any user make themselves an administrator from the
+console, and how that was closed (`01-SYSTEM-REFERENCE.md` §10.7). The fixed
+schema was checked by an automated test of 49 checks against real PostgreSQL
+(PGlite); all pass. `npm test` re-runs it.
 
 **3. Real external data, and a real failure plan.** The practice finder uses
 OpenStreetMap. When every mirror failed in production, a bundled offline dataset
@@ -138,8 +151,10 @@ presented as live.
 
 **4. Refusing to fabricate.** NFR-19: the system never displays invented data as
 though it were real. Several features originally did — invented clinics with
-invented ratings, invented user accounts, statistics computed from nothing. All
-removed. This is unusual and it demonstrates judgement.
+invented ratings, invented user accounts, statistics computed from nothing,
+example pets and reminders on every user's dashboard, "120,000+ pet parents" and
+invented testimonials on the landing page. All removed. This is unusual and it
+demonstrates judgement.
 
 **5. Accessibility that actually works.** Reduce motion, high contrast, a real
 light theme, keyboard operation. And an honest finding: a CSS-only reduce-motion
@@ -158,7 +173,7 @@ generated in a Web Worker. Part 9 of the System Reference explains it.
 presentation by the individual student will carry 50%."*
 
 **Every student is marked individually and must understand the whole system.**
-The ten questions most likely to be asked, with where to find the answers, are at
+The eleven questions most likely to be asked, with where to find the answers, are at
 the end of `05-PHASE-5-IMPLEMENTATION.md`.
 
 ---
@@ -172,6 +187,7 @@ the end of `05-PHASE-5-IMPLEMENTATION.md`.
 | No vets appear | Expected if the external service is down; the bundled fallback should cover South Africa |
 | Admin Panel missing | Nobody is an administrator yet. `05-PHASE-5-IMPLEMENTATION.md` §5.5.3 |
 | Vet cannot answer | They are not verified. Admin Panel → Vets → Verify |
+| Reminders or weigh-ins will not save | The database predates them. Re-run `supabase/schema.sql`, then check `/setup` |
 | I do not understand a term | `01-SYSTEM-REFERENCE.md` Part 15 |
 | I do not know what to write | The phase guide for that phase, section by section |
 

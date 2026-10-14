@@ -351,8 +351,11 @@ State whether the remaining work fits, and what you will cut first if it does no
 Short but valuable — most groups omit it entirely.
 
 - **Data protection (POPIA).** The system stores email addresses, display names
-  and pet details. Personal data is restricted to its owner by row-level
-  security. Community posts carry no author identifier.
+  and pet details, including pets' weigh-ins and reminders. Personal data is
+  restricted to its owner by row-level security. Community posts carry no author
+  identifier. A user can delete their own account from Settings, which removes
+  their profile, pets and health records (their public questions and answers
+  stay, with the name removed).
 - **Licensing.** OpenStreetMap data is used under the Open Database Licence and
   attributed on the map. All libraries are MIT or similarly permissive.
 - **Professional responsibility.** The system gives guidance, not diagnosis, and
@@ -407,7 +410,7 @@ The guidelines explicitly require a WBS. Draw it as a tree or an indented list.
    1.4  Development
         1.4.1  Project setup and configuration
         1.4.2  Authentication and accounts
-        1.4.3  Pet management
+        1.4.3  Pet management and health records (weight log, reminders)
         1.4.4  Nutrition planner
         1.4.5  Food safety checker
         1.4.6  Veterinary practice finder
@@ -519,7 +522,7 @@ Build this table first; both charts come from it.
 | K | Interface design | 6 | J |
 | L | Environment setup | 2 | I |
 | M | Authentication & accounts | 4 | L |
-| N | Pet management | 3 | M |
+| N | Pet management and health records | 3 | M |
 | O | Nutrition planner | 4 | L |
 | P | Food safety checker | 4 | L |
 | Q | Practice finder | 5 | L |
@@ -667,8 +670,11 @@ assumed to be domain experts but not technical.
   tile server
 - *Communications interfaces* — HTTPS throughout
 
-**3.2 Functional Requirements.** Copy the FR-01 to FR-50 table from
+**3.2 Functional Requirements.** Copy the FR-01 to FR-58 table from
 `01-SYSTEM-REFERENCE.md` §7.1 wholesale. It is already in the right form.
+(FR-51 to FR-58 — health records, password change, account deletion, shared
+registration numbers — were added later and numbered on from FR-50; you may
+move them under the matching headings in your own document.)
 
 **3.3 Non-Functional Requirements.** Copy NFR-01 to NFR-19 from §7.2.
 
@@ -688,20 +694,27 @@ requirements".
 
 ## 2.7.1 Entity Relationship Diagram
 
-**Entities:** profiles, pets, vet_profiles, vet_replies, questions, answers,
-confessions.
+**Entities (nine):** profiles, pets, pet_reminders, pet_weights, vet_profiles,
+vet_replies, questions, answers, confessions.
 
 **Relationships:**
 
 | From | To | Cardinality | Meaning |
 |---|---|---|---|
 | profiles | pets | 1 : M | An owner has many pets |
+| pets | pet_reminders | 1 : M | A pet has many dated reminders (vaccine, vet visit, medication, deworming, grooming, other) |
+| pets | pet_weights | 1 : M | A pet has many weigh-ins |
 | profiles | vet_profiles | 1 : 0..1 | A user may be a professional |
 | vet_profiles | vet_replies | 1 : M | A professional saves many replies |
 | profiles | questions | 1 : M | A user asks many questions |
 | questions | answers | 1 : M | A question receives many answers |
 | vet_profiles | answers | 1 : M | A professional writes many answers |
 | confessions | — | — | Belongs to nobody, by design |
+
+`pet_reminders` and `pet_weights` also hold an `owner_id` that points at the
+account directly, so the security rule can be a simple ownership check. Show it
+as a foreign key, and say in the text that it is a deliberate redundancy
+(`01-SYSTEM-REFERENCE.md` §5.11).
 
 **Notation.** Use Crow's Foot. Show the primary key underlined, foreign keys
 marked, and every attribute with its data type. Take the attributes from
@@ -738,7 +751,8 @@ worth calling out in the text.
 **Use cases:** the twelve features, plus sign up, sign in, verify professional.
 
 Use `<<include>>` for authentication where required, and `<<extend>>` for
-optional behaviour such as saving a wellness result to a pet.
+optional behaviour such as opening the nutrition planner pre-filled from a
+pet's page.
 
 Write four to six use cases out in full, in the template from §7.3.
 

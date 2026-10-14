@@ -53,6 +53,8 @@ Deviations actually made in this project:
 | 3D shapes generated on the main thread | Generated in a Web Worker | Generation blocked the page for 200–300ms at a time |
 | Single fixed particle count | Count scales with viewport width | A constant count was simultaneously too dense and too expensive on mobile |
 | Admin verification via the interface only | Requires a database policy as well | Without it the administrator's write was silently refused |
+| Row-level security policies alone protect each table | Policies **plus** column-level grants, value checks on insert, and a guard trigger on `vet_profiles` | A security audit showed policies control *which rows* but not *which columns* — any user could make themselves an administrator |
+| Dashboard health data shown as illustration | Two new tables, `pet_reminders` and `pet_weights`, and a page per pet | Showing every user the same invented pets and reminders broke NFR-19 |
 
 Each of these is a real finding. Write a short paragraph on each explaining what
 was observed, what was concluded and what was changed.
@@ -61,15 +63,16 @@ was observed, what was concluded and what was changed.
 
 | Measure | Value |
 |---|---|
-| Application source | 13,058 lines of TypeScript / TSX |
+| Application source | 14,023 lines of TypeScript / TSX |
 | Largest module | `lib/animal-shapes.ts`, 992 lines |
-| Routes | 21 (19 pages, 2 API) |
-| Database tables | 7 |
-| Database functions | 4 |
-| Database triggers | 2 |
-| Row-level security policies | 24 |
-| Food-safety entries | 89 |
-| Care guides | 22 |
+| Routes | 22 (20 pages, 2 route handlers: `/api/vets` and `/auth/callback`) |
+| Database tables | 9 |
+| Database functions | 7 |
+| Database triggers | 4 |
+| Row-level security policies | 32 |
+| Database indexes (besides primary keys) | 7 |
+| Food-safety entries | 88 |
+| Care guides | 20 |
 | Bundled veterinary practices | 189 |
 | Runtime dependencies | 31 |
 
@@ -162,7 +165,7 @@ generalities.
 
 | Technique | Where | Effect |
 |---|---|---|
-| Database indexes on filtered and sorted columns | 5 indexes | Avoids full table scans |
+| Database indexes on filtered and sorted columns | 7 indexes | Avoids full table scans |
 | Stored derived count instead of a per-row subquery | `questions.answer_count` | One query instead of N |
 | Response caching | `/api/vets`, 10 minutes | A donated public service is not queried per keystroke |
 | Bounding-sphere rejection in the distance field | `lib/animal-shapes.ts` | Only nearby primitives are evaluated per sample point |
@@ -199,6 +202,7 @@ into a message that states what went wrong and what to do, and — critically �
 | Database unreachable | Caught; offline features continue; `/setup` diagnoses | "Failed to fetch" translated into a readable cause |
 | Permission refused | Reported accurately | Unverified answer attempt states the likely cause |
 | Optimistic update failure | **Rolled back**, then reported | Verifying a vet; toggling availability; deleting a saved reply |
+| A write the database silently ignores | Ask for the affected rows back (`.select()`), and report success only if a row came back | Removing a wall post; deleting a pet, weigh-in or reminder |
 | Programming error | Caught by type checking before runtime | — |
 
 ### The rollback pattern — include this code
@@ -251,7 +255,11 @@ rule enforced twice, deliberately.
 |---|---|---|
 | Password ≥ 8 characters | Before submit | Supabase Auth |
 | Professional supplies a registration number | Before submit | — |
-| Pet weight > 0 | Slider minimum | `check (weight is null or weight > 0)` |
+| Pet name 1–40 characters | Before submit | `check (char_length(btrim(name)) between 1 and 40)` |
+| Pet weight > 0 | Before submit | `check (weight is null or weight > 0)` |
+| Pet weight plausible for the species (e.g. ≤ 15 kg for a cat) | Before submit (`MAX_KG` in `lib/health.ts`) | Only the overall limit: `weight <= 200` |
+| Weigh-in not in the future | Before submit | `check (measured_on <= current_date + 1)` — a day's slack for time zones |
+| Reminder title 2–80; due today or later | Before submit | Title length `check`; the date rule is interface-only |
 | Species is one of nine | Button set only | `check (species in (...))` |
 | Community post 10–280 characters | Character counter | `check (char_length between 10 and 280)` |
 | Question title 10–140 | Counter | `check` constraint |
@@ -259,6 +267,9 @@ rule enforced twice, deliberately.
 | Saved reply title 2–80 | Validated on save | `check` constraint |
 | Only a verified vet may answer | Composer hidden | **RLS policy** |
 | Only an owner may read their pets | Query scoped | **RLS policy** |
+| A user cannot change their own role | No control offered | **Column-level grant** (only `display_name`, `avatar_url`) |
+| A vet cannot verify themselves | No control offered; registration number read-only | **Insert policy** (`verified = false`) and **trigger** `guard_vet_profile` |
+| A new wall post starts at zero hearts | Not sent by the form | **Insert policy** `hearts = 0` |
 | Latitude within ±90 | — | API route guard clause |
 
 **State the principle explicitly:** interface validation exists for helpfulness —
@@ -315,7 +326,7 @@ Name them; the guidelines ask for techniques and strategies.
 | Item | Detail |
 |---|---|
 | Objectives | Verify every functional requirement; verify constraints hold; verify graceful degradation |
-| Scope | All 21 routes, 7 tables, 4 functions, 24 policies |
+| Scope | All 22 routes, 9 tables, 7 functions, 32 policies |
 | Environment | Local development, and the production deployment |
 | Entry criteria | Feature complete; build passing |
 | Exit criteria | All planned cases executed; no open severity-1 or severity-2 defects |
@@ -354,6 +365,25 @@ Use this table for every case:
 | TC-04 | Weight below species minimum | Constrained to the minimum | Constrained | Pass |
 | TC-05 | Weight above species maximum | Constrained to the maximum | Constrained | Pass |
 | TC-06 | Same input, planner vs landing demo | Identical | Identical | Pass |
+| TC-42 | Dog, 12kg, **senior**, normal, ideal | Less than TC-01 (factor 0.9) | 650 kcal/day | Pass |
+| TC-43 | Dog, 12kg, adult, normal, body condition 1 / 2 / 4 / 5 | Four different results | 867 / 794 / 650 / 578 kcal/day | Pass |
+| TC-44 | Reptile, adult | 1 meal per day | 1 | Pass |
+| TC-45 | Landing hero card: dog, 12.4kg, adult, normal | Same as the planner | 740 kcal/day | Pass |
+
+TC-42 and TC-43 guard two corrections: seniors used to get a factor of 1.1 —
+more food than an adult — and body-condition scores 1 and 2 (and 4 and 5) used
+to give identical plans.
+
+### Wellness
+
+| ID | Input | Expected | Actual | Status |
+|---|---|---|---|---|
+| TC-46 | Best answer to every question | 100, "Thriving" | 100, Thriving | Pass |
+| TC-47 | Best answers, except "Barely eating" | "See a vet", naming the sign | See a vet | Pass |
+| TC-48 | Body shape "Ribs, spine or hips stick out" | Flagged as visibly underweight; "See a vet" | See a vet | Pass |
+
+TC-47 is the regression for a real defect (D-18): the score was a plain average,
+so a pet that was not eating could still be told it was thriving.
 
 TC-03 is a good case to highlight: it verifies the life-stage multiplier is
 applied, and the expected relationship (a growing animal needing roughly twice
@@ -372,6 +402,8 @@ maintenance) is independently checkable against veterinary literature.
 | TC-11 | "cat" | Must not match "catnip" | No false match | Pass |
 | TC-12 | "xyzzy" (not in database) | **No entry stated; no verdict inferred** | No entry | Pass |
 | TC-13 | "lily" with species = cat | Toxic, species-specific | Correct | Pass |
+| TC-49 | "peanut butter" | Caution — same entry as "xylitol free peanut butter" | Caution | Pass |
+| TC-50 | "my dog ate a weed" | Not reported as cannabis | No cannabis match | Pass |
 
 **TC-08 is the headline case.** Document it fully with the defect history: it
 previously returned **TOXIC** for an ordinary safe food, because the matcher
@@ -393,7 +425,7 @@ Executed by running `supabase/schema.sql` against a real PostgreSQL engine
 
 | ID | Test | Expected | Actual | Status |
 |---|---|---|---|---|
-| TC-16 | Execute the schema | All objects created | 7 tables, 4 functions, 24 policies | Pass |
+| TC-16 | Execute the schema | All objects created | 9 tables, 7 functions, 32 policies | Pass |
 | TC-17 | Execute it a second time | Succeeds; idempotent | Succeeds | Pass |
 | TC-18 | Insert an account | Profile row created by trigger | Created, correct role | Pass |
 | TC-19 | Insert a **professional** account **with no session** | Professional record created, `verified = false` | Created | Pass |
@@ -408,6 +440,43 @@ Executed by running `supabase/schema.sql` against a real PostgreSQL engine
 the original implementation: no session exists, so `auth.uid()` is null. The
 client-side insert failed here every time. Verifying that the trigger succeeds
 under the same condition proves the fix addresses the actual cause.
+
+### Security rules — the current schema
+
+A later audit found that several policies controlled *which rows* a user could
+touch but not *which columns* or *which values* (see `01-SYSTEM-REFERENCE.md`
+§10.7). After the fix, an automated script ran the real `schema.sql` in PGlite
+and made **49 checks — all passing**. They include each attack below, run as a
+signed-in user, an anonymous visitor or an administrator as stated; the attacks
+**succeeded against the old schema**. The table lists the cases that matter for
+the write-up; the remaining checks cover the sign-up trigger, the answer
+counter, hearts and normal owner actions. The script is
+`tests/schema.test.mjs`, and `npm test` re-runs it, so these cases can be
+demonstrated live.
+
+| ID | Test | Expected | Actual | Status |
+|---|---|---|---|---|
+| TC-51 | Owner sets own `profiles.role` to `admin` | Refused | Refused | Pass |
+| TC-52 | Owner changes own `display_name` | Allowed | Allowed | Pass |
+| TC-53 | Sign up with `role: admin` in the sign-up metadata | Profile created as `user` | `user` | Pass |
+| TC-54 | Owner inserts a `vet_profiles` row with `verified = true` | Refused | Refused | Pass |
+| TC-55 | Vet sets own `verified` to true; vet changes own `registration_no` | Both refused by the trigger | Refused | Pass |
+| TC-56 | Vet edits own bio and availability | Allowed | Allowed | Pass |
+| TC-57 | Admin sets a vet's `verified` to true | Allowed | Allowed | Pass |
+| TC-58 | Second vet signs up with the same registration number | Sign-up succeeds, unverified (the admin console flags it) | As expected | Pass |
+| TC-59 | Owner inserts a question with `answer_count = 5`; author rewrites `answer_count`; author rewords the title | All refused | Refused | Pass |
+| TC-60 | Author marks own question resolved | Allowed | Allowed | Pass |
+| TC-61 | Vet moves own answer to another question | Refused | Refused | Pass |
+| TC-62 | Anonymous wall post with `hearts = 9999` | Refused | Refused | Pass |
+| TC-63 | Normal user deletes a wall post; admin deletes a wall post | User: 0 rows; admin: deleted | As expected | Pass |
+| TC-64 | Another user adds a reminder or a weigh-in to someone else's pet | Both refused | Refused | Pass |
+| TC-65 | Pet name of only spaces; pet weight 500 kg | Both refused | Refused | Pass |
+| TC-66 | Weigh-ins 12.5 kg (10 days ago) then 12.1 kg (today); then a back-dated 20 kg (30 days ago); then delete the 12.1 entry | `pets.weight` = 12.1, stays 12.1, then 12.5 | As expected | Pass |
+| TC-67 | Weigh-in dated 30 days ahead | Refused | Refused | Pass |
+| TC-68 | `delete_my_account()` signed out; then signed in | Signed out: refused. Signed in: login, pets and weigh-ins removed; their question stays with `asker_id` null; no other account touched | As expected | Pass |
+
+Present TC-51 as the headline security finding: before the fix, one line in the
+browser console turned any account into an administrator.
 
 ## 5.4.4 System test cases — the deployed application
 
@@ -429,6 +498,21 @@ under the same condition proves the fix addresses the actual cause.
 | TC-39 | FR-48 | Change accent colour | Applied across the interface | Pass |
 | TC-40 | FR-49 | Enable reduce motion | Animation stops | Pass |
 | TC-41 | NFR-17 | Resize 375px → 2560px | Usable throughout | Pass |
+| TC-69 | NFR-19 | Sign up a new account, open the dashboard | No pets, reminders or chart the user did not create | |
+| TC-70 | FR-51 | Add a cat weighing 45 kg | Rejected with a message about kilograms | |
+| TC-71 | FR-10 | Edit a pet, then delete it (confirming) | Changes saved; pet and its records gone | |
+| TC-72 | FR-52/53 | Log two weigh-ins | Chart on the pet page and dashboard; pet's weight = latest | |
+| TC-73 | FR-54/55 | Add a reminder due today; tick it done | Shown on the dashboard, then gone from upcoming | |
+| TC-74 | FR-32 | Post an answer, reload Ask a Vet | Answer still there with the vet's name | |
+| TC-75 | FR-45 | Administrator removes a wall post, reloads | Post stays gone | |
+| TC-76 | FR-58 | Two professionals with the same registration number | Both flagged in Admin Panel → Vets | |
+| TC-77 | FR-56 | Change password in Settings | New password works at next sign-in | |
+| TC-78 | FR-06 | Follow a password-reset email | Lands on Settings → Password & Privacy, signed in | |
+| TC-79 | FR-57 | Delete account (type DELETE) | Signed out; sign-in no longer works | |
+
+TC-69 to TC-79 cover the features and fixes added late in the project. Fill in
+the Status column when you run them on the deployed site — do not mark them Pass
+until you have.
 
 ## 5.4.5 Defects found, and their resolution
 
@@ -449,10 +533,32 @@ root-cause analysis is direct evidence of engineering work.
 | D-10 | Opening animation stuttered | **3** | Shape generation on the main thread in non-preemptible idle callbacks | Moved to a Web Worker | Frame observation |
 | D-11 | Deployed site returned 404 on every route | **2** | Hosting framework preset wrong; served the static folder and discarded the application | Corrected the preset; rebuilt production | TC-26 |
 | D-12 | Fabricated data in several screens | **1** | Placeholder content left in place | Replaced with real data or honest absence | TC-37 and inspection |
+| D-13 | Any signed-in user could make themselves an administrator | **1** | The profile update policy limited *rows*, not *columns*, so `role` was writable from the browser console | Column-level grants: users may update only `display_name` and `avatar_url` | TC-51, TC-52 |
+| D-14 | Anyone could create a "verified" vet profile, and a vet could verify themselves | **1** | Insert policy did not check `verified`; update policy let a vet change any column of their own row | Insert requires `verified = false`; `guard_vet_profile` trigger | TC-54, TC-55, TC-57 |
+| D-15 | Admin "remove post" reported success but the post returned on refresh | **2** | No delete policy on `confessions`; the database refused silently and the screen did not check | Admin-only delete policy; success only once the deleted row comes back | TC-63, TC-75 |
+| D-16 | Ask a Vet answers disappeared on reload | **2** | Query embedded `vet_profiles` through a relationship that does not exist; the error was ignored | Two queries joined in the browser | TC-74 |
+| D-17 | Senior pets were fed more than adults | **1** | Senior life-stage factor was 1.1 | Changed to 0.9; body-condition factors graded per score | TC-42, TC-43 |
+| D-18 | Wellness check could say "Thriving" for a pet that was barely eating | **1** | Score was a plain average, so serious signs were outvoted | Red-flag answers force "See a vet" | TC-47, TC-48 |
+| D-19 | Add Pet said the pet "has joined your family!" when the save had failed | **2** | Success message shown regardless of the database result | Real error reported; success only after the insert returns the row | TC-70 and inspection |
+| D-20 | "Peanut butter" rated safe while "xylitol free peanut butter" rated caution | **1** | Two overlapping entries with contradicting verdicts | Merged into one caution entry for nut butters | TC-49 |
+| D-21 | A password-reset link led to a page with no way to set a password | **2** | Reset landed on Settings, which offered only "send another reset email" | Change-password form; the link now lands on it | TC-78 |
 
 **For the severity-1 defects, write a full root-cause narrative** — what was
 observed, how it was diagnosed, what the cause turned out to be, what was
-changed, and how the fix was verified. D-01 and D-05 are the strongest.
+changed, and how the fix was verified. D-01, D-05 and D-13 are the strongest.
+
+### Why D-13 is worth documenting
+
+Every table had row-level security switched on, and the profile policy read
+"a user may update only their own row". That sounds safe, and it was tested —
+a user could not edit somebody else's profile. But the policy said nothing about
+*which columns*, and the role that decides administrator access lives in the
+user's own row. One line from the browser console —
+`update profiles set role = 'admin' where id = auth.uid()` — was enough. The
+lesson: a policy answers "which rows?"; it takes a separate rule (here,
+column-level grants) to answer "which columns?". The same gap explained D-14,
+and the questions, answers and wall-post fixes in `01-SYSTEM-REFERENCE.md`
+§10.7.
 
 ### Why D-11 is worth documenting
 
@@ -504,8 +610,14 @@ summary with screenshots of each step.
 6. **Set the framework preset to Next.js** — the cause of D-11
 7. Add the two environment variables to all environments
 8. Deploy
-9. Verify via `/setup`
+9. Verify via `/setup` — it checks that all nine tables exist
 10. Create the first administrator
+
+**Upgrading an existing installation.** `schema.sql` is idempotent, so a
+database set up from an older version is upgraded by running the whole file
+again in the SQL Editor. Existing accounts, pets and posts are kept; the two
+health-record tables and the tightened security rules are added. `/setup` then
+names any table that is still missing.
 
 ### 5.5.3 The first-administrator problem
 
@@ -550,10 +662,12 @@ each developer therefore creates their own.
 
 ## 5.5.6 Post-installation verification
 
-A checklist: `/setup` all green; sign-up produces a confirmation email; sign-in
-works; a pet can be added and is visible only to its owner; nutrition returns a
-plan; food safety returns a verdict; the practice finder returns practices; the
-admin panel lists real accounts.
+A checklist: `/setup` all green; sign-up produces a confirmation email (or signs
+straight in, if confirmation is switched off); sign-in works; a pet can be added
+and is visible only to its owner; a weigh-in and a reminder can be added on the
+pet's page and appear on the dashboard; nutrition returns a plan; food safety
+returns a verdict; the practice finder returns practices; the admin panel lists
+real accounts and can verify a professional.
 
 ## 5.5.7 Maintenance procedures
 
@@ -565,6 +679,7 @@ admin panel lists real accounts.
 | Refresh bundled practice data | Every few months | Re-extract from OpenStreetMap |
 | Keep the database awake | Weekly | A free Supabase project pauses after about a week idle |
 | Update dependencies | Periodically | `npm outdated`, then update and re-test |
+| Apply schema changes | After pulling a new version | Re-run the whole of `supabase/schema.sql`; check `/setup` |
 
 ---
 
@@ -579,7 +694,9 @@ the phase table. Put them here.
 
 Summarise from Phase 4 §4.8, and give the evidence that it works: the policy
 matrix, and the test cases that verify it (TC-29 pet isolation, TC-34 verification
-gate, TC-37 administrator cannot see pets).
+gate, TC-37 administrator cannot see pets, and TC-51 to TC-68 for the holes
+closed after the security audit — self-promotion to administrator,
+self-verification, forged counts and hearts, records on other users' pets).
 
 ### 5.6.2 User profiles and access rights
 
@@ -589,7 +706,10 @@ The guidelines ask specifically for this. Present the access matrix:
 |---|---|---|---|---|---|
 | Browse public pages | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Nutrition, food safety, find a vet, guides | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Create and view own pets | — | ✓ | ✓ | ✓ | ✓ |
+| Create, edit and delete own pets; own weigh-ins and reminders | — | ✓ | ✓ | ✓ | ✓ |
+| Change own password; delete own account | — | ✓ | ✓ | ✓ | ✓ |
+| Change own role (through the app or the API) | — | — | — | — | — |
+| Change own verification or registration number | — | — | — | — | ✓ |
 | Post to the community wall | — | ✓ | ✓ | ✓ | ✓ |
 | Ask a question | — | ✓ | ✓ | ✓ | ✓ |
 | View the professional queue | — | — | ✓ | ✓ | — |
@@ -619,21 +739,21 @@ Duration    (months)    = 2.5 × (Effort)^0.38
 Average staff           = Effort ÷ Duration
 ```
 
-With **13.058 KLOC**:
+With **14.023 KLOC**:
 
 ```
-Effort   = 2.4 × 13.058^1.05
-         = 2.4 × 15.02  ≈ 36.0 person-months
-Duration = 2.5 × 36.0^0.38
-         = 2.5 × 3.90   ≈ 9.8 months
-Staff    = 36.0 ÷ 9.8   ≈ 3.7 people
+Effort   = 2.4 × 14.023^1.05
+         = 2.4 × 16.00  ≈ 38.4 person-months
+Duration = 2.5 × 38.4^0.38
+         = 2.5 × 4.00   ≈ 10.0 months
+Staff    = 38.4 ÷ 10.0  ≈ 3.8 people
 ```
 
 **Then compare with reality and discuss the gap honestly.** The actual project
 took a fraction of that. Give the reasons:
 
 - COCOMO was calibrated on projects written largely from scratch. A substantial
-  share of these 13,058 lines is configuration, generated component scaffolding
+  share of these 14,023 lines is configuration, generated component scaffolding
   and declarative interface markup rather than novel logic.
 - Modern frameworks and managed services eliminate whole categories of work that
   COCOMO assumes — authentication, session handling, hosting, database
@@ -654,9 +774,9 @@ Applying a second model and comparing is a strong move.
 | External Inputs | ~15 forms | Average | 4 | 60 |
 | External Outputs | ~12 result screens | Average | 5 | 60 |
 | External Inquiries | ~8 searches/lookups | Average | 4 | 32 |
-| Internal Logical Files | 7 tables | Average | 10 | 70 |
+| Internal Logical Files | 9 tables | Average | 10 | 90 |
 | External Interface Files | 2 (Overpass, tiles) | Average | 7 | 14 |
-| **Unadjusted FP** | | | | **236** |
+| **Unadjusted FP** | | | | **256** |
 
 Apply the 14 general system characteristics to get the adjustment factor, then
 report adjusted function points and derive effort using a productivity figure you
@@ -688,8 +808,13 @@ description of its layout, fields and source:
 5. **Question thread** — question with professional answers and verification
    badges
 6. **Vet queue summary** — counts and the species breakdown chart
-7. **Administrative summary** — post count, professional counts, verification
-   backlog
+7. **Administrative summary** — account count, post count, verified and
+   awaiting professionals, new accounts over the last 14 days, and questions by
+   species (answered vs waiting)
+8. **Pet health record** — a pet's weight log with its trend chart, and its
+   reminders with due and overdue dates
+9. **Dashboard summary** — the owner's pets, upcoming and overdue reminders, and
+   weight trends
 
 For each: purpose, audience, fields, source of each field, and layout.
 
@@ -738,11 +863,14 @@ and replaced — which is what debugging actually is.
 Group by feasibility; prioritised realism scores better than a wish list.
 
 **Near term**
-- Automated regression suite (Vitest for logic, Playwright for flows) in CI
-- Expand the food-safety database beyond 89 entries, with sources cited per entry
+- Automated regression suite (Vitest for logic, Playwright for flows) in CI,
+  including the PGlite schema checks
+- Expand the food-safety database beyond 88 entries, with sources cited per entry
 - Extend the bundled practice dataset beyond South Africa
-- Weight tracking over time with a trend chart
-- Reminders for vaccinations and medication
+- Email or push notifications for reminders (they are currently in-app only)
+
+(Weight tracking with a trend chart, and reminders for vaccinations and
+medication, were on this list and have since been built.)
 
 **Medium term**
 - An administrator interface for editing the food-safety database, with review
@@ -819,6 +947,7 @@ Reproduce `01-SYSTEM-REFERENCE.md` Part 15, extended with any term you use.
 - [ ] 5.4 Test summary with coverage statement
 - [ ] 5.5 Installation procedure with screenshots
 - [ ] 5.5 First-administrator procedure documented
+- [ ] 5.5 Upgrade procedure (re-run `schema.sql`) documented
 - [ ] 5.6 **Security measures** with the access matrix
 - [ ] 5.7 **Cost estimation with a named model** and the arithmetic
 - [ ] 5.7 Honest discussion of the model-versus-reality gap
@@ -856,8 +985,11 @@ Prepare for these, because they are the ones that get asked:
 8. Is `answer_count` not redundant? *(Yes — a deliberate, justified
    denormalisation maintained by a trigger.)*
 9. How did you test this?
-10. What are the limitations of your system? *(Have a real answer. §5.6 of the
-    System Reference lists ten.)*
+10. What are the limitations of your system? *(Have a real answer. Part 13 of
+    the System Reference lists twelve.)*
+11. Could a user make themselves an administrator? *(Not any more — and be ready
+    to explain that the original rules allowed it, how it was found, and that
+    column-level grants now prevent it: D-13.)*
 
 **Rehearse a live demonstration and have a fallback.** Free-tier databases pause
 after about a week idle, and the external practice directory has no uptime

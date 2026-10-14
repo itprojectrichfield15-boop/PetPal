@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import PageHeader from '@/components/layout/PageHeader'
-import { lookupFood, QUICK_CHECKS, LEVEL_META, type SafetyLevel } from '@/lib/food-safety'
+import { lookupFood, QUICK_CHECKS, LEVEL_META, FOOD_DB, type SafetyLevel } from '@/lib/food-safety'
 
 const ICONS: Record<SafetyLevel, typeof ShieldCheck> = {
   safe: ShieldCheck,
@@ -29,7 +29,7 @@ export default function FoodSafetyPage() {
         icon={Sparkles}
         title="Food Safety"
         accent="Checker"
-        sub="Can your pet eat that? Check any food, plant or household item against 89 verified entries."
+        sub={`Can your pet eat that? Check any food, plant or household item against ${FOOD_DB.length} checked entries.`}
         species="dog"
       />
       <div className="relative px-6 lg:px-8 py-10 max-w-3xl mx-auto">

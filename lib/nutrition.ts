@@ -33,6 +33,8 @@ export interface SpeciesConfig {
   kcalPerGramDry: number
   /** ml of water per kg of bodyweight per day. */
   waterMlPerKg: number
+  /** Meals per day for a juvenile and for an adult/senior of this species. */
+  meals: { young: number; adult: number }
   note: string
   macros: { axis: string; value: number }[]
 }
@@ -40,37 +42,37 @@ export interface SpeciesConfig {
 export const SPECIES_CFG: Record<SpeciesKey, SpeciesConfig> = {
   dog: {
     label: 'Dog', factor: 1.0, youngLabel: 'Puppy', maxKg: 90, defaultKg: 12,
-    foodLabel: 'Dry food', kcalPerGramDry: 3.5, waterMlPerKg: 55,
+    foodLabel: 'Dry food', kcalPerGramDry: 3.5, waterMlPerKg: 55, meals: { young: 3, adult: 2 },
     note: 'Based on canine RER/MER energy formulas.',
     macros: [{ axis: 'Protein', value: 75 }, { axis: 'Fat', value: 60 }, { axis: 'Carbs', value: 50 }, { axis: 'Fibre', value: 55 }, { axis: 'Moisture', value: 60 }],
   },
   cat: {
     label: 'Cat', factor: 0.9, youngLabel: 'Kitten', maxKg: 12, defaultKg: 4.5,
-    foodLabel: 'Dry food', kcalPerGramDry: 3.8, waterMlPerKg: 55,
+    foodLabel: 'Dry food', kcalPerGramDry: 3.8, waterMlPerKg: 55, meals: { young: 4, adult: 2 },
     note: 'Cats are obligate carnivores — protein-rich diets only.',
     macros: [{ axis: 'Protein', value: 90 }, { axis: 'Fat', value: 70 }, { axis: 'Carbs', value: 25 }, { axis: 'Fibre', value: 40 }, { axis: 'Moisture', value: 80 }],
   },
   rabbit: {
     label: 'Rabbit', factor: 0.7, youngLabel: 'Kit', maxKg: 8, defaultKg: 2,
-    foodLabel: 'Pellets', kcalPerGramDry: 2.6, waterMlPerKg: 100,
+    foodLabel: 'Pellets', kcalPerGramDry: 2.6, waterMlPerKg: 100, meals: { young: 2, adult: 2 },
     note: 'Rabbits need unlimited hay first — pellets and greens are a small top-up.',
     macros: [{ axis: 'Protein', value: 40 }, { axis: 'Fat', value: 18 }, { axis: 'Carbs', value: 45 }, { axis: 'Fibre', value: 95 }, { axis: 'Moisture', value: 65 }],
   },
   bird: {
     label: 'Bird', factor: 1.3, youngLabel: 'Chick', maxKg: 2, defaultKg: 0.4,
-    foodLabel: 'Seed / pellets', kcalPerGramDry: 3.4, waterMlPerKg: 50,
+    foodLabel: 'Seed / pellets', kcalPerGramDry: 3.4, waterMlPerKg: 50, meals: { young: 2, adult: 2 },
     note: 'Birds have fast metabolisms — fresh pellets, seed and veg daily.',
     macros: [{ axis: 'Protein', value: 65 }, { axis: 'Fat', value: 45 }, { axis: 'Carbs', value: 70 }, { axis: 'Fibre', value: 50 }, { axis: 'Moisture', value: 55 }],
   },
   reptile: {
     label: 'Reptile', factor: 0.35, youngLabel: 'Juvenile', maxKg: 15, defaultKg: 1,
-    foodLabel: 'Food', kcalPerGramDry: 1.8, waterMlPerKg: 20,
+    foodLabel: 'Food', kcalPerGramDry: 1.8, waterMlPerKg: 20, meals: { young: 1, adult: 1 },
     note: 'Reptiles are ectotherms — feeding frequency varies hugely by species.',
     macros: [{ axis: 'Protein', value: 70 }, { axis: 'Fat', value: 40 }, { axis: 'Carbs', value: 35 }, { axis: 'Fibre', value: 60 }, { axis: 'Moisture', value: 70 }],
   },
   small: {
     label: 'Small pet', factor: 1.1, youngLabel: 'Young', maxKg: 3, defaultKg: 0.8,
-    foodLabel: 'Pellets / mix', kcalPerGramDry: 3.0, waterMlPerKg: 100,
+    foodLabel: 'Pellets / mix', kcalPerGramDry: 3.0, waterMlPerKg: 100, meals: { young: 2, adult: 2 },
     note: 'Hamsters, rats and guinea pigs — small frequent portions plus fresh veg.',
     macros: [{ axis: 'Protein', value: 60 }, { axis: 'Fat', value: 40 }, { axis: 'Carbs', value: 65 }, { axis: 'Fibre', value: 70 }, { axis: 'Moisture', value: 55 }],
   },
@@ -78,8 +80,8 @@ export const SPECIES_CFG: Record<SpeciesKey, SpeciesConfig> = {
 
 /** Activity multipliers offered in the UI. */
 export const ACTIVITY_LEVELS = [
-  { label: 'Low', value: 1.3, hint: 'Mostly indoors, short walks' },
-  { label: 'Normal', value: 1.6, hint: 'Daily walks and play' },
+  { label: 'Low', value: 1.3, hint: 'Mostly resting or confined' },
+  { label: 'Normal', value: 1.6, hint: 'Daily exercise and play' },
   { label: 'High', value: 2.0, hint: 'Working, sporting or very active' },
 ] as const
 
@@ -129,10 +131,29 @@ const GRAMS_PER_CUP = 110
 /** kcal per gram of typical wet food (roughly 80% moisture). */
 const KCAL_PER_GRAM_WET = 1.2
 
+/**
+ * Growth roughly doubles energy needs. Seniors are slightly BELOW an adult:
+ * metabolism and activity both slow with age, which is why the care guides
+ * tell owners to adjust for it. (This was 1.1, which fed every senior pet
+ * more than a younger adult of the same weight.)
+ */
 const LIFE_STAGE_FACTOR: Record<LifeStage, number> = {
   young: 2.0,
   adult: 1.0,
-  senior: 1.1,
+  senior: 0.9,
+}
+
+/**
+ * Body-condition adjustment, one step per score so every position on the
+ * slider means something. Scores 1 and 2 used to share a factor, as did 4 and
+ * 5 — "very thin" and "lean" produced an identical plan.
+ */
+const BODY_CONDITION_FACTOR: Record<number, number> = {
+  1: 1.2,
+  2: 1.1,
+  3: 1.0,
+  4: 0.9,
+  5: 0.8,
 }
 
 function clamp(n: number, min: number, max: number) {
@@ -166,7 +187,7 @@ export function computePlan(input: PlanInput): FeedingPlan {
 
   // Overweight pets are fed to a slightly reduced target, underweight to a
   // slightly raised one, so the plan moves them toward an ideal condition.
-  const bcFactor = bodyCondition >= 4 ? 0.85 : bodyCondition <= 2 ? 1.15 : 1.0
+  const bcFactor = BODY_CONDITION_FACTOR[Math.round(bodyCondition)] ?? 1.0
   const stageFactor = LIFE_STAGE_FACTOR[input.lifeStage] ?? 1.0
 
   const rer = 70 * Math.pow(weight, 0.75)
@@ -174,7 +195,7 @@ export function computePlan(input: PlanInput): FeedingPlan {
 
   const dryGrams = Math.max(1, Math.round(mer / cfg.kcalPerGramDry))
   const wetGrams = Math.max(1, Math.round(mer / KCAL_PER_GRAM_WET))
-  const meals = input.lifeStage === 'young' ? 3 : 2
+  const meals = input.lifeStage === 'young' ? cfg.meals.young : cfg.meals.adult
 
   return {
     rer: Math.round(rer),

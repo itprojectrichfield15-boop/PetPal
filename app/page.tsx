@@ -14,6 +14,8 @@ import Logo from '@/components/public/Logo'
 import Hero from '@/components/public/Hero'
 import AnimalField from '@/components/public/AnimalField'
 import { computePlan, SPECIES_CFG, type LifeStage } from '@/lib/nutrition'
+import { FOOD_DB } from '@/lib/food-safety'
+import { GUIDE_COUNT } from '@/lib/guides'
 import { usePrefersReducedMotion } from '@/lib/use-client-value'
 
 const EASE = [0.16, 1, 0.3, 1] as const
@@ -151,11 +153,17 @@ function Tilt({ children, className }: { children: React.ReactNode; className?: 
    Trust bar — compact, replacing four oversized counter cards
    ═══════════════════════════════════════════════════════════════════════════ */
 
+/*
+ * Every figure here is either sourced or counted from the app itself. The bar
+ * used to include "70% of owners miss a vaccine date", which had no source at
+ * all, and hard-coded the food and guide counts so they could drift from the
+ * real numbers.
+ */
 const TRUST = [
-  { value: 56, suffix: '%', label: 'of pets are overweight', note: 'almost always from guessed portions' },
-  { value: 70, suffix: '%', label: 'of owners miss a vaccine date', note: 'PetPal keeps the schedule' },
-  { value: 89, suffix: '', label: 'foods & plants verified', note: 'with the clinical reason, not a guess' },
-  { value: 21, suffix: '', label: 'care guides', note: 'written in one consistent voice' },
+  { value: 56, suffix: '%', label: 'of dogs are overweight', note: 'APOP US vet survey, 2018 — cats were 60%' },
+  { value: FOOD_DB.length, suffix: '', label: 'foods & plants checked', note: 'with the clinical reason, not a guess' },
+  { value: Object.keys(SPECIES_CFG).length, suffix: '', label: 'species in the planner', note: 'dogs, cats, rabbits, birds, reptiles, small pets' },
+  { value: GUIDE_COUNT, suffix: '', label: 'care guides', note: 'written in one consistent voice' },
 ]
 
 function TrustBar() {
@@ -262,7 +270,7 @@ const CELLS: Cell[] = [
   },
   {
     title: 'Know what’s safe',
-    desc: '89 foods, plants and household items — each with the clinical reason and what to actually do about it.',
+    desc: `${FOOD_DB.length} foods, plants and household items — each with the clinical reason and what to actually do about it.`,
     icon: ShieldCheck, href: '/food-safety', span: 'lg:col-span-5', tall: true,
     img: 'https://images.unsplash.com/photo-1425082661705-1834bfd09dca?w=900&h=1000&fit=crop&q=88',
   },
@@ -289,7 +297,7 @@ const CELLS: Cell[] = [
   },
   {
     title: 'Nothing slips',
-    desc: 'Vaccines, weight, medication and vet visits, all on one timeline.',
+    desc: 'Reminders for vaccines, medication and vet visits, and a weight log for every pet.',
     icon: Activity, href: '/dashboard', span: 'lg:col-span-5',
   },
 ]
@@ -489,14 +497,14 @@ function NutritionSection() {
           <SectionHeading
             lead="Portion size is the"
             accent="quiet problem."
-            sub="Over half of pets are overweight, and it almost never comes from cruelty — it comes from a scoop nobody ever measured. Move the sliders and see what your pet actually needs."
+            sub="Over half of pets are overweight, and it rarely comes from neglect — usually from a scoop nobody ever measured. Move the sliders and see what your pet actually needs."
           />
           <ul className="space-y-3 mt-9 mb-10">
             {[
               'Vet-grade RER/MER calorie maths',
               'Adjusts for species, life stage, activity and body condition',
               'Exact grams, cups, meals and water per day',
-              'Recalculates as they grow or slim down',
+              'Opens pre-filled from your pet’s profile and latest weigh-in',
             ].map(t => (
               <li key={t} className="flex items-start gap-3 text-[14.5px] text-zinc-300">
                 <CheckCircle2 className="w-[18px] h-[18px] text-[var(--apricot)] shrink-0 mt-0.5" aria-hidden="true" /> {t}
@@ -527,122 +535,16 @@ function NutritionSection() {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   Testimonials — one large editorial quote rather than three equal cards
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-const VOICES = [
-  {
-    quote: 'The portion planner alone fixed Biscuit’s weight in two months. I had been overfeeding him for a year without realising it.',
-    name: 'Amara Okonkwo', role: 'Mum to Biscuit, a beagle',
-    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&h=200&fit=crop&q=85',
-    metric: '−18%', metricLabel: 'to a healthy weight',
-  },
-  {
-    quote: 'Luna got something off the counter at 11pm. The food checker told me it was toxic and the vet finder had a clinic open four minutes away.',
-    name: 'Thabo Mokoena', role: 'Dad to Luna, a Maine Coon',
-    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&h=200&fit=crop&q=85',
-    metric: '4 min', metricLabel: 'to an open clinic',
-  },
-  {
-    quote: 'Two dogs, endless vaccine dates, two different diets. PetPal keeps all of it straight so I don’t have to hold it in my head.',
-    name: 'Lerato Dube', role: 'Mum to Max & Milo, huskies',
-    avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=200&h=200&fit=crop&q=85',
-    metric: '100%', metricLabel: 'reminders kept',
-  },
-]
-
-function Testimonials() {
-  const [active, setActive] = useState(0)
-  const v = VOICES[active]
-
-  return (
-    <section className="relative py-28 lg:py-36 px-6">
-      <div className="max-w-6xl mx-auto">
-        <Reveal className="mb-12">
-          <Eyebrow>Happy tails</Eyebrow>
-          <SectionHeading lead="Owners who" accent="rest easier." />
-        </Reveal>
-
-        <Reveal delay={0.1}>
-          <div className="relative rounded-[1.75rem] border border-white/[0.08] bg-[var(--card)]/88 backdrop-blur-xl p-8 md:p-14 overflow-hidden">
-            <div
-              className="pointer-events-none absolute -top-32 -right-20 w-[26rem] h-[26rem] rounded-full opacity-30"
-              style={{ background: 'radial-gradient(circle, rgba(255,174,109,0.22), transparent 70%)' }}
-              aria-hidden="true"
-            />
-
-            <AnimatePresence mode="wait">
-              <motion.blockquote
-                key={active}
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -12 }}
-                transition={{ duration: 0.45, ease: EASE }}
-                className="relative"
-              >
-                <p
-                  className="text-2xl md:text-[2.1rem] leading-[1.35] tracking-[-0.02em] text-zinc-100 max-w-3xl"
-                  style={{ fontFamily: 'var(--font-display)' }}
-                >
-                  &ldquo;{v.quote}&rdquo;
-                </p>
-
-                <div className="flex flex-wrap items-center gap-6 mt-10">
-                  <div className="flex items-center gap-3.5">
-                    <div className="relative w-12 h-12 rounded-full overflow-hidden border border-white/12 shrink-0">
-                      <Image src={v.avatar} alt="" fill className="object-cover" sizes="48px" />
-                    </div>
-                    <div>
-                      <div className="font-semibold text-sm">{v.name}</div>
-                      <div className="text-xs text-zinc-500">{v.role}</div>
-                    </div>
-                  </div>
-                  <div className="h-10 w-px bg-white/10 hidden sm:block" aria-hidden="true" />
-                  <div>
-                    <div
-                      className="text-2xl font-semibold tabular-nums text-[var(--apricot)] leading-none"
-                      style={{ fontFamily: 'var(--font-display)' }}
-                    >
-                      {v.metric}
-                    </div>
-                    <div className="text-[11px] text-zinc-500 mt-1">{v.metricLabel}</div>
-                  </div>
-                </div>
-              </motion.blockquote>
-            </AnimatePresence>
-
-            <div className="flex items-center gap-2 mt-12" role="tablist" aria-label="Testimonials">
-              {VOICES.map((t, i) => (
-                <button
-                  key={t.name}
-                  role="tab"
-                  aria-selected={i === active}
-                  aria-label={`Read ${t.name}'s story`}
-                  onClick={() => setActive(i)}
-                  className={`h-1.5 rounded-full transition-all duration-300 ${
-                    i === active ? 'w-10 bg-[var(--apricot)]' : 'w-1.5 bg-white/15 hover:bg-white/30'
-                  }`}
-                />
-              ))}
-            </div>
-          </div>
-        </Reveal>
-      </div>
-    </section>
-  )
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
    FAQ — two quiet columns, no boxes inside boxes
    ═══════════════════════════════════════════════════════════════════════════ */
 
 const FAQS = [
   { q: 'Is PetPal free?', a: 'Yes. Pet profiles, the nutrition planner, food-safety checker, wellness check, care plan, guides and vet finder are all free — and most of them work without an account at all.' },
   { q: 'How accurate is the nutrition planner?', a: 'It uses the standard veterinary RER and MER energy equations, adjusted for species, life stage, activity and body condition. It is planning guidance — prescription and therapeutic diets are always your vet’s call.' },
-  { q: 'How does the food-safety checker work?', a: 'A curated database of 89 foods, plants and household items, each with the clinical reason, the animals most affected, and what to do. If an item has not been verified we say so rather than guessing, because a wrong “safe” could kill an animal.' },
+  { q: 'How does the food-safety checker work?', a: `A curated database of ${FOOD_DB.length} foods, plants and household items, each with the clinical reason, the animals most affected, and what to do. If an item has not been verified we say so rather than guessing, because a wrong “safe” could kill an animal.` },
   { q: 'Where do the vets come from?', a: 'Real practices recorded in OpenStreetMap, ranked by distance from you. We show only what the directory actually holds — no invented ratings, and a phone number only where one is verified.' },
-  { q: 'What happens to my location?', a: 'Your browser shares an approximate position with your permission, it is used to run one search, and it is never stored or sent to us.' },
-  { q: 'Can I track more than one pet?', a: 'As many as you like. Each gets its own profile, diet, weight and schedule — and only you can see them, which is enforced by the database itself, not just by the app.' },
+  { q: 'What happens to my location?', a: 'With your permission, your browser shares your position. PetPal’s server passes it to OpenStreetMap to run one search and then discards it — it is never stored or linked to your account.' },
+  { q: 'Can I track more than one pet?', a: 'As many as you like. Each gets its own profile, reminders, weight log and a pre-filled nutrition plan — and only you can see them, which is enforced by the database itself, not just by the app.' },
 ]
 
 function FaqRow({ q, a, idx }: { q: string; a: string; idx: number }) {
@@ -807,7 +709,6 @@ export default function LandingPage() {
         <EditorialReveal />
         <Bento />
         <NutritionSection />
-        <Testimonials />
         <Faq />
         <ClosingCta />
         <Footer />
